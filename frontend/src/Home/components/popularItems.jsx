@@ -114,7 +114,7 @@ export default function PopularItems() {
             transition={{ duration: 0.5 }}
         >
             <motion.h1 
-                className="text-3xl font-bold text-center mb-20"
+                className="text-4xl font-bold text-center mb-20"
                 initial={{ y: -20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.2, duration: 0.5 }}

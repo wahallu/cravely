@@ -5,6 +5,7 @@ import FlashDeals from './flashDeals'
 import PopularItems from '../components/popularItems'
 import Footer from '../components/footer'
 import HowItWorks from '../components/howItWorks'
+import FeaturedRestaurants from '../components/featuredRestaurants'
 
 export default function layout() {
   return (
@@ -16,6 +17,7 @@ export default function layout() {
         <FlashDeals />
         <HowItWorks />
         <PopularItems />
+        <FeaturedRestaurants />
         <Footer />
     </div>
   )
