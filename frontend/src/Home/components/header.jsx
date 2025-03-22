@@ -29,7 +29,7 @@ export default function Header() {
           <div className="flex items-center">
             <Link to="/" className="flex items-center">
               <img
-                src="https://placehold.co/150x40"
+                src="/logo.png"
                 alt="Cravely"
                 className="h-10 transition-all duration-300 hover:opacity-80"
               />

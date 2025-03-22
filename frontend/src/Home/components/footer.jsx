@@ -70,7 +70,7 @@ export default function Footer() {
             <div>
               <div className="mb-6">
                 <img
-                  src="https://placehold.co/150x40"
+                  src="/logo.png"
                   alt="Cravely"
                   className="h-10"
                 />

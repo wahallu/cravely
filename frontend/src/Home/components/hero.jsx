@@ -16,14 +16,25 @@ export default function Hero() {
 
   return (
     <main className="relative overflow-hidden">
+      {/* Background pattern image */}
+      <div
+        className="absolute inset-0 z-0 opacity-10"
+        style={{
+          backgroundImage: `url(${'/herobg.png'})`,
+          backgroundSize: '400px',
+          backgroundRepeat: 'repeat',
+        }}
+        aria-hidden="true"
+      ></div>
+
       {/* Background elements */}
       <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-yellow-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
       <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-96 h-96 bg-orange-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
-      
+
       {/* Floating food badges */}
       <div className="hidden lg:block">
         {foodCategories.map((category, index) => (
-          <div 
+          <div
             key={index}
             className={`absolute rounded-full bg-white shadow-lg px-4 py-2 flex items-center gap-2 text-sm font-medium text-gray-700 animate-float animation-delay-${index * 1000} z-10`}
             style={{
@@ -48,11 +59,11 @@ export default function Hero() {
                 #1 Food Delivery App
               </span>
             </div>
-            
+
             <h1 className="text-5xl md:text-6xl font-bold text-gray-800 mb-6 leading-tight">
               Are you <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600">starving</span>?
             </h1>
-            
+
             <p className="text-xl text-gray-600 mb-8 max-w-xl">
               Within a few clicks, find meals that are accessible near you and enjoy the most delicious food delivered to your doorstep.
             </p>
@@ -64,7 +75,7 @@ export default function Hero() {
                   className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-full transition-all duration-300 ${deliveryType === 'delivery'
                     ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-md'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                    }`}
                   onClick={() => setDeliveryType('delivery')}
                 >
                   <FaMotorcycle className={deliveryType === 'delivery' ? 'animate-bounce' : ''} />
@@ -74,7 +85,7 @@ export default function Hero() {
                   className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-full transition-all duration-300 ${deliveryType === 'pickup'
                     ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-md'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                    }`}
                   onClick={() => setDeliveryType('pickup')}
                 >
                   <MdStorefront className={deliveryType === 'pickup' ? 'animate-bounce' : ''} />
@@ -101,13 +112,13 @@ export default function Hero() {
                     <span>Find Food</span>
                   </button>
                 </div>
-                
+
                 {/* Popular locations suggestion */}
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="text-xs text-gray-500">Popular:</span>
                   {['Pittugala Malabe', 'Colombo 07', 'Kandy City'].map((loc, i) => (
-                    <button 
-                      key={i} 
+                    <button
+                      key={i}
                       onClick={() => setAddress(loc)}
                       className="text-xs bg-gray-100 px-2 py-1 rounded-full text-gray-600 hover:bg-gray-200 transition-colors"
                     >
@@ -117,12 +128,12 @@ export default function Hero() {
                 </div>
               </div>
             </div>
-            
+
             {/* Stats */}
             <div className="mt-10 grid grid-cols-3 gap-6 text-center">
               {[
                 { number: '10k+', label: 'Restaurants' },
-                { number: '2M+', label: 'Customers' }, 
+                { number: '2M+', label: 'Customers' },
                 { number: '99.5%', label: 'Satisfaction' }
               ].map((stat, idx) => (
                 <div key={idx} className="bg-white bg-opacity-80 backdrop-filter backdrop-blur-sm rounded-lg p-4 shadow-sm">
@@ -137,15 +148,15 @@ export default function Hero() {
           <div className="hidden lg:block relative">
             <div className="absolute -right-20 -top-20 w-64 h-64 bg-yellow-200 rounded-full mix-blend-multiply filter blur-xl opacity-70"></div>
             <div className="absolute -left-10 -bottom-10 w-64 h-64 bg-orange-200 rounded-full mix-blend-multiply filter blur-xl opacity-70"></div>
-            
+
             <div className="relative animate-float">
               <div className="absolute inset-0 rounded-2xl rotate-3 bg-gradient-to-r from-orange-400 to-orange-500 shadow-xl transform -translate-y-2 translate-x-2"></div>
               <img
-                src="https://placehold.co/600x600"
+                src="/hero1.png"
                 alt="Delicious Food"
                 className="relative rounded-2xl shadow-2xl w-full h-auto transform transition-transform duration-500 hover:scale-105 hover:rotate-2 z-10"
               />
-              
+
               {/* Order now floating badge */}
               <div className="absolute -bottom-5 -left-5 bg-white rounded-full shadow-lg px-5 py-3 flex items-center gap-2 animate-bounce z-20">
                 <span className="text-orange-500 text-lg">
