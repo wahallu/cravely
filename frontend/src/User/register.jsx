@@ -1,7 +1,37 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { MdEmail, MdLock, MdPerson, MdPhone, MdVisibility, MdVisibilityOff, MdError } from 'react-icons/md'
 import { FaGoogle, FaFacebook, FaCheck } from 'react-icons/fa'
+import { frame, motion, useSpring } from 'motion/react'
+import hamburger from '/hamburger_icon.png'
+
+const spring = { damping: 3, stiffness: 50, restDelta: 0.001 };
+
+function useFollowPointer(ref) {
+  const x = useSpring(0, spring);
+  const y = useSpring(0, spring);
+
+  useEffect(() => {
+    if (!ref.current) return;
+
+    const handlePointerMove = ({ clientX, clientY }) => {
+      const element = ref.current;
+
+      frame.read(() => {
+        x.set(clientX - element.offsetLeft - element.offsetWidth / 2);
+        y.set(clientY - element.offsetTop - element.offsetHeight / 2);
+      });
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+    };
+  }, [x, y]);
+
+  return { x, y };
+}
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -22,6 +52,22 @@ export default function Register() {
     number: false,
     special: false
   })
+
+  // Create ref for the follow pointer effect
+  const hamburgerRef = useRef(null);
+  const { x, y } = useFollowPointer(hamburgerRef);
+
+  // Generate static background hamburger positions once with useMemo
+  const backgroundHamburgers = useMemo(() => {
+    return Array.from({ length: 12 }).map((_, index) => ({
+      id: index,
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      width: `${30 + Math.random() * 50}px`,
+      height: `${30 + Math.random() * 50}px`,
+      rotation: Math.random() * 360
+    }));
+  }, []); // Empty dependency array means this runs once on mount
 
   // Format phone number while typing
   const formatPhoneNumber = (value) => {
@@ -125,8 +171,51 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-yellow-300 to-yellow-500 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-lg w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-r from-yellow-300 to-yellow-500 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Mouse follower hamburger */}
+      <motion.div
+        ref={hamburgerRef}
+        style={{ 
+          x, 
+          y,
+          position: 'absolute',
+          zIndex: 0,
+          pointerEvents: 'none'
+        }}
+        className="opacity-70"
+      >
+        <img 
+          src={hamburger} 
+          alt=""
+          className="w-28 h-28 object-contain"
+        />
+      </motion.div>
+
+      {/* Additional decorative hamburgers with fixed positions */}
+      <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
+        {backgroundHamburgers.map((burger) => (
+          <div
+            key={burger.id}
+            className="absolute opacity-20"
+            style={{
+              left: burger.left,
+              top: burger.top,
+              width: burger.width,
+              height: burger.height,
+              transform: `rotate(${burger.rotation}deg)`,
+              zIndex: 0
+            }}
+          >
+            <img 
+              src={hamburger} 
+              alt="" 
+              className="w-full h-full object-contain"
+            />
+          </div>
+        ))}
+      </div>
+      
+      <div className="max-w-lg w-full bg-white/95 backdrop-blur-md rounded-2xl shadow-xl overflow-hidden relative z-10">
         <div className="px-6 py-8 sm:px-10">
           <div className="text-center mb-6">
             <h2 className="text-3xl font-extrabold text-gray-800">Create an Account</h2>
@@ -405,7 +494,7 @@ export default function Register() {
               <button
                 type="submit"
                 disabled={!acceptTerms}
-                className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white ${!acceptTerms ? 'bg-gray-400 cursor-not-allowed' : 'bg-orange-400 hover:bg-orange-600'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400 transition-colors`}
+                className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white ${!acceptTerms ? 'bg-gray-400 cursor-not-allowed' : 'bg-orange-400 hover:bg-orange-600'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400 transition-colors duration-300 transform hover:-translate-y-1 hover:shadow-lg`}
               >
                 Create Account
               </button>
