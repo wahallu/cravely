@@ -6,6 +6,9 @@ import PopularItems from '../components/popularItems'
 import Footer from '../components/footer'
 import HowItWorks from '../components/howItWorks'
 import FeaturedRestaurants from '../components/featuredRestaurants'
+import BestDeals from '../components/bestDeals'
+import CelebrateParties from '../components/celebrateParties'
+import HotSpizyPizza from '../components/hotSpizyPizza'
 
 export default function layout() {
   return (
@@ -18,6 +21,9 @@ export default function layout() {
         <HowItWorks />
         <PopularItems />
         <FeaturedRestaurants />
+        <BestDeals />
+        <CelebrateParties />
+        <HotSpizyPizza />
         <Footer />
     </div>
   )
