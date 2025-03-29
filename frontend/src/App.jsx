@@ -18,7 +18,6 @@ import AdminDrivers from "./User/Admin/drivers";
 
 import UserLayout from "./User/Customer/layout";
 import UserDashboard from "./User/Customer/dashboard";
-import Cart from "./User/Customer/cart";
 
 export default function App() {
   return (
@@ -53,7 +52,6 @@ export default function App() {
         <Route path="/user" element={<UserLayout />}>
           <Route path="" element={<UserDashboard />} />
         </Route>
-        <Route path="/cart" element={<Cart />} />
         
       </Routes>
     </BrowserRouter>
