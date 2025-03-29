@@ -14,6 +14,10 @@ import Layout from "./Restaurant/Admin/Layout";
 import AdminLayout from "./User/Admin/layout";
 import AdminDashboard from "./User/Admin/dashboard";
 import AdminRestaurant from "./User/Admin/restaurant";
+import AdminDrivers from "./User/Admin/drivers";
+
+import UserLayout from "./User/Customer/layout";
+import UserDashboard from "./User/Customer/dashboard";
 
 export default function App() {
   return (
@@ -41,6 +45,12 @@ export default function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="" element={<AdminDashboard />} />
           <Route path="restaurants" element={<AdminRestaurant />} />
+          <Route path="drivers" element={<AdminDrivers />} />
+        </Route>
+
+        {/* Customer Routes */}
+        <Route path="/user" element={<UserLayout />}>
+          <Route path="" element={<UserDashboard />} />
         </Route>
       </Routes>
     </BrowserRouter>
