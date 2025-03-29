@@ -27,7 +27,7 @@ export default function Sidebar({
       id: 'dashboard', 
       icon: <MdDashboard className="text-2xl" />, 
       label: 'Dashboard',
-      href: '/dashboard' 
+      href: '/user' 
     },
     { 
       id: 'restaurants', 
