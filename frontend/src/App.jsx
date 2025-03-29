@@ -10,6 +10,7 @@ import MenuManagement from "./Restaurant/Admin/MenuManagement";
 import RestaurantList from "./Restaurant/Client/RestaurantList";
 import RestaurantDetails from "./Restaurant/Client/RestaurantDetail";
 import Layout from "./Restaurant/Admin/Layout";
+import ClientLayout from "./Restaurant/Client/Layout";
 
 //order
 import Cart from "../src/Order/OrderLayout";
@@ -32,22 +33,21 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/restaurant/register" element={<RestaurantRegister />} />
         <Route path="/restaurant/login" element={<RestaurantLogin />} />
-        <Route path="/restaurants" element={<RestaurantList />} />
-        <Route path="/restaurant/:id" element={<RestaurantDetails />} />
 
-        {/* order */}
-
+        {/* Order */}
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
 
-        {/* Restaurant Dashboard Routes */}
+        {/* Restaurant Admin Dashboard Routes */}
         <Route path="/restaurant" element={<Layout />}>
           <Route path="dashboard" element={<RestaurantDashboard />} />
-          {/* Add other restaurant routes inside this Layout */}
           <Route path="menu" element={<MenuManagement />} />
-          {/* <Route path="orders" element={<div>Orders Page</div>} /> */}
-          {/* <Route path="customers" element={<div>Customers Page</div>} /> */}
-          {/* <Route path="settings" element={<div>Settings Page</div>} /> */}
+        </Route>
+
+        {/* Restaurant Client */}
+        <Route path="/" element={<ClientLayout />}>
+          <Route path="restaurants" element={<RestaurantList />} />
+          <Route path="restaurant/:id" element={<RestaurantDetails />} />
         </Route>
 
         {/* Admin Routes */}
