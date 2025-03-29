@@ -11,6 +11,9 @@ import RestaurantList from "./Restaurant/Client/RestaurantList";
 import RestaurantDetails from "./Restaurant/Client/RestaurantDetail";
 import Layout from "./Restaurant/Admin/Layout";
 
+//order
+import Cart from "../src/Order/OrderLayout";
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -22,6 +25,10 @@ export default function App() {
         <Route path="/restaurant/login" element={<RestaurantLogin />} />
         <Route path="/restaurants" element={<RestaurantList />} />
         <Route path="/restaurant/:id" element={<RestaurantDetails />} />
+
+        {/* order */}
+
+        <Route path="/cart" element={<Cart />} />
 
         {/* Restaurant Dashboard Routes */}
         <Route path="/restaurant" element={<Layout />}>
