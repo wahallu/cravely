@@ -13,6 +13,7 @@ import Layout from "./Restaurant/Admin/Layout";
 
 //order
 import Cart from "../src/Order/OrderLayout";
+import Checkout from "./Order/Checkout";
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
         {/* order */}
 
         <Route path="/cart" element={<Cart />} />
+        <Route path="/checkout" element={<Checkout />} />
 
         {/* Restaurant Dashboard Routes */}
         <Route path="/restaurant" element={<Layout />}>
