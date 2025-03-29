@@ -11,6 +11,10 @@ import RestaurantList from "./Restaurant/Client/RestaurantList";
 import RestaurantDetails from "./Restaurant/Client/RestaurantDetail";
 import Layout from "./Restaurant/Admin/Layout";
 
+import AdminLayout from "./User/Admin/layout";
+import AdminDashboard from "./User/Admin/dashboard";
+import AdminRestaurant from "./User/Admin/restaurant";
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -31,6 +35,12 @@ export default function App() {
           {/* <Route path="orders" element={<div>Orders Page</div>} /> */}
           {/* <Route path="customers" element={<div>Customers Page</div>} /> */}
           {/* <Route path="settings" element={<div>Settings Page</div>} /> */}
+        </Route>
+
+        {/* Admin Routes */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route path="" element={<AdminDashboard />} />
+          <Route path="restaurants" element={<AdminRestaurant />} />
         </Route>
       </Routes>
     </BrowserRouter>
