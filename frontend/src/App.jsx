@@ -11,6 +11,7 @@ import RestaurantList from "./Restaurant/Client/RestaurantList";
 import RestaurantDetails from "./Restaurant/Client/RestaurantDetail";
 import Layout from "./Restaurant/Admin/Layout";
 import ClientLayout from "./Restaurant/Client/Layout";
+import OrderConfirmation from './Order/OrderConfirmation';
 
 //order
 import Cart from "../src/Order/OrderLayout";
@@ -37,6 +38,7 @@ export default function App() {
         {/* Order */}
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
+        <Route path="/confirmation" element={<OrderConfirmation />} />
 
         {/* Restaurant Admin Dashboard Routes */}
         <Route path="/restaurant" element={<Layout />}>
