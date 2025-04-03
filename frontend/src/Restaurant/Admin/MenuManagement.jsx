@@ -185,15 +185,7 @@ export default function MenuManagement() {
   return (
     <div className="flex h-screen bg-gray-100">
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-white shadow-sm z-10">
-          <div className="px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-800">Menu Management</h1>
-            </div>
-          </div>
-        </header>
-
+        
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
           <div className="flex justify-between items-center mb-6">

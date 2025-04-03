@@ -10,6 +10,22 @@ import MenuManagement from "./Restaurant/Admin/MenuManagement";
 import RestaurantList from "./Restaurant/Client/RestaurantList";
 import RestaurantDetails from "./Restaurant/Client/RestaurantDetail";
 import Layout from "./Restaurant/Admin/Layout";
+import ClientLayout from "./Restaurant/Client/Layout";
+import OrderConfirmation from './Order/OrderConfirmation';
+
+//order
+import Cart from "../src/Order/OrderLayout";
+import Checkout from "./Order/Checkout";
+
+import AdminLayout from "./User/Admin/layout";
+import AdminDashboard from "./User/Admin/dashboard";
+import AdminRestaurant from "./User/Admin/restaurant";
+import AdminDrivers from "./User/Admin/drivers";
+
+import UserLayout from "./User/Customer/layout";
+import UserDashboard from "./User/Customer/dashboard";
+import LiveTracking from "./Tracking/LiveTracking";
+
 
 export default function App() {
   return (
@@ -20,18 +36,37 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/restaurant/register" element={<RestaurantRegister />} />
         <Route path="/restaurant/login" element={<RestaurantLogin />} />
-        <Route path="/restaurants" element={<RestaurantList />} />
-        <Route path="/restaurant/:id" element={<RestaurantDetails />} />
+        <Route path="/restaurant/livetracking" element={<LiveTracking />} />
 
-        {/* Restaurant Dashboard Routes */}
+        {/* Order */}
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/checkout" element={<Checkout />} />
+        <Route path="/confirmation" element={<OrderConfirmation />} />
+
+        {/* Restaurant Admin Dashboard Routes */}
         <Route path="/restaurant" element={<Layout />}>
           <Route path="dashboard" element={<RestaurantDashboard />} />
-          {/* Add other restaurant routes inside this Layout */}
           <Route path="menu" element={<MenuManagement />} />
-          {/* <Route path="orders" element={<div>Orders Page</div>} /> */}
-          {/* <Route path="customers" element={<div>Customers Page</div>} /> */}
-          {/* <Route path="settings" element={<div>Settings Page</div>} /> */}
         </Route>
+
+        {/* Restaurant Client */}
+        <Route path="/" element={<ClientLayout />}>
+          <Route path="restaurants" element={<RestaurantList />} />
+          <Route path="restaurant/:id" element={<RestaurantDetails />} />
+        </Route>
+
+        {/* Admin Routes */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route path="" element={<AdminDashboard />} />
+          <Route path="restaurants" element={<AdminRestaurant />} />
+          <Route path="drivers" element={<AdminDrivers />} />
+        </Route>
+
+        {/* Customer Routes */}
+        <Route path="/user" element={<UserLayout />}>
+          <Route path="" element={<UserDashboard />} />
+        </Route>
+        
       </Routes>
     </BrowserRouter>
   );
