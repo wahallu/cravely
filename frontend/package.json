@@ -10,12 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@react-google-maps/api": "^2.20.6",
     "@stripe/react-stripe-js": "^3.5.1",
     "@stripe/stripe-js": "^6.1.0",
     "@tailwindcss/vite": "^4.0.14",
     "framer-motion": "^12.6.2",
-    "google-maps-react": "^2.0.6",
     "motion": "^12.5.0",
     "react": "^19.0.0",
     "react-hot-toast": "^2.5.2",
