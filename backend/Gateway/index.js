@@ -15,6 +15,13 @@ const serviceUrls = {
   restaurant: 'http://localhost:5003',
   user: 'http://localhost:5004'
 };
+// Uncomment the following lines to use Docker container URLs instead of localhost
+// const serviceUrls = {
+//   delivery: 'http://delivery:5001',
+//   order: 'http://order:5002',
+//   restaurant: 'http://restaurant:5003',
+//   user: 'http://user:5004'
+// };
 
 // middleware
 app.use(cors());
