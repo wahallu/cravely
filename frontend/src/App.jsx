@@ -26,6 +26,11 @@ import UserLayout from "./User/Customer/layout";
 import UserDashboard from "./User/Customer/dashboard";
 import LiveTracking from "./Tracking/LiveTracking";
 
+import DeliveryLayout from "./Delivery/DeliveryLayout";
+import DeliveryDashboard from "./Delivery/DeliveryDashboard";
+import DriverDashboard from "./Delivery/DriverDashboard";
+
+
 
 export default function App() {
   return (
@@ -66,7 +71,12 @@ export default function App() {
         <Route path="/user" element={<UserLayout />}>
           <Route path="" element={<UserDashboard />} />
         </Route>
-        
+
+        <Route path="/delivery" element={<DeliveryLayout />}>
+          <Route path="" element={<DeliveryDashboard />} />
+          <Route path="drivers" element={<DriverDashboard />} />
+        </Route>
+
       </Routes>
     </BrowserRouter>
   );
