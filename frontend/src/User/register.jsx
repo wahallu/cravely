@@ -173,7 +173,9 @@ export default function Register() {
         .then((response) => {
           console.log('Registration successful', response);
           toast.success('Registration successful!');
-          navigate('/');
+          if(response.user.role === 'user') {
+            navigate('/'); // Redirect to home page for users
+          }
         })
         .catch((error) => {
           console.error('Registration failed', error);
