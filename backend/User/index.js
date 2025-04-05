@@ -2,6 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const userRoutes = require('./routes/userRoutes');
 
 dotenv.config();
 
@@ -30,9 +31,8 @@ app.get('/', (req, res) => {
   res.status(200).json({ message: 'User service is running' });
 });
 
-// Import routes if available
-// const deliveryRoutes = require('./routes/deliveryRoutes');
-// app.use('/', deliveryRoutes);
+// Import routes
+app.use('/api/users', userRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
