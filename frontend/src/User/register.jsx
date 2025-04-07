@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom'
 import { MdEmail, MdLock, MdPerson, MdPhone, MdVisibility, MdVisibilityOff, MdError } from 'react-icons/md'
 import { FaGoogle, FaFacebook, FaCheck } from 'react-icons/fa'
 import { frame, motion, useSpring } from 'motion/react'
+import { useSignupMutation } from '../Redux/slices/authSlice'
+import toast from 'react-hot-toast'
+import { useNavigate } from 'react-router-dom'
 import hamburger from '/hamburger_icon.png'
 
 const spring = { damping: 3, stiffness: 50, restDelta: 0.001 };
@@ -34,6 +37,7 @@ function useFollowPointer(ref) {
 }
 
 export default function Register() {
+  const [signup] = useSignupMutation();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -52,6 +56,8 @@ export default function Register() {
     number: false,
     special: false
   })
+
+  const navigate = useNavigate();
 
   // Create ref for the follow pointer effect
   const hamburgerRef = useRef(null);
@@ -163,8 +169,18 @@ export default function Register() {
     
     // Validate form before submission
     if (validateForm()) {
-      // Handle registration logic here
-      console.log(formData)
+      signup(formData).unwrap()
+        .then((response) => {
+          console.log('Registration successful', response);
+          toast.success('Registration successful!');
+          if(response.user.role === 'user') {
+            navigate('/'); // Redirect to home page for users
+          }
+        })
+        .catch((error) => {
+          console.error('Registration failed', error);
+          toast.error('Registration failed. Please try again.');
+        });
     } else {
       console.log('Form has errors', errors);
     }
