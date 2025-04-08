@@ -4,7 +4,7 @@ const cors = require("cors");
 const connectDB = require("./config/db");
 const restaurantRoutes = require("./routes/restaurantRoutes");
 const mealRoutes = require("./routes/mealRoutes");
-// const menuRoutes = require("./routes/menuRoutes"); // You would need to create this too
+const menuRoutes = require("./routes/menuRoutes");
 
 dotenv.config();
 
@@ -36,7 +36,7 @@ app.get("/", (req, res) => {
 // Mount routes
 app.use("/api/restaurants", restaurantRoutes);
 app.use("/api/meals", mealRoutes);
-// app.use("/api/menus", menuRoutes); // For complete implementation
+app.use("/api/menus", menuRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
