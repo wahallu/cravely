@@ -25,6 +25,7 @@ import {
   useUpdateMenuMutation,
   useDeleteMenuMutation,
 } from "../../Redux/slices/menuSlice";
+import { getRestaurantInfo } from "../../utils/restaurantAuth";
 
 export default function MenuManagement() {
   const [activeTab, setActiveTab] = useState("meals");
@@ -164,6 +165,14 @@ export default function MenuManagement() {
     e.preventDefault();
 
     try {
+      // Get current restaurant info
+      const restaurantInfo = getRestaurantInfo();
+
+      if (!restaurantInfo || !restaurantInfo.id) {
+        toast.error("Restaurant authentication error. Please log in again.");
+        return;
+      }
+
       if (modalType === "meal") {
         const mealData = {
           name: formData.name,
@@ -173,38 +182,35 @@ export default function MenuManagement() {
           image: formData.image,
           ingredients: formData.ingredients,
           allergens: formData.allergens,
+          restaurant: restaurantInfo.id, // Explicitly set the restaurant ID
         };
 
         if (formData.id) {
-          // Update existing meal
           await updateMeal({
             id: formData.id,
             ...mealData,
           }).unwrap();
           toast.success("Meal updated successfully");
         } else {
-          // Add new meal
           await addMeal(mealData).unwrap();
           toast.success("Meal added successfully");
         }
       } else {
-        // Handle menu operations using Redux
         const menuData = {
           name: formData.name,
           description: formData.description,
           image: formData.image,
           menuItems: formData.menuItems,
+          restaurant: restaurantInfo.id, // Explicitly set the restaurant ID
         };
 
         if (formData.id) {
-          // Update existing menu
           await updateMenu({
             id: formData.id,
             ...menuData,
           }).unwrap();
           toast.success("Menu updated successfully");
         } else {
-          // Add new menu
           await addMenu(menuData).unwrap();
           toast.success("Menu created successfully");
         }

@@ -12,7 +12,15 @@ export const menuApi = createApi({
       }
       return headers;
     },
-  }),
+  }),transformErrorResponse: (response, meta, arg) => {
+    const errMsg = response.data?.error || "An error occurred";
+    if (errMsg.includes("authorized")) {
+      // Handle authorization errors specially
+      console.error("Authorization error:", errMsg);
+      // Could redirect to login or show special message
+    }
+    return response;
+  },
   tagTypes: ["Menu"],
   endpoints: (builder) => ({
     // Menu endpoints
