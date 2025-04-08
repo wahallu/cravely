@@ -24,7 +24,9 @@ exports.createMeal = async (req, res, next) => {
 // @access  Private (Restaurant only)
 exports.getMeals = async (req, res, next) => {
   try {
+    console.log("Restaurant ID from token:", req.restaurant._id);
     const meals = await Meal.find({ restaurant: req.restaurant._id });
+    console.log("Meals found:", meals.length);
 
     res.status(200).json({
       success: true,

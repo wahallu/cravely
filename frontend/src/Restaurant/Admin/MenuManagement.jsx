@@ -163,10 +163,9 @@ export default function MenuManagement() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
-      // Get current restaurant info
       const restaurantInfo = getRestaurantInfo();
+      console.log("Creating item for restaurant:", restaurantInfo?.id);
 
       if (!restaurantInfo || !restaurantInfo.id) {
         toast.error("Restaurant authentication error. Please log in again.");

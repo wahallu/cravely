@@ -13,8 +13,10 @@ export const getRestaurantToken = () => {
 
 // Get restaurant info from localStorage
 export const getRestaurantInfo = () => {
-  const restaurantInfo = localStorage.getItem("restaurantInfo");
-  return restaurantInfo ? JSON.parse(restaurantInfo) : null;
+  const restaurantInfo = localStorage.getItem('restaurantInfo');
+  const parsedInfo = restaurantInfo ? JSON.parse(restaurantInfo) : null;
+  console.log("Current restaurant ID:", parsedInfo?.id);
+  return parsedInfo;
 };
 
 // Remove restaurant authentication data from localStorage

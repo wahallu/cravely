@@ -27,7 +27,10 @@ export const mealApi = createApi({
     // Meal endpoints
     getMeals: builder.query({
       query: () => "/meals",
-      transformResponse: (response) => response.data,
+      transformResponse: (response) => {
+        console.log("Meals received:", response.data.length);
+        return response.data;
+      },
       providesTags: ["Meal"],
     }),
     getMeal: builder.query({
