@@ -54,6 +54,13 @@ export const mealApi = createApi({
       }),
       invalidatesTags: ["Meal"],
     }),
+    // Public endpoint for accessing meals from a specific restaurant
+    getPublicRestaurantMeals: builder.query({
+      query: (restaurantId) =>
+        `/meals/public/restaurants/${restaurantId}/meals`,
+      transformResponse: (response) => response.data,
+      providesTags: ["Meal"],
+    }),
   }),
 });
 
@@ -63,4 +70,5 @@ export const {
   useAddMealMutation,
   useUpdateMealMutation,
   useDeleteMealMutation,
+  useGetPublicRestaurantMealsQuery,
 } = mealApi;

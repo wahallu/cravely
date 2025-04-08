@@ -5,6 +5,7 @@ const {
   getRestaurantProfile,
   updateRestaurantProfile,
   getAllRestaurants,
+  getRestaurantById,
 } = require("../controllers/restaurantController");
 const { authenticate } = require("../middleware/authenticate");
 
@@ -14,6 +15,7 @@ const router = express.Router();
 router.post("/register", registerRestaurant);
 router.post("/login", loginRestaurant);
 router.get("/all", getAllRestaurants); // Public for demo, would be restricted in real app
+router.get("/:id", getRestaurantById); // Public route to get restaurant by ID
 
 // Protected routes
 router.get("/profile", authenticate, getRestaurantProfile);

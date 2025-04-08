@@ -134,3 +134,22 @@ exports.deleteMenu = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Get public menus for a restaurant (for customer view)
+// @route   GET /api/menus/public/restaurants/:restaurantId/menus
+// @access  Public
+exports.getPublicRestaurantMenus = async (req, res, next) => {
+  try {
+    const menus = await Menu.find({
+      restaurant: req.params.restaurantId,
+    }).populate("menuItems");
+
+    res.status(200).json({
+      success: true,
+      count: menus.length,
+      data: menus,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

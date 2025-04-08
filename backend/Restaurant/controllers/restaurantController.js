@@ -164,3 +164,26 @@ exports.getAllRestaurants = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Get restaurant by ID (public)
+// @route   GET /api/restaurants/:id
+// @access  Public
+exports.getRestaurantById = async (req, res, next) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        error: "Restaurant not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: restaurant,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

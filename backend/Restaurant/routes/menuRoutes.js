@@ -5,6 +5,7 @@ const {
   getMenu,
   updateMenu,
   deleteMenu,
+  getPublicRestaurantMenus,
 } = require("../controllers/menuController");
 const { authenticate } = require("../middleware/authenticate");
 
@@ -15,5 +16,7 @@ router.use(authenticate);
 
 router.route("/").get(getMenus).post(createMenu);
 router.route("/:id").get(getMenu).put(updateMenu).delete(deleteMenu);
+router.get("/public/restaurants/:restaurantId/menus", getPublicRestaurantMenus);
+
 
 module.exports = router;

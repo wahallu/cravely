@@ -57,7 +57,11 @@ export const restaurantApi = createApi({
       },
     }),
     getRestaurantProfile: builder.query({
-      query: (id) => `/restaurants/${id}`,
+      query: (id) => `/restaurants/all?id=${id}`,
+      transformResponse: (response, meta, arg) => {
+        const restaurant = response.data.find((r) => r._id === arg);
+        return { success: true, data: restaurant };
+      },
     }),
     updateRestaurantProfile: builder.mutation({
       query: ({ id, ...restaurantData }) => ({
