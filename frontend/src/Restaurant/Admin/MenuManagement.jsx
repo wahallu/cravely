@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MdAdd,
@@ -19,6 +19,12 @@ import {
   useUpdateMealMutation,
   useDeleteMealMutation,
 } from "../../Redux/slices/mealSlice";
+import {
+  useGetMenusQuery,
+  useAddMenuMutation,
+  useUpdateMenuMutation,
+  useDeleteMenuMutation,
+} from "../../Redux/slices/menuSlice";
 
 export default function MenuManagement() {
   const [activeTab, setActiveTab] = useState("meals");
@@ -51,47 +57,24 @@ export default function MenuManagement() {
   } = useGetMealsQuery();
   const meals = mealsData || [];
 
-  // Get menus from API (commented out since backend isn't ready yet)
-  // const {
-  //   data: menusData,
-  //   isLoading: isMenusLoading,
-  //   isError: isMenusError,
-  //   error: menusError
-  // } = useGetMenusQuery();
-  // const menus = menusData || [];
+  // Get menus from API
+  const {
+    data: menusData,
+    isLoading: isMenusLoading,
+    isError: isMenusError,
+    error: menusError,
+  } = useGetMenusQuery();
+  const menus = menusData || [];
 
-  // For now, use local state for menus
-  const [menus, setMenus] = useState([]);
-
-  // Initialize menus with sample data only once
-  useEffect(() => {
-    setMenus([
-      {
-        id: "1",
-        name: "Summer Special",
-        description: "Limited time summer offerings",
-        image: "/hero1.png",
-        menuItems: ["1", "3"],
-      },
-      {
-        id: "2",
-        name: "Value Menu",
-        description: "Great food at affordable prices",
-        image: "/hero1.png",
-        menuItems: ["1", "2"],
-      },
-    ]);
-  }, []);
-
-  // Mutation hooks
+  // Mutation hooks for meals
   const [addMeal, { isLoading: isAddingMeal }] = useAddMealMutation();
   const [updateMeal, { isLoading: isUpdatingMeal }] = useUpdateMealMutation();
   const [deleteMeal, { isLoading: isDeletingMeal }] = useDeleteMealMutation();
 
-  // Menu mutations (commented out since backend isn't ready yet)
-  // const [addMenu, { isLoading: isAddingMenu }] = useAddMenuMutation();
-  // const [updateMenu, { isLoading: isUpdatingMenu }] = useUpdateMenuMutation();
-  // const [deleteMenu, { isLoading: isDeletingMenu }] = useDeleteMenuMutation();
+  // Menu mutations
+  const [addMenu, { isLoading: isAddingMenu }] = useAddMenuMutation();
+  const [updateMenu, { isLoading: isUpdatingMenu }] = useUpdateMenuMutation();
+  const [deleteMenu, { isLoading: isDeletingMenu }] = useDeleteMenuMutation();
 
   const handleAddNew = (type) => {
     setModalType(type);
@@ -115,6 +98,7 @@ export default function MenuManagement() {
       ...item,
       price: type === "meal" ? item.price.toString() : "",
       id: item._id || item.id, // Handle backend _id or local id
+      menuItems: item.menuItems || [], // Ensure menuItems is always an array
     });
     setShowModal(true);
   };
@@ -137,20 +121,10 @@ export default function MenuManagement() {
         // Delete meal from backend
         await deleteMeal(id).unwrap();
         toast.success("Meal deleted successfully");
-
-        // Update menus to remove this meal
-        const updatedMenus = menus.map((menu) => ({
-          ...menu,
-          menuItems: menu.menuItems.filter((itemId) => itemId !== id),
-        }));
-        setMenus(updatedMenus);
       } else {
-        // For now, just delete from local state
-        setMenus(menus.filter((menu) => menu.id !== id));
+        // Delete menu from backend
+        await deleteMenu(id).unwrap();
         toast.success("Menu deleted successfully");
-
-        // When backend is ready:
-        // await deleteMenu(id).unwrap();
       }
 
       // Close the confirmation dialog
@@ -214,38 +188,26 @@ export default function MenuManagement() {
           toast.success("Meal added successfully");
         }
       } else {
-        // For now, just update local state for menus
-        const newMenu = {
-          ...formData,
-          id: formData.id || Date.now().toString(),
+        // Handle menu operations using Redux
+        const menuData = {
+          name: formData.name,
+          description: formData.description,
+          image: formData.image,
+          menuItems: formData.menuItems,
         };
 
         if (formData.id) {
-          // Edit existing
-          setMenus(
-            menus.map((menu) => (menu.id === formData.id ? newMenu : menu))
-          );
+          // Update existing menu
+          await updateMenu({
+            id: formData.id,
+            ...menuData,
+          }).unwrap();
+          toast.success("Menu updated successfully");
         } else {
-          // Add new
-          setMenus([...menus, newMenu]);
+          // Add new menu
+          await addMenu(menuData).unwrap();
+          toast.success("Menu created successfully");
         }
-        toast.success(
-          `Menu ${formData.id ? "updated" : "created"} successfully`
-        );
-
-        // When backend is ready:
-        // const menuData = {
-        //   name: formData.name,
-        //   description: formData.description,
-        //   image: formData.image,
-        //   menuItems: formData.menuItems
-        // };
-        //
-        // if (formData.id) {
-        //   await updateMenu({ id: formData.id, ...menuData }).unwrap();
-        // } else {
-        //   await addMenu(menuData).unwrap();
-        // }
       }
 
       setShowModal(false);
@@ -255,8 +217,8 @@ export default function MenuManagement() {
     }
   };
 
-  // Show loading state for meals
-  if (isMealsLoading) {
+  // Show loading state for meals and menus
+  if (isMealsLoading || isMenusLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-100">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-orange-500"></div>
@@ -275,6 +237,30 @@ export default function MenuManagement() {
           </h2>
           <p className="text-gray-600 mb-4">
             {mealsError?.data?.error ||
+              "Please check your connection and try again"}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state for menus
+  if (isMenusError) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-100">
+        <div className="bg-white p-6 rounded-xl shadow-md max-w-md w-full text-center">
+          <MdErrorOutline className="text-red-500 text-5xl mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-800 mb-2">
+            Failed to load menus
+          </h2>
+          <p className="text-gray-600 mb-4">
+            {menusError?.data?.error ||
               "Please check your connection and try again"}
           </p>
           <button
@@ -309,6 +295,7 @@ export default function MenuManagement() {
                 whileTap={{ scale: 0.97 }}
                 onClick={() => handleAddNew("menu")}
                 className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-1"
+                disabled={isAddingMenu}
               >
                 <MdAdd className="text-xl" /> New Menu
               </motion.button>
@@ -420,7 +407,7 @@ export default function MenuManagement() {
             </motion.div>
           )}
 
-          {/* Menus Tab Content - Keep local state for now since backend is not implemented */}
+          {/* Menus Tab Content */}
           {activeTab === "menus" && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -431,7 +418,7 @@ export default function MenuManagement() {
               {menus.length > 0 ? (
                 menus.map((menu) => (
                   <motion.div
-                    key={menu.id}
+                    key={menu._id}
                     whileHover={{
                       y: -5,
                       boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
@@ -454,12 +441,14 @@ export default function MenuManagement() {
                           <button
                             onClick={() => handleEdit(menu, "menu")}
                             className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
+                            disabled={isUpdatingMenu}
                           >
                             <MdEdit />
                           </button>
                           <button
                             onClick={() => handleDeleteClick(menu, "menu")}
                             className="p-2 text-red-500 hover:bg-red-50 rounded-full"
+                            disabled={isDeletingMenu}
                           >
                             <MdDelete />
                           </button>
@@ -474,22 +463,28 @@ export default function MenuManagement() {
                           Items in this menu:
                         </h4>
                         <ul className="space-y-1">
-                          {menu.menuItems.map((itemId) => {
-                            const meal = meals.find(
-                              (m) => m._id === itemId || m.id === itemId
-                            );
-                            return meal ? (
-                              <li
-                                key={itemId}
-                                className="text-sm flex justify-between"
-                              >
-                                <span>{meal.name}</span>
-                                <span className="text-green-600">
-                                  ${parseFloat(meal.price).toFixed(2)}
-                                </span>
-                              </li>
-                            ) : null;
-                          })}
+                          {menu.menuItems && menu.menuItems.length > 0 ? (
+                            menu.menuItems.map((itemId) => {
+                              const meal = meals.find(
+                                (m) => m._id === itemId || m.id === itemId
+                              );
+                              return meal ? (
+                                <li
+                                  key={itemId}
+                                  className="text-sm flex justify-between"
+                                >
+                                  <span>{meal.name}</span>
+                                  <span className="text-green-600">
+                                    ${parseFloat(meal.price).toFixed(2)}
+                                  </span>
+                                </li>
+                              ) : null;
+                            })
+                          ) : (
+                            <li className="text-sm text-gray-500">
+                              No items in this menu
+                            </li>
+                          )}
                         </ul>
                       </div>
                     </div>
