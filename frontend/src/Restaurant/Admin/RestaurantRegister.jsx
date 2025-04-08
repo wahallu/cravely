@@ -1,9 +1,19 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { MdRestaurant, MdLocationOn, MdPhone, MdEmail, MdLock, MdVisibility, MdVisibilityOff, MdError } from 'react-icons/md';
-import { FaCheck } from 'react-icons/fa';
-import { motion, useSpring, frame } from 'motion/react';
-import hamburger from '/store.png';
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  MdRestaurant,
+  MdLocationOn,
+  MdPhone,
+  MdEmail,
+  MdLock,
+  MdVisibility,
+  MdVisibilityOff,
+  MdError,
+} from "react-icons/md";
+import { FaCheck } from "react-icons/fa";
+import { motion, useSpring, frame } from "motion/react";
+import hamburger from "/store.png";
+import { useRegisterRestaurantMutation } from "../../Redux/slices/restaurantSlice";
 
 const spring = { damping: 3, stiffness: 50, restDelta: 0.001 };
 
@@ -34,16 +44,20 @@ function useFollowPointer(ref) {
 }
 
 export default function RestaurantRegister() {
+  const navigate = useNavigate();
+  const [registerRestaurant, { isLoading, isSuccess, error, isError }] =
+    useRegisterRestaurantMutation();
+
   const [formData, setFormData] = useState({
-    restaurantName: '',
-    address: '',
-    city: '',
-    phone: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    cuisineType: '',
-    description: '',
+    restaurantName: "",
+    address: "",
+    city: "",
+    phone: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    cuisineType: "",
+    description: "",
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -56,11 +70,9 @@ export default function RestaurantRegister() {
     special: false,
   });
 
-  // Create refs for the follow pointer effect
   const hamburgerRef = useRef(null);
   const { x, y } = useFollowPointer(hamburgerRef);
 
-  // Create static hamburger positions with useMemo
   const backgroundHamburgers = useMemo(() => {
     return Array.from({ length: 12 }).map((_, index) => ({
       id: index,
@@ -68,23 +80,24 @@ export default function RestaurantRegister() {
       top: `${Math.random() * 100}%`,
       width: `${30 + Math.random() * 50}px`,
       height: `${30 + Math.random() * 50}px`,
-      rotation: Math.random() * 360
+      rotation: Math.random() * 360,
     }));
   }, []);
 
-  // Format phone number while typing
   const formatPhoneNumber = (value) => {
     if (!value) return value;
-    const phoneNumber = value.replace(/[^\d]/g, '');
+    const phoneNumber = value.replace(/[^\d]/g, "");
     const phoneNumberLength = phoneNumber.length;
     if (phoneNumberLength < 4) return phoneNumber;
     if (phoneNumberLength < 7) {
       return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
     }
-    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(
+      3,
+      6
+    )}-${phoneNumber.slice(6, 10)}`;
   };
 
-  // Check password strength when password changes
   useEffect(() => {
     const password = formData.password;
     setPasswordStrength({
@@ -93,21 +106,31 @@ export default function RestaurantRegister() {
       number: /\d/.test(password),
       special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
     });
-    if (formData.confirmPassword && formData.password === formData.confirmPassword) {
-      setErrors((prev) => ({ ...prev, confirmPassword: '' }));
+    if (
+      formData.confirmPassword &&
+      formData.password === formData.confirmPassword
+    ) {
+      setErrors((prev) => ({ ...prev, confirmPassword: "" }));
     }
   }, [formData.password, formData.confirmPassword]);
 
+  useEffect(() => {
+    if (isSuccess) {
+      alert("Restaurant registered successfully!");
+      navigate("/restaurant/login");
+    }
+  }, [isSuccess, navigate]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name === 'phone') {
+    if (name === "phone") {
       const formattedPhone = formatPhoneNumber(value);
       setFormData((prev) => ({ ...prev, [name]: formattedPhone }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
     if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
@@ -115,59 +138,77 @@ export default function RestaurantRegister() {
     const newErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = "Please enter a valid email address";
     }
-    if (formData.phone.replace(/[^\d]/g, '').length !== 10) {
-      newErrors.phone = 'Please enter a valid 10-digit phone number';
+    if (formData.phone.replace(/[^\d]/g, "").length !== 10) {
+      newErrors.phone = "Please enter a valid 10-digit phone number";
     }
-    if (!passwordStrength.length || !passwordStrength.uppercase || !passwordStrength.number || !passwordStrength.special) {
-      newErrors.password = 'Password does not meet requirements';
+    if (
+      !passwordStrength.length ||
+      !passwordStrength.uppercase ||
+      !passwordStrength.number ||
+      !passwordStrength.special
+    ) {
+      newErrors.password = "Password does not meet requirements";
     }
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = "Passwords do not match";
     }
     if (formData.restaurantName.length < 2) {
-      newErrors.restaurantName = 'Restaurant name must be at least 2 characters';
+      newErrors.restaurantName =
+        "Restaurant name must be at least 2 characters";
     }
     if (formData.address.length < 5) {
-      newErrors.address = 'Address must be at least 5 characters';
+      newErrors.address = "Address must be at least 5 characters";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (validateForm()) {
-      console.log('Restaurant Registration Data:', formData);
-      alert('Restaurant registered successfully!');
+      try {
+        const restaurantData = {
+          restaurantName: formData.restaurantName, // Keep the original name for the API
+          name: formData.restaurantName, // Add the expected field name
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone.replace(/[^\d]/g, ""),
+          address: formData.address,
+          city: formData.city, // Send city separately as expected by the API
+          cuisineType: formData.cuisineType, // Match the expected field name
+          description: formData.description,
+        };
+        await registerRestaurant(restaurantData).unwrap();
+      } catch (err) {
+        console.error("Failed to register:", err);
+      }
     } else {
-      console.log('Form has errors:', errors);
+      console.log("Form has errors:", errors);
     }
   };
 
+  const apiErrorMessage = isError
+    ? error.data?.message || "Registration failed. Please try again."
+    : null;
+
   return (
     <div className="min-h-screen bg-gradient-to-r from-yellow-300 to-yellow-500 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Mouse follower hamburger */}
       <motion.div
         ref={hamburgerRef}
         style={{
           x,
           y,
-          position: 'absolute',
+          position: "absolute",
           zIndex: 0,
-          pointerEvents: 'none'
+          pointerEvents: "none",
         }}
         className="opacity-70"
       >
-        <img
-          src={hamburger}
-          alt=""
-          className="w-28 h-28 object-contain"
-        />
+        <img src={hamburger} alt="" className="w-28 h-28 object-contain" />
       </motion.div>
 
-      {/* Additional decorative hamburgers with fixed positions */}
       <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
         {backgroundHamburgers.map((burger) => (
           <div
@@ -179,7 +220,7 @@ export default function RestaurantRegister() {
               width: burger.width,
               height: burger.height,
               transform: `rotate(${burger.rotation}deg)`,
-              zIndex: 0
+              zIndex: 0,
             }}
           >
             <img
@@ -193,20 +234,30 @@ export default function RestaurantRegister() {
 
       <div className="max-w-5xl w-full bg-white/95 backdrop-blur-md rounded-2xl shadow-xl overflow-hidden relative z-10">
         <div className="px-6 py-8 sm:px-10">
+          {apiErrorMessage && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+              {apiErrorMessage}
+            </div>
+          )}
+
           <div className="text-center mb-6">
-            <h2 className="text-3xl font-extrabold text-gray-800">Register Your Restaurant</h2>
+            <h2 className="text-3xl font-extrabold text-gray-800">
+              Register Your Restaurant
+            </h2>
             <p className="mt-2 text-sm text-gray-600">
-              Join Cravely to showcase your restaurant to millions of food lovers
+              Join Cravely to showcase your restaurant to millions of food
+              lovers
             </p>
           </div>
 
-          {/* Registration Form */}
           <form className="mt-6 space-y-6" onSubmit={handleSubmit} noValidate>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* LEFT SIDE - Restaurant Details */}
               <div className="space-y-6">
                 <div>
-                  <label htmlFor="restaurantName" className="block text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="restaurantName"
+                    className="block text-sm font-medium text-gray-700"
+                  >
                     Restaurant Name
                   </label>
                   <div className="mt-1 relative rounded-md shadow-sm">
@@ -220,7 +271,11 @@ export default function RestaurantRegister() {
                       required
                       value={formData.restaurantName}
                       onChange={handleChange}
-                      className={`block w-full pl-10 pr-3 py-3 border ${errors.restaurantName ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-orange-400 focus:border-orange-400'} rounded-lg`}
+                      className={`block w-full pl-10 pr-3 py-3 border ${
+                        errors.restaurantName
+                          ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                          : "border-gray-300 focus:ring-orange-400 focus:border-orange-400"
+                      } rounded-lg`}
                       placeholder="Enter your restaurant name"
                     />
                   </div>
@@ -232,7 +287,10 @@ export default function RestaurantRegister() {
                 </div>
 
                 <div>
-                  <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="address"
+                    className="block text-sm font-medium text-gray-700"
+                  >
                     Address
                   </label>
                   <div className="mt-1 relative rounded-md shadow-sm">
@@ -246,7 +304,11 @@ export default function RestaurantRegister() {
                       required
                       value={formData.address}
                       onChange={handleChange}
-                      className={`block w-full pl-10 pr-3 py-3 border ${errors.address ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-orange-400 focus:border-orange-400'} rounded-lg`}
+                      className={`block w-full pl-10 pr-3 py-3 border ${
+                        errors.address
+                          ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                          : "border-gray-300 focus:ring-orange-400 focus:border-orange-400"
+                      } rounded-lg`}
                       placeholder="Enter your restaurant address"
                     />
                   </div>
@@ -259,7 +321,10 @@ export default function RestaurantRegister() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label htmlFor="city" className="block text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="city"
+                      className="block text-sm font-medium text-gray-700"
+                    >
                       City
                     </label>
                     <div className="mt-1 relative rounded-md shadow-sm">
@@ -270,7 +335,11 @@ export default function RestaurantRegister() {
                         required
                         value={formData.city}
                         onChange={handleChange}
-                        className={`block w-full pl-3 pr-3 py-3 border ${errors.city ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-orange-400 focus:border-orange-400'} rounded-lg`}
+                        className={`block w-full pl-3 pr-3 py-3 border ${
+                          errors.city
+                            ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                            : "border-gray-300 focus:ring-orange-400 focus:border-orange-400"
+                        } rounded-lg`}
                         placeholder="Enter your city"
                       />
                     </div>
@@ -281,7 +350,10 @@ export default function RestaurantRegister() {
                     )}
                   </div>
                   <div>
-                    <label htmlFor="cuisineType" className="block text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="cuisineType"
+                      className="block text-sm font-medium text-gray-700"
+                    >
                       Cuisine Type
                     </label>
                     <div className="mt-1 relative rounded-md shadow-sm">
@@ -292,7 +364,11 @@ export default function RestaurantRegister() {
                         required
                         value={formData.cuisineType}
                         onChange={handleChange}
-                        className={`block w-full pl-3 pr-3 py-3 border ${errors.cuisineType ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-orange-400 focus:border-orange-400'} rounded-lg`}
+                        className={`block w-full pl-3 pr-3 py-3 border ${
+                          errors.cuisineType
+                            ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                            : "border-gray-300 focus:ring-orange-400 focus:border-orange-400"
+                        } rounded-lg`}
                         placeholder="e.g., Italian, Indian, etc."
                       />
                     </div>
@@ -305,7 +381,10 @@ export default function RestaurantRegister() {
                 </div>
 
                 <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="phone"
+                    className="block text-sm font-medium text-gray-700"
+                  >
                     Phone Number
                   </label>
                   <div className="mt-1 relative rounded-md shadow-sm">
@@ -319,7 +398,11 @@ export default function RestaurantRegister() {
                       required
                       value={formData.phone}
                       onChange={handleChange}
-                      className={`block w-full pl-10 pr-3 py-3 border ${errors.phone ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-orange-400 focus:border-orange-400'} rounded-lg`}
+                      className={`block w-full pl-10 pr-3 py-3 border ${
+                        errors.phone
+                          ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                          : "border-gray-300 focus:ring-orange-400 focus:border-orange-400"
+                      } rounded-lg`}
                       placeholder="(123) 456-7890"
                     />
                   </div>
@@ -331,7 +414,10 @@ export default function RestaurantRegister() {
                 </div>
 
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-gray-700"
+                  >
                     Email Address
                   </label>
                   <div className="mt-1 relative rounded-md shadow-sm">
@@ -346,7 +432,11 @@ export default function RestaurantRegister() {
                       required
                       value={formData.email}
                       onChange={handleChange}
-                      className={`block w-full pl-10 pr-3 py-3 border ${errors.email ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-orange-400 focus:border-orange-400'} rounded-lg`}
+                      className={`block w-full pl-10 pr-3 py-3 border ${
+                        errors.email
+                          ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                          : "border-gray-300 focus:ring-orange-400 focus:border-orange-400"
+                      } rounded-lg`}
                       placeholder="your@email.com"
                     />
                   </div>
@@ -358,7 +448,10 @@ export default function RestaurantRegister() {
                 </div>
 
                 <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="description"
+                    className="block text-sm font-medium text-gray-700"
+                  >
                     Description
                   </label>
                   <div className="mt-1">
@@ -368,17 +461,23 @@ export default function RestaurantRegister() {
                       rows="3"
                       value={formData.description}
                       onChange={handleChange}
-                      className={`block w-full px-3 py-3 border ${errors.description ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-orange-400 focus:border-orange-400'} rounded-lg`}
+                      className={`block w-full px-3 py-3 border ${
+                        errors.description
+                          ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                          : "border-gray-300 focus:ring-orange-400 focus:border-orange-400"
+                      } rounded-lg`}
                       placeholder="Tell us about your restaurant..."
                     ></textarea>
                   </div>
                 </div>
               </div>
 
-              {/* RIGHT SIDE - Password and Account */}
               <div className="space-y-6">
                 <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-gray-700"
+                  >
                     Password
                   </label>
                   <div className="mt-1 relative rounded-md shadow-sm">
@@ -392,7 +491,11 @@ export default function RestaurantRegister() {
                       required
                       value={formData.password}
                       onChange={handleChange}
-                      className={`block w-full pl-10 pr-10 py-3 border ${errors.password ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-orange-400 focus:border-orange-400'} rounded-lg`}
+                      className={`block w-full pl-10 pr-10 py-3 border ${
+                        errors.password
+                          ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                          : "border-gray-300 focus:ring-orange-400 focus:border-orange-400"
+                      } rounded-lg`}
                       placeholder="••••••••"
                     />
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -401,41 +504,100 @@ export default function RestaurantRegister() {
                         onClick={() => setShowPassword(!showPassword)}
                         className="text-gray-400 hover:text-gray-500 focus:outline-none"
                       >
-                        {showPassword ? <MdVisibilityOff className="h-5 w-5" /> : <MdVisibility className="h-5 w-5" />}
+                        {showPassword ? (
+                          <MdVisibilityOff className="h-5 w-5" />
+                        ) : (
+                          <MdVisibility className="h-5 w-5" />
+                        )}
                       </button>
                     </div>
                   </div>
-                  {/* Password strength indicators */}
                   <div className="mt-2 space-y-1">
                     <div className="flex items-center text-xs">
-                      <div className={`h-4 w-4 rounded-full mr-2 flex items-center justify-center ${passwordStrength.length ? 'bg-green-500' : 'bg-gray-300'}`}>
-                        {passwordStrength.length && <FaCheck className="text-white text-xs" />}
+                      <div
+                        className={`h-4 w-4 rounded-full mr-2 flex items-center justify-center ${
+                          passwordStrength.length
+                            ? "bg-green-500"
+                            : "bg-gray-300"
+                        }`}
+                      >
+                        {passwordStrength.length && (
+                          <FaCheck className="text-white text-xs" />
+                        )}
                       </div>
-                      <span className={passwordStrength.length ? 'text-green-500' : 'text-gray-500'}>
+                      <span
+                        className={
+                          passwordStrength.length
+                            ? "text-green-500"
+                            : "text-gray-500"
+                        }
+                      >
                         At least 8 characters
                       </span>
                     </div>
                     <div className="flex items-center text-xs">
-                      <div className={`h-4 w-4 rounded-full mr-2 flex items-center justify-center ${passwordStrength.uppercase ? 'bg-green-500' : 'bg-gray-300'}`}>
-                        {passwordStrength.uppercase && <FaCheck className="text-white text-xs" />}
+                      <div
+                        className={`h-4 w-4 rounded-full mr-2 flex items-center justify-center ${
+                          passwordStrength.uppercase
+                            ? "bg-green-500"
+                            : "bg-gray-300"
+                        }`}
+                      >
+                        {passwordStrength.uppercase && (
+                          <FaCheck className="text-white text-xs" />
+                        )}
                       </div>
-                      <span className={passwordStrength.uppercase ? 'text-green-500' : 'text-gray-500'}>
+                      <span
+                        className={
+                          passwordStrength.uppercase
+                            ? "text-green-500"
+                            : "text-gray-500"
+                        }
+                      >
                         At least 1 uppercase letter
                       </span>
                     </div>
                     <div className="flex items-center text-xs">
-                      <div className={`h-4 w-4 rounded-full mr-2 flex items-center justify-center ${passwordStrength.number ? 'bg-green-500' : 'bg-gray-300'}`}>
-                        {passwordStrength.number && <FaCheck className="text-white text-xs" />}
+                      <div
+                        className={`h-4 w-4 rounded-full mr-2 flex items-center justify-center ${
+                          passwordStrength.number
+                            ? "bg-green-500"
+                            : "bg-gray-300"
+                        }`}
+                      >
+                        {passwordStrength.number && (
+                          <FaCheck className="text-white text-xs" />
+                        )}
                       </div>
-                      <span className={passwordStrength.number ? 'text-green-500' : 'text-gray-500'}>
+                      <span
+                        className={
+                          passwordStrength.number
+                            ? "text-green-500"
+                            : "text-gray-500"
+                        }
+                      >
                         At least 1 number
                       </span>
                     </div>
                     <div className="flex items-center text-xs">
-                      <div className={`h-4 w-4 rounded-full mr-2 flex items-center justify-center ${passwordStrength.special ? 'bg-green-500' : 'bg-gray-300'}`}>
-                        {passwordStrength.special && <FaCheck className="text-white text-xs" />}
+                      <div
+                        className={`h-4 w-4 rounded-full mr-2 flex items-center justify-center ${
+                          passwordStrength.special
+                            ? "bg-green-500"
+                            : "bg-gray-300"
+                        }`}
+                      >
+                        {passwordStrength.special && (
+                          <FaCheck className="text-white text-xs" />
+                        )}
                       </div>
-                      <span className={passwordStrength.special ? 'text-green-500' : 'text-gray-500'}>
+                      <span
+                        className={
+                          passwordStrength.special
+                            ? "text-green-500"
+                            : "text-gray-500"
+                        }
+                      >
                         At least 1 special character
                       </span>
                     </div>
@@ -448,7 +610,10 @@ export default function RestaurantRegister() {
                 </div>
 
                 <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="confirmPassword"
+                    className="block text-sm font-medium text-gray-700"
+                  >
                     Confirm Password
                   </label>
                   <div className="mt-1 relative rounded-md shadow-sm">
@@ -462,16 +627,26 @@ export default function RestaurantRegister() {
                       required
                       value={formData.confirmPassword}
                       onChange={handleChange}
-                      className={`block w-full pl-10 pr-10 py-3 border ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-orange-400 focus:border-orange-400'} rounded-lg`}
+                      className={`block w-full pl-10 pr-10 py-3 border ${
+                        errors.confirmPassword
+                          ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                          : "border-gray-300 focus:ring-orange-400 focus:border-orange-400"
+                      } rounded-lg`}
                       placeholder="••••••••"
                     />
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                       <button
                         type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
                         className="text-gray-400 hover:text-gray-500 focus:outline-none"
                       >
-                        {showConfirmPassword ? <MdVisibilityOff className="h-5 w-5" /> : <MdVisibility className="h-5 w-5" />}
+                        {showConfirmPassword ? (
+                          <MdVisibilityOff className="h-5 w-5" />
+                        ) : (
+                          <MdVisibility className="h-5 w-5" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -481,22 +656,23 @@ export default function RestaurantRegister() {
                     </p>
                   )}
                 </div>
-                
-                {/* Upload Logo Section (Optional) */}
+
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                   <div className="flex flex-col items-center">
                     <MdRestaurant className="h-10 w-10 text-gray-400" />
                     <p className="mt-2 text-sm text-gray-600">
-                      Drag and drop your restaurant logo here or 
-                      <span className="text-orange-500 font-medium cursor-pointer"> browse</span>
+                      Drag and drop your restaurant logo here or
+                      <span className="text-orange-500 font-medium cursor-pointer">
+                        {" "}
+                        browse
+                      </span>
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
                       PNG, JPG up to 5MB
                     </p>
                   </div>
                 </div>
-                
-                {/* Terms and Conditions */}
+
                 <div className="flex items-start">
                   <input
                     id="terms"
@@ -504,8 +680,25 @@ export default function RestaurantRegister() {
                     type="checkbox"
                     className="h-4 w-4 text-orange-400 focus:ring-orange-400 border-gray-300 rounded mt-1"
                   />
-                  <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
-                    I agree to the <a href="#" className="text-orange-500 hover:text-orange-600">Terms of Service</a> and <a href="#" className="text-orange-500 hover:text-orange-600">Privacy Policy</a> for restaurant partners
+                  <label
+                    htmlFor="terms"
+                    className="ml-2 block text-sm text-gray-700"
+                  >
+                    I agree to the{" "}
+                    <a
+                      href="#"
+                      className="text-orange-500 hover:text-orange-600"
+                    >
+                      Terms of Service
+                    </a>{" "}
+                    and{" "}
+                    <a
+                      href="#"
+                      className="text-orange-500 hover:text-orange-600"
+                    >
+                      Privacy Policy
+                    </a>{" "}
+                    for restaurant partners
                   </label>
                 </div>
               </div>
@@ -514,17 +707,25 @@ export default function RestaurantRegister() {
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-orange-400 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400 transition-colors duration-300 transform hover:-translate-y-1 hover:shadow-lg"
+                disabled={isLoading}
+                className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white ${
+                  isLoading
+                    ? "bg-orange-300 cursor-not-allowed"
+                    : "bg-orange-400 hover:bg-orange-600"
+                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400 transition-colors duration-300 transform hover:-translate-y-1 hover:shadow-lg`}
               >
-                Register Restaurant
+                {isLoading ? "Registering..." : "Register Restaurant"}
               </button>
             </div>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Already have an account?{' '}
-              <Link to="/restaurant/login" className="font-medium text-orange-500 hover:text-orange-400">
+              Already have an account?{" "}
+              <Link
+                to="/restaurant/login"
+                className="font-medium text-orange-500 hover:text-orange-400"
+              >
                 Sign in
               </Link>
             </p>

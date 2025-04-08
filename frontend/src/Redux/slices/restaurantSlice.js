@@ -1,0 +1,65 @@
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import {
+  getRestaurantToken,
+  saveRestaurantToken,
+} from "../../utils/restaurantAuth";
+
+export const restaurantApi = createApi({
+  reducerPath: "restaurantApi",
+  baseQuery: fetchBaseQuery({
+    baseUrl: "http://localhost:5003/api",
+    prepareHeaders: (headers) => {
+      // Get the token from localStorage
+      const token = getRestaurantToken();
+      // If we have a token, add it to the headers
+      if (token) {
+        headers.set("authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
+  endpoints: (builder) => ({
+    registerRestaurant: builder.mutation({
+      query: (restaurantData) => ({
+        url: "/restaurants/register",
+        method: "POST",
+        body: restaurantData,
+      }),
+    }),
+    loginRestaurant: builder.mutation({
+      query: (credentials) => ({
+        url: "/restaurants/login",
+        method: "POST",
+        body: credentials,
+      }),
+      // Store the token when we get a successful response
+      onQueryStarted: async (_, { queryFulfilled }) => {
+        try {
+          const result = await queryFulfilled;
+          if (result.data.token) {
+            saveRestaurantToken(result.data.token);
+          }
+        } catch (err) {
+          console.error("Login failed:", err);
+        }
+      },
+    }),
+    getRestaurantProfile: builder.query({
+      query: (id) => `/restaurants/${id}`,
+    }),
+    updateRestaurantProfile: builder.mutation({
+      query: ({ id, ...restaurantData }) => ({
+        url: `/restaurants/${id}`,
+        method: "PUT",
+        body: restaurantData,
+      }),
+    }),
+  }),
+});
+
+export const {
+  useRegisterRestaurantMutation,
+  useLoginRestaurantMutation,
+  useGetRestaurantProfileQuery,
+  useUpdateRestaurantProfileMutation,
+} = restaurantApi;

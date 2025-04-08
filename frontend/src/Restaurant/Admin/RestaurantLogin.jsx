@@ -1,9 +1,16 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { Link } from 'react-router-dom'
-import { MdEmail, MdLock, MdVisibility, MdVisibilityOff, MdRestaurant } from 'react-icons/md'
-import { FaGoogle, FaFacebook } from 'react-icons/fa'
-import { frame, motion, useSpring } from 'motion/react'
-import storeImg from '/store.png'
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  MdEmail,
+  MdLock,
+  MdVisibility,
+  MdVisibilityOff,
+  MdRestaurant,
+} from "react-icons/md";
+import { FaGoogle, FaFacebook } from "react-icons/fa";
+import { frame, motion, useSpring } from "motion/react";
+import storeImg from "/store.png";
+import { useLoginRestaurantMutation } from "../../Redux/slices/restaurantSlice";
 
 const spring = { damping: 3, stiffness: 50, restDelta: 0.001 };
 
@@ -34,15 +41,19 @@ function useFollowPointer(ref) {
 }
 
 export default function RestaurantLogin() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
+  const navigate = useNavigate();
+  const [loginRestaurant, { isLoading, isSuccess, error, isError }] =
+    useLoginRestaurantMutation();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   // Create refs for the follow pointer effect
   const storeRef = useRef(null);
   const { x, y } = useFollowPointer(storeRef);
-  
+
   // Create static store positions with useMemo to prevent re-generation on re-renders
   const backgroundStores = useMemo(() => {
     return Array.from({ length: 12 }).map((_, index) => ({
@@ -51,35 +62,48 @@ export default function RestaurantLogin() {
       top: `${Math.random() * 100}%`,
       width: `${30 + Math.random() * 50}px`,
       height: `${30 + Math.random() * 50}px`,
-      rotation: Math.random() * 360
+      rotation: Math.random() * 360,
     }));
   }, []);
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    // Handle restaurant login logic here
-    console.log({ email, password, rememberMe })
-  }
+  // Handle successful login
+  useEffect(() => {
+    if (isSuccess) {
+      // Navigate to restaurant dashboard on success
+      navigate("/restaurant/dashboard");
+    }
+  }, [isSuccess, navigate]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await loginRestaurant({ email, password }).unwrap();
+      // The navigate effect above will handle redirect on success
+    } catch (err) {
+      console.error("Failed to login:", err);
+    }
+  };
+
+  // API error message
+  const apiErrorMessage = isError
+    ? error.data?.message || "Login failed. Please check your credentials."
+    : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-r from-yellow-300 to-yellow-500 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Mouse follower element */}
       <motion.div
         ref={storeRef}
-        style={{ 
-          x, 
+        style={{
+          x,
           y,
-          position: 'absolute',
+          position: "absolute",
           zIndex: 0,
-          pointerEvents: 'none'
+          pointerEvents: "none",
         }}
         className="opacity-70"
       >
-        <img 
-          src={storeImg} 
-          alt=""
-          className="w-28 h-28 object-contain"
-        />
+        <img src={storeImg} alt="" className="w-28 h-28 object-contain" />
       </motion.div>
 
       {/* Additional decorative stores - FIXED POSITIONS */}
@@ -94,12 +118,12 @@ export default function RestaurantLogin() {
               width: store.width,
               height: store.height,
               transform: `rotate(${store.rotation}deg)`,
-              zIndex: 0
+              zIndex: 0,
             }}
           >
-            <img 
+            <img
               src={storeImg}
-              alt="" 
+              alt=""
               className="w-full h-full object-contain"
             />
           </div>
@@ -115,24 +139,29 @@ export default function RestaurantLogin() {
                 <MdRestaurant className="h-12 w-12 text-orange-500" />
               </div>
             </div>
-            <h2 className="text-3xl font-extrabold text-gray-800">Restaurant Login</h2>
+            <h2 className="text-3xl font-extrabold text-gray-800">
+              Restaurant Login
+            </h2>
             <p className="mt-2 text-sm text-gray-600">
               Access your restaurant dashboard
             </p>
           </div>
 
+          {/* Display API errors if any */}
+          {apiErrorMessage && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+              {apiErrorMessage}
+            </div>
+          )}
+
           {/* Social Login */}
           <div className="mt-6">
             <div className="flex gap-4">
-              <button
-                className="w-full flex justify-center items-center gap-2 py-2.5 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition duration-150"
-              >
+              <button className="w-full flex justify-center items-center gap-2 py-2.5 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition duration-150">
                 <FaGoogle className="text-red-500" />
                 <span>Google</span>
               </button>
-              <button
-                className="w-full flex justify-center items-center gap-2 py-2.5 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition duration-150"
-              >
+              <button className="w-full flex justify-center items-center gap-2 py-2.5 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition duration-150">
                 <FaFacebook className="text-blue-600" />
                 <span>Facebook</span>
               </button>
@@ -143,7 +172,9 @@ export default function RestaurantLogin() {
                 <div className="w-full border-t border-gray-300"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-500">Or continue with</span>
+                <span className="px-4 bg-white text-gray-500">
+                  Or continue with
+                </span>
               </div>
             </div>
           </div>
@@ -151,7 +182,10 @@ export default function RestaurantLogin() {
           {/* Form */}
           <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Email address
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
@@ -173,7 +207,10 @@ export default function RestaurantLogin() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Password
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
@@ -217,13 +254,19 @@ export default function RestaurantLogin() {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="h-4 w-4 text-orange-400 focus:ring-orange-400 border-gray-300 rounded"
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+                <label
+                  htmlFor="remember-me"
+                  className="ml-2 block text-sm text-gray-700"
+                >
                   Remember me
                 </label>
               </div>
 
               <div className="text-sm">
-                <a href="#" className="font-medium text-orange-500 hover:text-orange-400">
+                <a
+                  href="#"
+                  className="font-medium text-orange-500 hover:text-orange-400"
+                >
                   Forgot password?
                 </a>
               </div>
@@ -232,29 +275,43 @@ export default function RestaurantLogin() {
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-orange-400 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400 transition-colors duration-300 transform hover:-translate-y-1 hover:shadow-lg"
+                disabled={isLoading}
+                className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white ${
+                  isLoading
+                    ? "bg-orange-300 cursor-not-allowed"
+                    : "bg-orange-400 hover:bg-orange-600"
+                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400 transition-colors duration-300 transform hover:-translate-y-1 hover:shadow-lg`}
               >
-                Sign in to Dashboard
+                {isLoading ? "Signing in..." : "Sign in to Dashboard"}
               </button>
             </div>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Don't have a restaurant account?{' '}
-              <Link to="/restaurant/register" className="font-medium text-orange-500 hover:text-orange-400">
+              Don't have a restaurant account?{" "}
+              <Link
+                to="/restaurant/register"
+                className="font-medium text-orange-500 hover:text-orange-400"
+              >
                 Register now
               </Link>
             </p>
           </div>
-          
+
           <div className="mt-4 border-t border-gray-200 pt-4">
             <p className="text-xs text-center text-gray-500">
-              For customer login, <Link to="/login" className="text-orange-500 hover:text-orange-400">click here</Link>
+              For customer login,{" "}
+              <Link
+                to="/login"
+                className="text-orange-500 hover:text-orange-400"
+              >
+                click here
+              </Link>
             </p>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
