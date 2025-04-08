@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -13,7 +13,7 @@ import {
   MdHelp,
   MdLogout,
 } from "react-icons/md";
-import { removeRestaurantAuth } from "../../utils/restaurantAuth";
+import { removeRestaurantAuth, getRestaurantInfo } from "../../utils/restaurantAuth";
 
 export default function Header({ toggleSidebar }) {
   const navigate = useNavigate();
@@ -21,6 +21,15 @@ export default function Header({ toggleSidebar }) {
   const [cartItems, setCartItems] = useState(3);
   const [profileDropdown, setProfileDropdown] = useState(false);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
+  const [restaurantName, setRestaurantName] = useState("");
+
+  // Get restaurant info from localStorage on component mount
+  useEffect(() => {
+    const restaurantInfo = getRestaurantInfo();
+    if (restaurantInfo && restaurantInfo.name) {
+      setRestaurantName(restaurantInfo.name);
+    }
+  }, []);
 
   // Handle logout confirmation
   const confirmLogout = () => {
@@ -61,7 +70,7 @@ export default function Header({ toggleSidebar }) {
           </button>
           <Link to="/" className="flex items-center">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-orange-400 text-transparent bg-clip-text">
-              Restaurant Dashboard
+              {"Restaurant Dashboard"}
             </h1>
           </Link>
         </div>
@@ -117,7 +126,7 @@ export default function Header({ toggleSidebar }) {
                 <span className="font-medium text-white">JD</span>
               </div>
               <div className="hidden md:block">
-                <h3 className="font-medium text-gray-800 text-sm">John Doe</h3>
+                <h3 className="font-medium text-gray-800 text-sm">{restaurantName}</h3>
                 <p className="text-xs text-gray-500">Owner</p>
               </div>
               <MdKeyboardArrowDown
