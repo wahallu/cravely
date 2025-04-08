@@ -66,6 +66,12 @@ export const restaurantApi = createApi({
         body: restaurantData,
       }),
     }),
+    // Add new endpoint to get all restaurants
+    getAllRestaurants: builder.query({
+      query: () => "/restaurants/all",
+      // Provide tags for cache invalidation
+      providesTags: ["Restaurants"],
+    }),
   }),
 });
 
@@ -74,4 +80,5 @@ export const {
   useLoginRestaurantMutation,
   useGetRestaurantProfileQuery,
   useUpdateRestaurantProfileMutation,
+  useGetAllRestaurantsQuery,
 } = restaurantApi;
