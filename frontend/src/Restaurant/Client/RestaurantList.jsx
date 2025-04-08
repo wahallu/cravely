@@ -7,8 +7,13 @@ import {
   MdStar,
   MdSearch,
   MdFilterList,
+  MdRefresh,
+  MdRestaurantMenu,
+  MdAttachMoney,
 } from "react-icons/md";
 import { useGetAllRestaurantsQuery } from "../../Redux/slices/restaurantSlice";
+import Slider from "rc-slider"; // You'll need to install this: npm install rc-slider
+import "rc-slider/assets/index.css";
 
 export default function RestaurantList() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -16,8 +21,12 @@ export default function RestaurantList() {
     cuisine: "",
     rating: 0,
     priceRange: "",
+    deliveryTime: "",
+    distance: 0,
+    availableOnly: false,
+    featured: false,
+    priceRangeValues: [0, 50], // Min and max price in dollars
   });
-  const [showFilters, setShowFilters] = useState(false);
 
   // Fetch restaurants using Redux query hook
   const { data, error, isLoading } = useGetAllRestaurantsQuery();
@@ -43,7 +52,20 @@ export default function RestaurantList() {
     const matchesPrice =
       filters.priceRange === "" || restaurant.priceRange === filters.priceRange;
 
-    return matchesSearch && matchesCuisine && matchesRating && matchesPrice;
+    // Filter by featured if enabled
+    const matchesFeatured = !filters.featured || restaurant.featured;
+
+    // Filter by available only (you may need to add this property to your data)
+    const matchesAvailable = !filters.availableOnly || restaurant.isAvailable;
+
+    return (
+      matchesSearch &&
+      matchesCuisine &&
+      matchesRating &&
+      matchesPrice &&
+      matchesFeatured &&
+      matchesAvailable
+    );
   });
 
   // Get unique cuisines for filter dropdown
@@ -53,183 +75,359 @@ export default function RestaurantList() {
     ),
   ];
 
+  // Handle price range slider change
+  const handlePriceRangeChange = (values) => {
+    setFilters({
+      ...filters,
+      priceRangeValues: values,
+    });
+  };
+
+  // Reset all filters
+  const resetFilters = () => {
+    setFilters({
+      cuisine: "",
+      rating: 0,
+      priceRange: "",
+      deliveryTime: "",
+      distance: 0,
+      availableOnly: false,
+      featured: false,
+      priceRangeValues: [0, 50],
+    });
+    setSearchQuery("");
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header with search and filters */}
-      <div className="sticky top-0 z-10 bg-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <h1 className="text-2xl font-bold text-gray-800">
-              Restaurants Near You
-            </h1>
+    <div className="min-h-screen relative bg-gray-50">
+      {/* Decorative Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Background pattern */}
+        <div
+          className="absolute inset-0 z-0 opacity-10"
+          style={{
+            backgroundImage: `url(${"/herobg.png"})`,
+            // backgroundSize: "400px",
+            backgroundRepeat: "repeat",
+          }}
+          aria-hidden="true"
+        ></div>
 
-            <div className="w-full sm:w-auto flex items-center space-x-2">
-              <div className="relative flex-grow">
-                <MdSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl" />
-                <input
-                  type="text"
-                  placeholder="Search restaurants or cuisines..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none"
-                />
-              </div>
+        {/* Decorative blobs */}
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-yellow-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-96 h-96 bg-orange-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
 
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="bg-orange-100 text-orange-500 p-2 rounded-lg hover:bg-orange-200 transition-colors"
-              >
-                <MdFilterList className="text-xl" />
-              </button>
-            </div>
+        {/* Floating food icons */}
+        {[1, 2, 3, 4, 5].map((item) => (
+          <div
+            key={item}
+            className="absolute opacity-20"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              transform: `rotate(${Math.random() * 360}deg)`,
+              width: `${Math.random() * 40 + 20}px`,
+              height: `${Math.random() * 40 + 20}px`,
+              animation: `float ${Math.random() * 5 + 5}s ease-in-out infinite`,
+              animationDelay: `${Math.random() * 5}s`,
+            }}
+          >
+            <img
+              src={"/hero1.png"}
+              alt=""
+              className="w-full h-full object-contain"
+            />
           </div>
-
-          {/* Filter options */}
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mt-4 bg-white rounded-lg p-4 border border-gray-200"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Cuisine Type
-                    </label>
-                    <select
-                      value={filters.cuisine}
-                      onChange={(e) =>
-                        setFilters({ ...filters, cuisine: e.target.value })
-                      }
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
-                    >
-                      <option value="">All Cuisines</option>
-                      {cuisines.map((cuisine, index) => (
-                        <option key={index} value={cuisine}>
-                          {cuisine}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Minimum Rating
-                    </label>
-                    <select
-                      value={filters.rating}
-                      onChange={(e) =>
-                        setFilters({
-                          ...filters,
-                          rating: parseFloat(e.target.value),
-                        })
-                      }
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
-                    >
-                      <option value="0">Any Rating</option>
-                      <option value="3">3+ Stars</option>
-                      <option value="4">4+ Stars</option>
-                      <option value="4.5">4.5+ Stars</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Price Range
-                    </label>
-                    <select
-                      value={filters.priceRange}
-                      onChange={(e) =>
-                        setFilters({ ...filters, priceRange: e.target.value })
-                      }
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
-                    >
-                      <option value="">Any Price</option>
-                      <option value="$">$ (Budget)</option>
-                      <option value="$$">$$ (Average)</option>
-                      <option value="$$$">$$$ (Expensive)</option>
-                    </select>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        ))}
       </div>
 
-      {/* Main content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-orange-500"></div>
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center h-64 text-center">
-            <div className="text-red-500 text-xl mb-2">
-              Error loading restaurants
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 relative z-10">
+        <motion.h1
+          className="text-2xl font-bold text-gray-800 mb-6"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          Restaurants Near You
+        </motion.h1>
+
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Left sidebar with filters */}
+          <motion.div
+            className="md:w-1/4 bg-white/95 backdrop-blur-sm p-4 rounded-xl shadow-sm"
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            {/* Search bar */}
+            <div className="border border-gray-300 py-2 px-4 rounded-xl flex justify-between items-center mb-5">
+              <input
+                type="text"
+                placeholder="Search restaurants..."
+                className="bg-transparent text-gray-700 w-full outline-none"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <MdSearch className="text-gray-400 text-xl" />
             </div>
-            <p className="text-gray-500">Please try again later</p>
-          </div>
-        ) : filteredRestaurants.length > 0 ? (
-          <>
-            {/* Featured restaurants section */}
-            {filteredRestaurants.some((restaurant) => restaurant.featured) && (
-              <div className="mb-10">
+
+            {/* Reset button */}
+            <div className="flex justify-between mb-5">
+              <div className="font-semibold text-xl text-gray-800">Filters</div>
+              <button
+                onClick={resetFilters}
+                className="font-semibold text-orange-500 hover:text-orange-600 flex items-center"
+              >
+                <MdRefresh className="mr-1" /> Reset
+              </button>
+            </div>
+
+            {/* Cuisine type */}
+            <div className="mb-5">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Cuisine Type
+              </label>
+              <select
+                value={filters.cuisine}
+                onChange={(e) =>
+                  setFilters({ ...filters, cuisine: e.target.value })
+                }
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
+              >
+                <option value="">All Cuisines</option>
+                {cuisines.map((cuisine, index) => (
+                  <option key={index} value={cuisine}>
+                    {cuisine}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Price range */}
+            <div className="mb-6">
+              <p className="block text-sm font-medium text-gray-700 mb-2">
+                Price range
+              </p>
+              <div className="relative mb-8">
+                <div className="flex justify-between mb-3">
+                  <div className="bg-orange-100 text-orange-500 rounded px-2 py-1">
+                    <span className="text-sm">
+                      ${filters.priceRangeValues[0]}
+                    </span>
+                  </div>
+                  <div className="bg-orange-100 text-orange-500 rounded px-2 py-1">
+                    <span className="text-sm">
+                      ${filters.priceRangeValues[1]}
+                    </span>
+                  </div>
+                </div>
+                <Slider
+                  range
+                  min={0}
+                  max={50}
+                  value={filters.priceRangeValues}
+                  onChange={handlePriceRangeChange}
+                  trackStyle={[{ backgroundColor: "#f97316" }]}
+                  handleStyle={[
+                    {
+                      backgroundColor: "#f97316",
+                      borderColor: "#ea580c",
+                      opacity: 1,
+                    },
+                    {
+                      backgroundColor: "#f97316",
+                      borderColor: "#ea580c",
+                      opacity: 1,
+                    },
+                  ]}
+                  railStyle={{ backgroundColor: "#f3f4f6" }}
+                />
+              </div>
+            </div>
+
+            {/* Price range quick select */}
+            <div className="mb-6">
+              <p className="block text-sm font-medium text-gray-700 mb-2">
+                Price Category
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {["$", "$$", "$$$"].map((price) => (
+                  <button
+                    key={price}
+                    onClick={() =>
+                      setFilters({ ...filters, priceRange: price })
+                    }
+                    className={`rounded-lg py-2 text-center transition-colors ${
+                      filters.priceRange === price
+                        ? "bg-orange-500 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-orange-100"
+                    }`}
+                  >
+                    {price}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Minimum Rating */}
+            <div className="mb-6">
+              <p className="block text-sm font-medium text-gray-700 mb-2">
+                Minimum Rating
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {[3, 4, 4.5].map((rating) => (
+                  <button
+                    key={rating}
+                    onClick={() => setFilters({ ...filters, rating: rating })}
+                    className={`rounded-lg py-2 text-center transition-colors ${
+                      filters.rating === rating
+                        ? "bg-orange-500 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-orange-100"
+                    }`}
+                  >
+                    {rating}+ <MdStar className="inline text-yellow-400" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <hr className="border border-gray-200 my-5" />
+
+            {/* Additional filters */}
+            <div className="mb-5">
+              <div className="flex items-center mb-3">
+                <input
+                  type="checkbox"
+                  id="featured"
+                  checked={filters.featured}
+                  onChange={(e) =>
+                    setFilters({ ...filters, featured: e.target.checked })
+                  }
+                  className="accent-orange-500 mr-2"
+                />
+                <label htmlFor="featured" className="text-gray-700">
+                  Featured restaurants only
+                </label>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="available"
+                  checked={filters.availableOnly}
+                  onChange={(e) =>
+                    setFilters({ ...filters, availableOnly: e.target.checked })
+                  }
+                  className="accent-orange-500 mr-2"
+                />
+                <label htmlFor="available" className="text-gray-700">
+                  Open now only
+                </label>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Main content area */}
+          <motion.div
+            className="md:w-3/4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            {isLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-orange-500"></div>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <div className="text-red-500 text-xl mb-2">
+                  Error loading restaurants
+                </div>
+                <p className="text-gray-500">Please try again later</p>
+              </div>
+            ) : filteredRestaurants.length > 0 ? (
+              <>
+                {/* Featured restaurants section */}
+                <AnimatePresence>
+                  {filteredRestaurants.some(
+                    (restaurant) => restaurant.featured
+                  ) &&
+                    !filters.featured && (
+                      <motion.div
+                        className="mb-10"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                          Featured Restaurants
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {filteredRestaurants
+                            .filter((restaurant) => restaurant.featured)
+                            .map((restaurant) => (
+                              <RestaurantCard
+                                key={restaurant._id}
+                                restaurant={restaurant}
+                                featured={true}
+                              />
+                            ))}
+                        </div>
+                      </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* All restaurants section */}
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                  Featured Restaurants
+                  {filters.featured
+                    ? "Featured Restaurants"
+                    : "All Restaurants"}
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {filteredRestaurants
-                    .filter((restaurant) => restaurant.featured)
-                    .map((restaurant) => (
-                      <RestaurantCard
+                    .filter((r) => !r.featured || filters.featured)
+                    .map((restaurant, index) => (
+                      <motion.div
                         key={restaurant._id}
-                        restaurant={restaurant}
-                        featured={true}
-                      />
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                      >
+                        <RestaurantCard restaurant={restaurant} />
+                      </motion.div>
                     ))}
                 </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64">
+                <img
+                  src="/hero1.png"
+                  alt="No results"
+                  className="w-24 h-24 object-contain opacity-50 mb-4"
+                />
+                <h3 className="text-xl font-medium text-gray-700">
+                  No restaurants found
+                </h3>
+                <p className="text-gray-500 mt-2">
+                  Try adjusting your search or filters
+                </p>
               </div>
             )}
-
-            {/* All restaurants section */}
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">
-              All Restaurants
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredRestaurants.map((restaurant) => (
-                <RestaurantCard key={restaurant._id} restaurant={restaurant} />
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-64">
-            <img
-              src="/hero1.png"
-              alt="No results"
-              className="w-24 h-24 object-contain opacity-50 mb-4"
-            />
-            <h3 className="text-xl font-medium text-gray-700">
-              No restaurants found
-            </h3>
-            <p className="text-gray-500 mt-2">
-              Try adjusting your search or filters
-            </p>
-          </div>
-        )}
+          </motion.div>
+        </div>
       </div>
     </div>
   );
 }
 
-// Restaurant Card Component
+// Restaurant Card Component (unchanged)
 const RestaurantCard = ({ restaurant, featured = false }) => {
+  // Existing RestaurantCard code
   return (
     <motion.div
       whileHover={{ y: -5 }}
-      className={`bg-white rounded-xl overflow-hidden shadow-md transition-all duration-300 ${
+      className={`bg-white/95 backdrop-blur-sm rounded-xl overflow-hidden shadow-md transition-all duration-300 ${
         featured ? "border-2 border-orange-400" : ""
       }`}
     >
