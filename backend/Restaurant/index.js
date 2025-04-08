@@ -3,6 +3,8 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const connectDB = require("./config/db");
 const restaurantRoutes = require("./routes/restaurantRoutes");
+const mealRoutes = require("./routes/mealRoutes");
+// const menuRoutes = require("./routes/menuRoutes"); // You would need to create this too
 
 dotenv.config();
 
@@ -31,8 +33,10 @@ app.get("/", (req, res) => {
   res.status(200).json({ message: "Restaurant service is running" });
 });
 
-// Mount restaurant routes
+// Mount routes
 app.use("/api/restaurants", restaurantRoutes);
+app.use("/api/meals", mealRoutes);
+// app.use("/api/menus", menuRoutes); // For complete implementation
 
 // Error handling middleware
 app.use((err, req, res, next) => {
