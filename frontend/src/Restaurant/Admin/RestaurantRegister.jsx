@@ -14,6 +14,7 @@ import { FaCheck } from "react-icons/fa";
 import { motion, useSpring, frame } from "motion/react";
 import hamburger from "/store.png";
 import { useRegisterRestaurantMutation } from "../../Redux/slices/restaurantSlice";
+import toast from "react-hot-toast"; // Add this import
 
 const spring = { damping: 3, stiffness: 50, restDelta: 0.001 };
 
@@ -116,7 +117,7 @@ export default function RestaurantRegister() {
 
   useEffect(() => {
     if (isSuccess) {
-      alert("Restaurant registered successfully!");
+      toast.success("Restaurant registered successfully!");
       navigate("/restaurant/login");
     }
   }, [isSuccess, navigate]);
@@ -182,9 +183,13 @@ export default function RestaurantRegister() {
         };
         await registerRestaurant(restaurantData).unwrap();
       } catch (err) {
+        toast.error(
+          err.data?.error || "Registration failed. Please try again."
+        );
         console.error("Failed to register:", err);
       }
     } else {
+      toast.error("Please fix the highlighted errors before submitting.");
       console.log("Form has errors:", errors);
     }
   };

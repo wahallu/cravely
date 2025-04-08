@@ -1,7 +1,8 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import {
   getRestaurantToken,
-  saveRestaurantToken,
+  saveRestaurantAuth,
+  removeRestaurantAuth,
 } from "../../utils/restaurantAuth";
 
 export const restaurantApi = createApi({
@@ -25,6 +26,17 @@ export const restaurantApi = createApi({
         method: "POST",
         body: restaurantData,
       }),
+      // Store the token and restaurant info when registration is successful
+      onQueryStarted: async (_, { queryFulfilled }) => {
+        try {
+          const result = await queryFulfilled;
+          if (result.data.token) {
+            saveRestaurantAuth(result.data.token, result.data.restaurant);
+          }
+        } catch (err) {
+          console.error("Registration failed:", err);
+        }
+      },
     }),
     loginRestaurant: builder.mutation({
       query: (credentials) => ({
@@ -32,12 +44,12 @@ export const restaurantApi = createApi({
         method: "POST",
         body: credentials,
       }),
-      // Store the token when we get a successful response
+      // Store the token and restaurant info when login is successful
       onQueryStarted: async (_, { queryFulfilled }) => {
         try {
           const result = await queryFulfilled;
           if (result.data.token) {
-            saveRestaurantToken(result.data.token);
+            saveRestaurantAuth(result.data.token, result.data.restaurant);
           }
         } catch (err) {
           console.error("Login failed:", err);

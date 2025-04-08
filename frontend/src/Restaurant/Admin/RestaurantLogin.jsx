@@ -11,6 +11,7 @@ import { FaGoogle, FaFacebook } from "react-icons/fa";
 import { frame, motion, useSpring } from "motion/react";
 import storeImg from "/store.png";
 import { useLoginRestaurantMutation } from "../../Redux/slices/restaurantSlice";
+import toast from "react-hot-toast"; // Add this import
 
 const spring = { damping: 3, stiffness: 50, restDelta: 0.001 };
 
@@ -69,6 +70,7 @@ export default function RestaurantLogin() {
   // Handle successful login
   useEffect(() => {
     if (isSuccess) {
+      toast.success("Login successful!");
       // Navigate to restaurant dashboard on success
       navigate("/restaurant/dashboard");
     }
@@ -81,6 +83,9 @@ export default function RestaurantLogin() {
       // The navigate effect above will handle redirect on success
     } catch (err) {
       console.error("Failed to login:", err);
+      toast.error(
+        err.data?.error || "Login failed. Please check your credentials."
+      );
     }
   };
 
