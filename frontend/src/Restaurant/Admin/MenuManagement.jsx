@@ -10,6 +10,7 @@ import {
   MdImage,
   MdAttachMoney,
   MdErrorOutline,
+  MdWarning,
 } from "react-icons/md";
 import { toast } from "react-hot-toast";
 import {
@@ -33,6 +34,12 @@ export default function MenuManagement() {
     ingredients: "",
     allergens: "",
     menuItems: [],
+  });
+  const [deleteConfirmation, setDeleteConfirmation] = useState({
+    show: false,
+    id: null,
+    type: null,
+    name: "",
   });
 
   // Get meals from API
@@ -112,8 +119,20 @@ export default function MenuManagement() {
     setShowModal(true);
   };
 
-  const handleDelete = async (id, type) => {
+  const handleDeleteClick = (item, type) => {
+    setDeleteConfirmation({
+      show: true,
+      id: item._id || item.id,
+      type: type,
+      name: item.name,
+    });
+  };
+
+  // Actual delete function that will be called after confirmation
+  const handleDelete = async () => {
     try {
+      const { id, type } = deleteConfirmation;
+
       if (type === "meal") {
         // Delete meal from backend
         await deleteMeal(id).unwrap();
@@ -133,9 +152,14 @@ export default function MenuManagement() {
         // When backend is ready:
         // await deleteMenu(id).unwrap();
       }
+
+      // Close the confirmation dialog
+      setDeleteConfirmation({ show: false, id: null, type: null, name: "" });
     } catch (error) {
       console.error("Delete error:", error);
       toast.error(error.data?.error || "Failed to delete item");
+      // Close the confirmation dialog even on error
+      setDeleteConfirmation({ show: false, id: null, type: null, name: "" });
     }
   };
 
@@ -357,7 +381,7 @@ export default function MenuManagement() {
                             <MdEdit />
                           </button>
                           <button
-                            onClick={() => handleDelete(meal._id, "meal")}
+                            onClick={() => handleDeleteClick(meal, "meal")}
                             className="p-2 text-red-500 hover:bg-red-50 rounded-full"
                             disabled={isDeletingMeal}
                           >
@@ -434,7 +458,7 @@ export default function MenuManagement() {
                             <MdEdit />
                           </button>
                           <button
-                            onClick={() => handleDelete(menu.id, "menu")}
+                            onClick={() => handleDeleteClick(menu, "menu")}
                             className="p-2 text-red-500 hover:bg-red-50 rounded-full"
                           >
                             <MdDelete />
@@ -520,6 +544,7 @@ export default function MenuManagement() {
                   </div>
 
                   <form onSubmit={handleSubmit} className="p-5 space-y-6">
+                    {/* Form content remains the same */}
                     {/* Common fields for both meal and menu */}
                     <div>
                       <label
@@ -539,6 +564,9 @@ export default function MenuManagement() {
                         onChange={handleChange}
                       />
                     </div>
+
+                    {/* Rest of the form content... */}
+                    {/* ... */}
 
                     <div>
                       <label
@@ -731,6 +759,76 @@ export default function MenuManagement() {
                       </button>
                     </div>
                   </form>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Delete Confirmation Modal */}
+          <AnimatePresence>
+            {deleteConfirmation.show && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+              >
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className="bg-white rounded-xl max-w-md w-full p-6"
+                >
+                  <div className="text-center mb-4">
+                    <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                      <MdWarning className="h-10 w-10 text-red-500" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800">
+                      Confirm Deletion
+                    </h3>
+                  </div>
+
+                  <p className="text-gray-600 text-center mb-6">
+                    Are you sure you want to delete "
+                    <span className="font-semibold">
+                      {deleteConfirmation.name}
+                    </span>
+                    "?
+                    {deleteConfirmation.type === "meal"
+                      ? " This will also remove it from any menus that include it."
+                      : " This will not delete the individual meal items."}
+                  </p>
+
+                  <div className="flex justify-center gap-3">
+                    <button
+                      onClick={() =>
+                        setDeleteConfirmation({
+                          show: false,
+                          id: null,
+                          type: null,
+                          name: "",
+                        })
+                      }
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50"
+                      disabled={isDeletingMeal}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                      disabled={isDeletingMeal}
+                    >
+                      {isDeletingMeal ? (
+                        <div className="flex items-center">
+                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                          Deleting...
+                        </div>
+                      ) : (
+                        "Delete"
+                      )}
+                    </button>
+                  </div>
                 </motion.div>
               </motion.div>
             )}
