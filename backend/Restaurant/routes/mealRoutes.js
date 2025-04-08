@@ -7,13 +7,13 @@ const {
   deleteMeal,
   getPublicRestaurantMeals,
 } = require("../controllers/mealController");
-const { authenticate, isActive } = require("../middleware/authenticate");
+const { authenticate } = require("../middleware/authenticate");
 
 const router = express.Router();
 
 // Protect most routes - require restaurant authentication
 router.use(authenticate);
-router.use(isActive);
+// router.use(isActive);
 
 // Routes for restaurant to manage their own meals
 router.route("/").get(getMeals).post(createMeal);

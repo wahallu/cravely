@@ -1,0 +1,66 @@
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { getRestaurantToken } from "../../utils/restaurantAuth";
+
+export const mealApi = createApi({
+  reducerPath: "mealApi",
+  baseQuery: fetchBaseQuery({
+    baseUrl: "http://localhost:5003/api",
+    prepareHeaders: (headers) => {
+      const token = getRestaurantToken();
+      if (token) {
+        headers.set("authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
+  tagTypes: ["Meal", "Menu"],
+  endpoints: (builder) => ({
+    // Meal endpoints
+    getMeals: builder.query({
+      query: () => "/meals",
+      transformResponse: (response) => response.data,
+      providesTags: ["Meal"],
+    }),
+    getMeal: builder.query({
+      query: (id) => `/meals/${id}`,
+      transformResponse: (response) => response.data,
+      providesTags: (result, error, id) => [{ type: "Meal", id }],
+    }),
+    addMeal: builder.mutation({
+      query: (meal) => ({
+        url: "/meals",
+        method: "POST",
+        body: meal,
+      }),
+      transformResponse: (response) => response.data,
+      invalidatesTags: ["Meal"],
+    }),
+    updateMeal: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `/meals/${id}`,
+        method: "PUT",
+        body: data,
+      }),
+      transformResponse: (response) => response.data,
+      invalidatesTags: (result, error, { id }) => [
+        { type: "Meal", id },
+        "Meal",
+      ],
+    }),
+    deleteMeal: builder.mutation({
+      query: (id) => ({
+        url: `/meals/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Meal"],
+    }),
+  }),
+});
+
+export const {
+  useGetMealsQuery,
+  useGetMealQuery,
+  useAddMealMutation,
+  useUpdateMealMutation,
+  useDeleteMealMutation,
+} = mealApi;

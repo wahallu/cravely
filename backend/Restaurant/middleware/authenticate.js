@@ -46,12 +46,12 @@ exports.authenticate = async (req, res, next) => {
 };
 
 // Check if restaurant is active
-exports.isActive = (req, res, next) => {
-  if (req.restaurant.status !== "active") {
-    return res.status(403).json({
-      success: false,
-      error: "Restaurant account is not active",
-    });
-  }
-  next();
-};
+// exports.isActive = (req, res, next) => {
+//   if (req.restaurant.status !== "active") {
+//     return res.status(403).json({
+//       success: false,
+//       error: "Restaurant account is not active",
+//     });
+//   }
+//   next();
+// };

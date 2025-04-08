@@ -6,7 +6,7 @@ const {
   updateRestaurantProfile,
   getAllRestaurants,
 } = require("../controllers/restaurantController");
-const { authenticate, isActive } = require("../middleware/authenticate");
+const { authenticate } = require("../middleware/authenticate");
 
 const router = express.Router();
 
@@ -20,7 +20,7 @@ router.get("/profile", authenticate, getRestaurantProfile);
 router.put("/profile", authenticate, updateRestaurantProfile);
 
 // Routes that require active status
-router.get("/dashboard", authenticate, isActive, (req, res) => {
+router.get("/dashboard", authenticate, (req, res) => {
   res.json({ success: true, message: "Dashboard data" });
 });
 

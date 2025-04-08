@@ -1,101 +1,103 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  MdAdd, 
-  MdEdit, 
-  MdDelete, 
-  MdFastfood, 
-  MdRestaurantMenu, 
-  MdClose, 
-  MdImage, 
-  MdAttachMoney 
-} from 'react-icons/md';
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  MdAdd,
+  MdEdit,
+  MdDelete,
+  MdFastfood,
+  MdRestaurantMenu,
+  MdClose,
+  MdImage,
+  MdAttachMoney,
+  MdErrorOutline,
+} from "react-icons/md";
+import { toast } from "react-hot-toast";
+import {
+  useGetMealsQuery,
+  useAddMealMutation,
+  useUpdateMealMutation,
+  useDeleteMealMutation,
+} from "../../Redux/slices/mealSlice";
 
 export default function MenuManagement() {
-  const [activeTab, setActiveTab] = useState('meals');
+  const [activeTab, setActiveTab] = useState("meals");
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState(''); // 'meal' or 'menu'
-  const [meals, setMeals] = useState([]);
-  const [menus, setMenus] = useState([]);
+  const [modalType, setModalType] = useState(""); // 'meal' or 'menu'
   const [formData, setFormData] = useState({
-    id: '',
-    name: '',
-    description: '',
-    price: '',
-    category: '',
-    image: '',
-    ingredients: '',
-    allergens: '',
-    menuItems: []
+    id: "",
+    name: "",
+    description: "",
+    price: "",
+    category: "",
+    image: "",
+    ingredients: "",
+    allergens: "",
+    menuItems: [],
   });
 
-  // Mock data for initial state
-  useEffect(() => {
-    // Sample meals data
-    setMeals([
-      {
-        id: '1',
-        name: 'Classic Cheeseburger',
-        description: 'Juicy beef patty with cheddar cheese, lettuce, and tomato',
-        price: 8.99,
-        category: 'Burger',
-        image: '/hero1.png',
-        ingredients: 'Beef, cheese, lettuce, tomato, bun',
-        allergens: 'Gluten, dairy'
-      },
-      {
-        id: '2',
-        name: 'Veggie Supreme',
-        description: 'Plant-based patty with avocado and sprouts',
-        price: 9.99,
-        category: 'Burger',
-        image: '/hero1.png',
-        ingredients: 'Plant protein, avocado, sprouts, bun',
-        allergens: 'Gluten'
-      },
-      {
-        id: '3',
-        name: 'Crispy Chicken Sandwich',
-        description: 'Crispy chicken with special sauce',
-        price: 7.99,
-        category: 'Sandwich',
-        image: '/hero1.png',
-        ingredients: 'Chicken breast, lettuce, mayo, bun',
-        allergens: 'Gluten, dairy, egg'
-      }
-    ]);
+  // Get meals from API
+  const {
+    data: mealsData,
+    isLoading: isMealsLoading,
+    isError: isMealsError,
+    error: mealsError,
+  } = useGetMealsQuery();
+  const meals = mealsData || [];
 
-    // Sample menus data
+  // Get menus from API (commented out since backend isn't ready yet)
+  // const {
+  //   data: menusData,
+  //   isLoading: isMenusLoading,
+  //   isError: isMenusError,
+  //   error: menusError
+  // } = useGetMenusQuery();
+  // const menus = menusData || [];
+
+  // For now, use local state for menus
+  const [menus, setMenus] = useState([]);
+
+  // Initialize menus with sample data only once
+  useEffect(() => {
     setMenus([
       {
-        id: '1',
-        name: 'Summer Special',
-        description: 'Limited time summer offerings',
-        image: '/hero1.png',
-        menuItems: ['1', '3']
+        id: "1",
+        name: "Summer Special",
+        description: "Limited time summer offerings",
+        image: "/hero1.png",
+        menuItems: ["1", "3"],
       },
       {
-        id: '2',
-        name: 'Value Menu',
-        description: 'Great food at affordable prices',
-        image: '/hero1.png',
-        menuItems: ['1', '2']
-      }
+        id: "2",
+        name: "Value Menu",
+        description: "Great food at affordable prices",
+        image: "/hero1.png",
+        menuItems: ["1", "2"],
+      },
     ]);
   }, []);
+
+  // Mutation hooks
+  const [addMeal, { isLoading: isAddingMeal }] = useAddMealMutation();
+  const [updateMeal, { isLoading: isUpdatingMeal }] = useUpdateMealMutation();
+  const [deleteMeal, { isLoading: isDeletingMeal }] = useDeleteMealMutation();
+
+  // Menu mutations (commented out since backend isn't ready yet)
+  // const [addMenu, { isLoading: isAddingMenu }] = useAddMenuMutation();
+  // const [updateMenu, { isLoading: isUpdatingMenu }] = useUpdateMenuMutation();
+  // const [deleteMenu, { isLoading: isDeletingMenu }] = useDeleteMenuMutation();
 
   const handleAddNew = (type) => {
     setModalType(type);
     setFormData({
-      id: '',
-      name: '',
-      description: '',
-      price: type === 'meal' ? '0.00' : '',
-      category: '',
-      image: '',
-      ingredients: '',
-      allergens: '',
-      menuItems: []
+      id: "",
+      name: "",
+      description: "",
+      price: type === "meal" ? "0.00" : "",
+      category: "",
+      image: "/hero1.png", // Default image
+      ingredients: "",
+      allergens: "",
+      menuItems: [],
     });
     setShowModal(true);
   };
@@ -104,31 +106,44 @@ export default function MenuManagement() {
     setModalType(type);
     setFormData({
       ...item,
-      price: type === 'meal' ? item.price.toString() : ''
+      price: type === "meal" ? item.price.toString() : "",
+      id: item._id || item.id, // Handle backend _id or local id
     });
     setShowModal(true);
   };
 
-  const handleDelete = (id, type) => {
-    if (type === 'meal') {
-      setMeals(meals.filter(meal => meal.id !== id));
-      
-      // Also remove this meal from any menus that include it
-      const updatedMenus = menus.map(menu => ({
-        ...menu,
-        menuItems: menu.menuItems.filter(itemId => itemId !== id)
-      }));
-      setMenus(updatedMenus);
-    } else {
-      setMenus(menus.filter(menu => menu.id !== id));
+  const handleDelete = async (id, type) => {
+    try {
+      if (type === "meal") {
+        // Delete meal from backend
+        await deleteMeal(id).unwrap();
+        toast.success("Meal deleted successfully");
+
+        // Update menus to remove this meal
+        const updatedMenus = menus.map((menu) => ({
+          ...menu,
+          menuItems: menu.menuItems.filter((itemId) => itemId !== id),
+        }));
+        setMenus(updatedMenus);
+      } else {
+        // For now, just delete from local state
+        setMenus(menus.filter((menu) => menu.id !== id));
+        toast.success("Menu deleted successfully");
+
+        // When backend is ready:
+        // await deleteMenu(id).unwrap();
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error(error.data?.error || "Failed to delete item");
     }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -137,55 +152,121 @@ export default function MenuManagement() {
     if (currentItems.includes(mealId)) {
       setFormData({
         ...formData,
-        menuItems: currentItems.filter(id => id !== mealId)
+        menuItems: currentItems.filter((id) => id !== mealId),
       });
     } else {
       setFormData({
         ...formData,
-        menuItems: [...currentItems, mealId]
+        menuItems: [...currentItems, mealId],
       });
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (modalType === 'meal') {
-      const newMeal = {
-        ...formData,
-        id: formData.id || Date.now().toString(),
-        price: parseFloat(formData.price)
-      };
-      
-      if (formData.id) {
-        // Edit existing
-        setMeals(meals.map(meal => meal.id === formData.id ? newMeal : meal));
+
+    try {
+      if (modalType === "meal") {
+        const mealData = {
+          name: formData.name,
+          description: formData.description,
+          price: parseFloat(formData.price),
+          category: formData.category,
+          image: formData.image,
+          ingredients: formData.ingredients,
+          allergens: formData.allergens,
+        };
+
+        if (formData.id) {
+          // Update existing meal
+          await updateMeal({
+            id: formData.id,
+            ...mealData,
+          }).unwrap();
+          toast.success("Meal updated successfully");
+        } else {
+          // Add new meal
+          await addMeal(mealData).unwrap();
+          toast.success("Meal added successfully");
+        }
       } else {
-        // Add new
-        setMeals([...meals, newMeal]);
+        // For now, just update local state for menus
+        const newMenu = {
+          ...formData,
+          id: formData.id || Date.now().toString(),
+        };
+
+        if (formData.id) {
+          // Edit existing
+          setMenus(
+            menus.map((menu) => (menu.id === formData.id ? newMenu : menu))
+          );
+        } else {
+          // Add new
+          setMenus([...menus, newMenu]);
+        }
+        toast.success(
+          `Menu ${formData.id ? "updated" : "created"} successfully`
+        );
+
+        // When backend is ready:
+        // const menuData = {
+        //   name: formData.name,
+        //   description: formData.description,
+        //   image: formData.image,
+        //   menuItems: formData.menuItems
+        // };
+        //
+        // if (formData.id) {
+        //   await updateMenu({ id: formData.id, ...menuData }).unwrap();
+        // } else {
+        //   await addMenu(menuData).unwrap();
+        // }
       }
-    } else {
-      const newMenu = {
-        ...formData,
-        id: formData.id || Date.now().toString()
-      };
-      
-      if (formData.id) {
-        // Edit existing
-        setMenus(menus.map(menu => menu.id === formData.id ? newMenu : menu));
-      } else {
-        // Add new
-        setMenus([...menus, newMenu]);
-      }
+
+      setShowModal(false);
+    } catch (error) {
+      console.error("Submit error:", error);
+      toast.error(error.data?.error || "Failed to save item");
     }
-    
-    setShowModal(false);
   };
+
+  // Show loading state for meals
+  if (isMealsLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-100">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-orange-500"></div>
+      </div>
+    );
+  }
+
+  // Show error state for meals
+  if (isMealsError) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-100">
+        <div className="bg-white p-6 rounded-xl shadow-md max-w-md w-full text-center">
+          <MdErrorOutline className="text-red-500 text-5xl mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-800 mb-2">
+            Failed to load meals
+          </h2>
+          <p className="text-gray-600 mb-4">
+            {mealsError?.data?.error ||
+              "Please check your connection and try again"}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-100">
       <div className="flex-1 flex flex-col overflow-hidden">
-        
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
           <div className="flex justify-between items-center mb-6">
@@ -193,15 +274,16 @@ export default function MenuManagement() {
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => handleAddNew('meal')}
+                onClick={() => handleAddNew("meal")}
                 className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-1"
+                disabled={isAddingMeal}
               >
                 <MdAdd className="text-xl" /> New Meal
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => handleAddNew('menu')}
+                onClick={() => handleAddNew("menu")}
                 className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-1"
               >
                 <MdAdd className="text-xl" /> New Menu
@@ -212,21 +294,21 @@ export default function MenuManagement() {
           {/* Tabs */}
           <div className="flex border-b border-gray-200 mb-6">
             <button
-              onClick={() => setActiveTab('meals')}
+              onClick={() => setActiveTab("meals")}
               className={`py-3 px-6 font-medium flex items-center gap-2 ${
-                activeTab === 'meals'
-                  ? 'text-orange-500 border-b-2 border-orange-500'
-                  : 'text-gray-500 hover:text-gray-700'
+                activeTab === "meals"
+                  ? "text-orange-500 border-b-2 border-orange-500"
+                  : "text-gray-500 hover:text-gray-700"
               }`}
             >
               <MdFastfood /> Meals
             </button>
             <button
-              onClick={() => setActiveTab('menus')}
+              onClick={() => setActiveTab("menus")}
               className={`py-3 px-6 font-medium flex items-center gap-2 ${
-                activeTab === 'menus'
-                  ? 'text-orange-500 border-b-2 border-orange-500'
-                  : 'text-gray-500 hover:text-gray-700'
+                activeTab === "menus"
+                  ? "text-orange-500 border-b-2 border-orange-500"
+                  : "text-gray-500 hover:text-gray-700"
               }`}
             >
               <MdRestaurantMenu /> Menus
@@ -234,115 +316,178 @@ export default function MenuManagement() {
           </div>
 
           {/* Meals Tab Content */}
-          {activeTab === 'meals' && (
+          {activeTab === "meals" && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             >
-              {meals.map((meal) => (
-                <motion.div
-                  key={meal.id}
-                  whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
-                  className="bg-white rounded-xl overflow-hidden shadow-md transition-all duration-300"
-                >
-                  <img 
-                    src={meal.image} 
-                    alt={meal.name} 
-                    className="w-full h-44 object-cover"
-                  />
-                  <div className="p-5">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold text-xl text-gray-800">{meal.name}</h3>
-                        <span className="block text-green-600 font-medium">${meal.price.toFixed(2)}</span>
+              {meals.length > 0 ? (
+                meals.map((meal) => (
+                  <motion.div
+                    key={meal._id}
+                    whileHover={{
+                      y: -5,
+                      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+                    }}
+                    className="bg-white rounded-xl overflow-hidden shadow-md transition-all duration-300"
+                  >
+                    <img
+                      src={meal.image}
+                      alt={meal.name}
+                      className="w-full h-44 object-cover"
+                    />
+                    <div className="p-5">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-bold text-xl text-gray-800">
+                            {meal.name}
+                          </h3>
+                          <span className="block text-green-600 font-medium">
+                            ${parseFloat(meal.price).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEdit(meal, "meal")}
+                            className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
+                            disabled={isUpdatingMeal}
+                          >
+                            <MdEdit />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(meal._id, "meal")}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-full"
+                            disabled={isDeletingMeal}
+                          >
+                            <MdDelete />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => handleEdit(meal, 'meal')}
-                          className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
-                        >
-                          <MdEdit />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(meal.id, 'meal')}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-full"
-                        >
-                          <MdDelete />
-                        </button>
+                      <p className="text-gray-600 text-sm mt-2">
+                        {meal.description}
+                      </p>
+                      <div className="mt-3">
+                        <span className="inline-block bg-gray-100 rounded-full px-3 py-1 text-sm font-medium text-gray-700">
+                          {meal.category}
+                        </span>
                       </div>
                     </div>
-                    <p className="text-gray-600 text-sm mt-2">{meal.description}</p>
-                    <div className="mt-3">
-                      <span className="inline-block bg-gray-100 rounded-full px-3 py-1 text-sm font-medium text-gray-700">
-                        {meal.category}
-                      </span>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))
+              ) : (
+                <div className="col-span-3 flex flex-col items-center justify-center py-12">
+                  <MdFastfood className="text-gray-300 text-6xl mb-4" />
+                  <h3 className="text-xl font-medium text-gray-700">
+                    No meals found
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    Start by creating your first meal item
+                  </p>
+                  <button
+                    onClick={() => handleAddNew("meal")}
+                    className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-1"
+                  >
+                    <MdAdd className="text-xl" /> Add First Meal
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
 
-          {/* Menus Tab Content */}
-          {activeTab === 'menus' && (
+          {/* Menus Tab Content - Keep local state for now since backend is not implemented */}
+          {activeTab === "menus" && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="grid grid-cols-1 md:grid-cols-2 gap-6"
             >
-              {menus.map((menu) => (
-                <motion.div
-                  key={menu.id}
-                  whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
-                  className="bg-white rounded-xl overflow-hidden shadow-md transition-all duration-300"
-                >
-                  <img 
-                    src={menu.image} 
-                    alt={menu.name} 
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="p-5">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold text-xl text-gray-800">{menu.name}</h3>
+              {menus.length > 0 ? (
+                menus.map((menu) => (
+                  <motion.div
+                    key={menu.id}
+                    whileHover={{
+                      y: -5,
+                      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+                    }}
+                    className="bg-white rounded-xl overflow-hidden shadow-md transition-all duration-300"
+                  >
+                    <img
+                      src={menu.image}
+                      alt={menu.name}
+                      className="w-full h-48 object-cover"
+                    />
+                    <div className="p-5">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-bold text-xl text-gray-800">
+                            {menu.name}
+                          </h3>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEdit(menu, "menu")}
+                            className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
+                          >
+                            <MdEdit />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(menu.id, "menu")}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-full"
+                          >
+                            <MdDelete />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => handleEdit(menu, 'menu')}
-                          className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
-                        >
-                          <MdEdit />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(menu.id, 'menu')}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-full"
-                        >
-                          <MdDelete />
-                        </button>
+                      <p className="text-gray-600 text-sm mt-2">
+                        {menu.description}
+                      </p>
+
+                      <div className="mt-4">
+                        <h4 className="font-medium text-gray-700 mb-2">
+                          Items in this menu:
+                        </h4>
+                        <ul className="space-y-1">
+                          {menu.menuItems.map((itemId) => {
+                            const meal = meals.find(
+                              (m) => m._id === itemId || m.id === itemId
+                            );
+                            return meal ? (
+                              <li
+                                key={itemId}
+                                className="text-sm flex justify-between"
+                              >
+                                <span>{meal.name}</span>
+                                <span className="text-green-600">
+                                  ${parseFloat(meal.price).toFixed(2)}
+                                </span>
+                              </li>
+                            ) : null;
+                          })}
+                        </ul>
                       </div>
                     </div>
-                    <p className="text-gray-600 text-sm mt-2">{menu.description}</p>
-                    
-                    <div className="mt-4">
-                      <h4 className="font-medium text-gray-700 mb-2">Items in this menu:</h4>
-                      <ul className="space-y-1">
-                        {menu.menuItems.map(itemId => {
-                          const meal = meals.find(m => m.id === itemId);
-                          return meal ? (
-                            <li key={itemId} className="text-sm flex justify-between">
-                              <span>{meal.name}</span>
-                              <span className="text-green-600">${meal.price.toFixed(2)}</span>
-                            </li>
-                          ) : null;
-                        })}
-                      </ul>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))
+              ) : (
+                <div className="col-span-2 flex flex-col items-center justify-center py-12">
+                  <MdRestaurantMenu className="text-gray-300 text-6xl mb-4" />
+                  <h3 className="text-xl font-medium text-gray-700">
+                    No menus found
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    Start by creating your first menu
+                  </p>
+                  <button
+                    onClick={() => handleAddNew("menu")}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-1"
+                  >
+                    <MdAdd className="text-xl" /> Add First Menu
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -363,20 +508,24 @@ export default function MenuManagement() {
                 >
                   <div className="sticky top-0 bg-white border-b border-gray-200 p-5 flex justify-between items-center">
                     <h2 className="text-xl font-bold text-gray-800">
-                      {formData.id ? 'Edit' : 'Add New'} {modalType === 'meal' ? 'Meal' : 'Menu'}
+                      {formData.id ? "Edit" : "Add New"}{" "}
+                      {modalType === "meal" ? "Meal" : "Menu"}
                     </h2>
-                    <button 
+                    <button
                       onClick={() => setShowModal(false)}
                       className="p-2 text-gray-500 hover:bg-gray-100 rounded-full"
                     >
                       <MdClose />
                     </button>
                   </div>
-                  
+
                   <form onSubmit={handleSubmit} className="p-5 space-y-6">
                     {/* Common fields for both meal and menu */}
                     <div>
-                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label
+                        htmlFor="name"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
                         Name
                       </label>
                       <input
@@ -392,7 +541,10 @@ export default function MenuManagement() {
                     </div>
 
                     <div>
-                      <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label
+                        htmlFor="description"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
                         Description
                       </label>
                       <textarea
@@ -407,7 +559,10 @@ export default function MenuManagement() {
                     </div>
 
                     <div>
-                      <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label
+                        htmlFor="image"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
                         Image URL
                       </label>
                       <div className="relative">
@@ -427,11 +582,14 @@ export default function MenuManagement() {
                     </div>
 
                     {/* Fields specific to meals */}
-                    {modalType === 'meal' && (
+                    {modalType === "meal" && (
                       <>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
+                            <label
+                              htmlFor="price"
+                              className="block text-sm font-medium text-gray-700 mb-1"
+                            >
                               Price
                             </label>
                             <div className="relative">
@@ -454,7 +612,10 @@ export default function MenuManagement() {
                           </div>
 
                           <div>
-                            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+                            <label
+                              htmlFor="category"
+                              className="block text-sm font-medium text-gray-700 mb-1"
+                            >
                               Category
                             </label>
                             <input
@@ -470,7 +631,10 @@ export default function MenuManagement() {
                         </div>
 
                         <div>
-                          <label htmlFor="ingredients" className="block text-sm font-medium text-gray-700 mb-1">
+                          <label
+                            htmlFor="ingredients"
+                            className="block text-sm font-medium text-gray-700 mb-1"
+                          >
                             Ingredients
                           </label>
                           <input
@@ -485,7 +649,10 @@ export default function MenuManagement() {
                         </div>
 
                         <div>
-                          <label htmlFor="allergens" className="block text-sm font-medium text-gray-700 mb-1">
+                          <label
+                            htmlFor="allergens"
+                            className="block text-sm font-medium text-gray-700 mb-1"
+                          >
                             Allergens
                           </label>
                           <input
@@ -502,7 +669,7 @@ export default function MenuManagement() {
                     )}
 
                     {/* Menu item selection for menus */}
-                    {modalType === 'menu' && (
+                    {modalType === "menu" && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-3">
                           Select Items for this Menu
@@ -510,17 +677,31 @@ export default function MenuManagement() {
                         <div className="border border-gray-300 rounded-lg p-3 max-h-60 overflow-y-auto">
                           {meals.length > 0 ? (
                             meals.map((meal) => (
-                              <div key={meal.id} className="flex items-center py-2 border-b border-gray-100 last:border-0">
+                              <div
+                                key={meal._id}
+                                className="flex items-center py-2 border-b border-gray-100 last:border-0"
+                              >
                                 <input
                                   type="checkbox"
-                                  id={`meal-${meal.id}`}
-                                  checked={formData.menuItems.includes(meal.id)}
-                                  onChange={() => handleMenuItemToggle(meal.id)}
+                                  id={`meal-${meal._id}`}
+                                  checked={formData.menuItems.includes(
+                                    meal._id || meal.id
+                                  )}
+                                  onChange={() =>
+                                    handleMenuItemToggle(meal._id || meal.id)
+                                  }
                                   className="h-4 w-4 text-orange-500 focus:ring-orange-500 border-gray-300 rounded"
                                 />
-                                <label htmlFor={`meal-${meal.id}`} className="ml-2 block">
-                                  <span className="text-gray-800 font-medium">{meal.name}</span>
-                                  <span className="text-gray-500 text-sm ml-2">${meal.price.toFixed(2)}</span>
+                                <label
+                                  htmlFor={`meal-${meal._id}`}
+                                  className="ml-2 block"
+                                >
+                                  <span className="text-gray-800 font-medium">
+                                    {meal.name}
+                                  </span>
+                                  <span className="text-gray-500 text-sm ml-2">
+                                    ${parseFloat(meal.price).toFixed(2)}
+                                  </span>
                                 </label>
                               </div>
                             ))
@@ -544,8 +725,9 @@ export default function MenuManagement() {
                       <button
                         type="submit"
                         className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+                        disabled={isAddingMeal || isUpdatingMeal}
                       >
-                        {formData.id ? 'Update' : 'Save'}
+                        {formData.id ? "Update" : "Save"}
                       </button>
                     </div>
                   </form>

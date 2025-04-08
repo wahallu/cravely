@@ -1,5 +1,4 @@
 const Meal = require("../models/meal");
-const Menu = require("../models/menu");
 
 // @desc    Create new meal
 // @route   POST /api/meals
@@ -127,13 +126,6 @@ exports.deleteMeal = async (req, res, next) => {
         error: "Not authorized to delete this meal",
       });
     }
-
-    // Remove meal from all menus that include it
-    await Menu.updateMany(
-      { restaurant: req.restaurant._id, menuItems: meal._id },
-      { $pull: { menuItems: meal._id } }
-    );
-
     // Delete the meal
     await meal.deleteOne();
 
