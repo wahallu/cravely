@@ -160,8 +160,8 @@ export default function RestaurantDetail() {
             exit={{ opacity: 0 }}
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
           >
-            {meals && meals.length > 0 ? (
-              meals.map((meal) => (
+            {mealsData && mealsData.length > 0 ? (
+              mealsData.map((meal) => (
                 <motion.div
                   key={meal._id || meal.id}
                   whileHover={{
@@ -221,8 +221,8 @@ export default function RestaurantDetail() {
             exit={{ opacity: 0 }}
             className="grid grid-cols-1 md:grid-cols-2 gap-6"
           >
-            {menus && menus.length > 0 ? (
-              menus.map((menu) => {
+            {menusData && menusData.length > 0 ? (
+              menusData.map((menu) => {
                 // Find the meal objects for the menu items
                 const menuItemsWithDetails =
                   menu.menuItems &&
