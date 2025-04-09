@@ -9,6 +9,7 @@ import RestaurantDashboard from "./Restaurant/Admin/RestaurantDashboard";
 import MenuManagement from "./Restaurant/Admin/MenuManagement";
 import RestaurantList from "./Restaurant/Client/RestaurantList";
 import RestaurantDetails from "./Restaurant/Client/RestaurantDetail";
+import MealsMenus from "./Restaurant/Client/MealsAndMenus"
 import Layout from "./Restaurant/Admin/Layout";
 import ClientLayout from "./Restaurant/Client/Layout";
 import OrderConfirmation from './Order/OrderConfirmation';
@@ -58,6 +59,7 @@ export default function App() {
         <Route path="/" element={<ClientLayout />}>
           <Route path="restaurants" element={<RestaurantList />} />
           <Route path="restaurant/:id" element={<RestaurantDetails />} />
+          <Route path="meals&menus" element={<MealsMenus />} />
         </Route>
 
         {/* Admin Routes */}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -18,25 +18,23 @@ export default function RestaurantDetail() {
   const [activeTab, setActiveTab] = useState("meals");
 
   // Fetch restaurant details
-  const {
-    data: restaurantData,
-    isLoading: isRestaurantLoading,
-    error: restaurantError,
-  } = useGetRestaurantProfileQuery(id);
+  const { data: restaurantData, isLoading: isRestaurantLoading } =
+    useGetRestaurantProfileQuery(id);
 
   // Fetch meals for this restaurant
-  const {
-    data: mealsData,
-    isLoading: isMealsLoading,
-    error: mealsError,
-  } = useGetPublicRestaurantMealsQuery(id);
+  const { data: mealsData, isLoading: isMealsLoading } =
+    useGetPublicRestaurantMealsQuery(id);
 
   // Fetch menus for this restaurant
-  const {
-    data: menusData,
-    isLoading: isMenusLoading,
-    error: menusError,
-  } = useGetRestaurantPublicMenusQuery(id);
+  const { data: menusData, isLoading: isMenusLoading } =
+    useGetRestaurantPublicMenusQuery(id);
+
+  // Log data for debugging
+  useEffect(() => {
+    console.log("Restaurant data:", restaurantData);
+    console.log("Meals data:", mealsData);
+    console.log("Menus data:", menusData);
+  }, [restaurantData, mealsData, menusData]);
 
   // Extract data from API responses
   const restaurant = restaurantData?.data;
@@ -46,35 +44,10 @@ export default function RestaurantDetail() {
   // Check if everything is loading
   const isLoading = isRestaurantLoading || isMealsLoading || isMenusLoading;
 
-  // Check for errors
-  const hasError = restaurantError || mealsError || menusError;
-
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-orange-500"></div>
-      </div>
-    );
-  }
-
-  if (hasError) {
-    return (
-      <div className="flex flex-col justify-center items-center h-screen">
-        <div className="text-red-500 text-2xl mb-4">
-          Failed to load restaurant data
-        </div>
-        <p className="text-gray-600 mb-4">
-          {restaurantError?.data?.error ||
-            mealsError?.data?.error ||
-            menusError?.data?.error ||
-            "An error occurred while fetching data"}
-        </p>
-        <Link
-          to="/restaurants"
-          className="bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded-lg"
-        >
-          Back to All Restaurants
-        </Link>
       </div>
     );
   }
@@ -187,10 +160,10 @@ export default function RestaurantDetail() {
             exit={{ opacity: 0 }}
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
           >
-            {meals.length > 0 ? (
+            {meals && meals.length > 0 ? (
               meals.map((meal) => (
                 <motion.div
-                  key={meal._id}
+                  key={meal._id || meal.id}
                   whileHover={{
                     y: -5,
                     boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
@@ -209,18 +182,20 @@ export default function RestaurantDetail() {
                           {meal.name}
                         </h3>
                         <span className="block text-green-600 font-medium">
-                          ${parseFloat(meal.price).toFixed(2)}
+                          ${parseFloat(meal.price || 0).toFixed(2)}
                         </span>
                       </div>
                     </div>
                     <p className="text-gray-600 text-sm mt-2">
-                      {meal.description}
+                      {meal.description || "No description available"}
                     </p>
-                    <div className="mt-3">
-                      <span className="inline-block bg-gray-100 rounded-full px-3 py-1 text-sm font-medium text-gray-700">
-                        {meal.category}
-                      </span>
-                    </div>
+                    {meal.category && (
+                      <div className="mt-3">
+                        <span className="inline-block bg-gray-100 rounded-full px-3 py-1 text-sm font-medium text-gray-700">
+                          {meal.category}
+                        </span>
+                      </div>
+                    )}
                     <button className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition-colors">
                       Add to Cart
                     </button>
@@ -246,64 +221,86 @@ export default function RestaurantDetail() {
             exit={{ opacity: 0 }}
             className="grid grid-cols-1 md:grid-cols-2 gap-6"
           >
-            {menus.length > 0 ? (
-              menus.map((menu) => (
-                <motion.div
-                  key={menu._id}
-                  whileHover={{
-                    y: -5,
-                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
-                  }}
-                  className="bg-white rounded-xl overflow-hidden shadow-md transition-all duration-300"
-                >
-                  <img
-                    src={menu.image || "/hero1.png"}
-                    alt={menu.name}
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="p-5">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold text-xl text-gray-800">
-                          {menu.name}
-                        </h3>
+            {menus && menus.length > 0 ? (
+              menus.map((menu) => {
+                // Find the meal objects for the menu items
+                const menuItemsWithDetails =
+                  menu.menuItems &&
+                  menu.menuItems.map((itemId) => {
+                    // Check if menuItems contains IDs or full objects
+                    if (typeof itemId === "object" && itemId !== null) {
+                      return itemId;
+                    }
+                    // Find the corresponding meal by ID
+                    return (
+                      meals.find(
+                        (meal) => meal._id === itemId || meal.id === itemId
+                      ) || {
+                        name: "Unknown Item",
+                        price: 0,
+                      }
+                    );
+                  });
+
+                return (
+                  <motion.div
+                    key={menu._id || menu.id}
+                    whileHover={{
+                      y: -5,
+                      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+                    }}
+                    className="bg-white rounded-xl overflow-hidden shadow-md transition-all duration-300"
+                  >
+                    <img
+                      src={menu.image || "/hero1.png"}
+                      alt={menu.name}
+                      className="w-full h-48 object-cover"
+                    />
+                    <div className="p-5">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-bold text-xl text-gray-800">
+                            {menu.name}
+                          </h3>
+                        </div>
                       </div>
-                    </div>
-                    <p className="text-gray-600 text-sm mt-2">
-                      {menu.description}
-                    </p>
+                      <p className="text-gray-600 text-sm mt-2">
+                        {menu.description || "No description available"}
+                      </p>
 
-                    <div className="mt-4">
-                      <h4 className="font-medium text-gray-700 mb-2">
-                        Items in this menu:
-                      </h4>
-                      <ul className="space-y-1">
-                        {menu.menuItems && menu.menuItems.length > 0 ? (
-                          menu.menuItems.map((item) => (
-                            <li
-                              key={item._id}
-                              className="text-sm flex justify-between"
-                            >
-                              <span>{item.name}</span>
-                              <span className="text-green-600">
-                                ${parseFloat(item.price).toFixed(2)}
-                              </span>
+                      <div className="mt-4">
+                        <h4 className="font-medium text-gray-700 mb-2">
+                          Items in this menu:
+                        </h4>
+                        <ul className="space-y-1">
+                          {menuItemsWithDetails &&
+                          menuItemsWithDetails.length > 0 ? (
+                            menuItemsWithDetails.map((item, index) => (
+                              <li
+                                key={item._id || item.id || index}
+                                className="text-sm flex justify-between"
+                              >
+                                <span>{item.name}</span>
+                                <span className="text-green-600">
+                                  ${parseFloat(item.price || 0).toFixed(2)}
+                                </span>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="text-sm text-gray-500">
+                              No items in this menu
                             </li>
-                          ))
-                        ) : (
-                          <li className="text-sm text-gray-500">
-                            No items in this menu
-                          </li>
-                        )}
-                      </ul>
-                    </div>
+                          )}
+                        </ul>
+                      </div>
 
-                    <button className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition-colors">
-                      Order This Menu
-                    </button>
-                  </div>
-                </motion.div>
-              ))
+                      <button className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition-colors">
+                        Order This Menu
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })
             ) : (
               <div className="col-span-full text-center py-10">
                 <MdRestaurantMenu className="text-gray-300 text-5xl mx-auto mb-3" />
