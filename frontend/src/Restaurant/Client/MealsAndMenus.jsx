@@ -24,9 +24,9 @@ const MealsAndMenus = () => {
   const [filters, setFilters] = useState({
     category: "",
     priceMin: 0,
-    priceMax: 50,
+    priceMax: 5000,
     sortBy: "name",
-    priceRangeValues: [0, 50], // Add this for the slider
+    priceRangeValues: [0, 5000], // Add this for the slider
     rating: 0,
   });
 
@@ -107,9 +107,9 @@ const MealsAndMenus = () => {
     setFilters({
       category: "",
       priceMin: 0,
-      priceMax: 50,
+      priceMax: 5000,
       sortBy: "name",
-      priceRangeValues: [0, 50],
+      priceRangeValues: [0, 5000],
       rating: 0,
     });
     setSearchQuery("");
@@ -148,7 +148,7 @@ const MealsAndMenus = () => {
         <div className="flex flex-col md:flex-row gap-6">
           {/* Left sidebar with filters */}
           <motion.div
-            className="md:w-1/4 bg-white/95 backdrop-blur-sm p-4 rounded-xl shadow-sm"
+            className="md:w-1/4 bg-white/95 backdrop-blur-sm p-4 rounded-xl shadow-sm h-full"
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
@@ -218,7 +218,7 @@ const MealsAndMenus = () => {
                 <Slider
                   range
                   min={0}
-                  max={50}
+                  max={5000}
                   value={filters.priceRangeValues}
                   onChange={handlePriceRangeChange}
                   trackStyle={[{ backgroundColor: "#f97316" }]}
