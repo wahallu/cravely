@@ -159,3 +159,20 @@ exports.getPublicRestaurantMeals = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Get all meals (no restaurant filter)
+// @route   GET /api/meals/all
+// @access  Public
+exports.getAllMeals = async (req, res, next) => {
+  try {
+    const meals = await Meal.find({});
+
+    res.status(200).json({
+      success: true,
+      count: meals.length,
+      data: meals,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -12,7 +12,8 @@ export const menuApi = createApi({
       }
       return headers;
     },
-  }),transformErrorResponse: (response, meta, arg) => {
+  }),
+  transformErrorResponse: (response, meta, arg) => {
     const errMsg = response.data?.error || "An error occurred";
     if (errMsg.includes("authorized")) {
       // Handle authorization errors specially
@@ -64,8 +65,14 @@ export const menuApi = createApi({
     }),
     // Public endpoints for accessing menus from a specific restaurant
     getRestaurantPublicMenus: builder.query({
-      query: (restaurantId) => `/menus/public/restaurants/${restaurantId}/menus`,
+      query: (restaurantId) =>
+        `/menus/public/restaurants/${restaurantId}/menus`,
       transformResponse: (response) => response.data,
+    }),
+    getAllMenus: builder.query({
+      query: () => "/menus/all",
+      transformResponse: (response) => response.data,
+      providesTags: ["Menu"],
     }),
   }),
 });
@@ -77,4 +84,5 @@ export const {
   useUpdateMenuMutation,
   useDeleteMenuMutation,
   useGetRestaurantPublicMenusQuery,
+  useGetAllMenusQuery,
 } = menuApi;

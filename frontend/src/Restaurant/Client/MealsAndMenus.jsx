@@ -1,86 +1,96 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   MdFastfood,
   MdRestaurantMenu,
   MdFilterList,
   MdSearch,
   MdClose,
-} from 'react-icons/md';
-import { useGetPublicRestaurantMealsQuery } from '../../Redux/slices/mealSlice';
-import { useGetRestaurantPublicMenusQuery } from '../../Redux/slices/menuSlice';
+} from "react-icons/md";
+import { useGetAllMealsQuery } from "../../Redux/slices/mealSlice";
+import { useGetAllMenusQuery } from "../../Redux/slices/menuSlice";
 
 const MealsAndMenus = () => {
   const { id } = useParams();
-  const [activeTab, setActiveTab] = useState('meals');
+  const [activeTab, setActiveTab] = useState("meals");
   const [showFilters, setShowFilters] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
-    category: '',
+    category: "",
     priceMin: 0,
     priceMax: 50,
-    sortBy: 'name'
+    sortBy: "name",
   });
 
   // Fetch meals for this restaurant
-  const { data: mealsData, isLoading: isMealsLoading } = useGetPublicRestaurantMealsQuery(id);
+  const { data: mealsData, isLoading: isMealsLoading } = useGetAllMealsQuery();
 
   // Fetch menus for this restaurant
-  const { data: menusData, isLoading: isMenusLoading } = useGetRestaurantPublicMenusQuery(id);
+  const { data: menusData, isLoading: isMenusLoading } = useGetAllMenusQuery();
 
-  // Extract data from API responses
-  const meals = mealsData?.data || [];
-  const menus = menusData?.data || [];
+  console.log("Meals Data:", mealsData);
+  console.log("Menus Data:", menusData);
+
 
   // Get unique categories for filter dropdown
-  const categories = [
-    ...new Set(meals.map((meal) => meal.category).filter(Boolean)),
-  ];
+  const categories =
+    !isMealsLoading && mealsData.length > 0
+      ? [...new Set(mealsData.map((meal) => meal.category).filter(Boolean))]
+      : [];
 
   // Filter meals based on search and filters
-  const filteredMeals = meals.filter((meal) => {
-    // Search query filter
-    const matchesSearch = meal.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         meal.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Category filter
-    const matchesCategory = !filters.category || meal.category === filters.category;
-    
-    // Price filter
-    const price = parseFloat(meal.price || 0);
-    const matchesPrice = price >= filters.priceMin && price <= filters.priceMax;
-    
-    return matchesSearch && matchesCategory && matchesPrice;
-  });
+  const filteredMeals = !isMealsLoading
+    ? mealsData.filter((meal) => {
+        // Search query filter
+        const matchesSearch =
+          meal.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          meal.description?.toLowerCase().includes(searchQuery.toLowerCase());
+
+        // Category filter
+        const matchesCategory =
+          !filters.category || meal.category === filters.category;
+
+        // Price filter
+        const price = parseFloat(meal.price || 0);
+        const matchesPrice =
+          price >= filters.priceMin && price <= filters.priceMax;
+
+        return matchesSearch && matchesCategory && matchesPrice;
+      })
+    : [];
 
   // Filter menus based on search
-  const filteredMenus = menus.filter((menu) => {
-    return menu.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-           menu.description?.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const filteredMenus = !isMenusLoading
+    ? menusData.filter((menu) => {
+        return (
+          menu.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          menu.description?.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      })
+    : [];
 
   // Sort meals based on the selected sortBy option
   const sortedMeals = [...filteredMeals].sort((a, b) => {
-    if (filters.sortBy === 'price-low') {
+    if (filters.sortBy === "price-low") {
       return parseFloat(a.price || 0) - parseFloat(b.price || 0);
-    } else if (filters.sortBy === 'price-high') {
+    } else if (filters.sortBy === "price-high") {
       return parseFloat(b.price || 0) - parseFloat(a.price || 0);
     } else {
       // Sort by name as default
-      return a.name.localeCompare(b.name);
+      return (a.name || "").localeCompare(b.name || "");
     }
   });
 
   // Reset filters function
   const resetFilters = () => {
     setFilters({
-      category: '',
+      category: "",
       priceMin: 0,
       priceMax: 50,
-      sortBy: 'name'
+      sortBy: "name",
     });
-    setSearchQuery('');
+    setSearchQuery("");
   };
 
   return (
@@ -97,18 +107,22 @@ const MealsAndMenus = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        
+
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
           >
             <MdFilterList />
-            {showFilters ? 'Hide Filters' : 'Show Filters'}
+            {showFilters ? "Hide Filters" : "Show Filters"}
           </button>
-          
-          {(showFilters || searchQuery || filters.category || filters.sortBy !== 'name' || 
-            filters.priceMin > 0 || filters.priceMax < 50) && (
+
+          {(showFilters ||
+            searchQuery ||
+            filters.category ||
+            filters.sortBy !== "name" ||
+            filters.priceMin > 0 ||
+            filters.priceMax < 50) && (
             <button
               onClick={resetFilters}
               className="text-orange-500 hover:text-orange-600 flex items-center gap-1"
@@ -124,7 +138,7 @@ const MealsAndMenus = () => {
         {showFilters && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
+            animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3 }}
             className="bg-white rounded-lg shadow-sm p-4 mb-6 overflow-hidden"
@@ -137,7 +151,9 @@ const MealsAndMenus = () => {
                 </label>
                 <select
                   value={filters.category}
-                  onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, category: e.target.value })
+                  }
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                 >
                   <option value="">All Categories</option>
@@ -160,7 +176,12 @@ const MealsAndMenus = () => {
                     min="0"
                     max={filters.priceMax}
                     value={filters.priceMin}
-                    onChange={(e) => setFilters({ ...filters, priceMin: Math.max(0, Number(e.target.value)) })}
+                    onChange={(e) =>
+                      setFilters({
+                        ...filters,
+                        priceMin: Math.max(0, Number(e.target.value)),
+                      })
+                    }
                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                   />
                   <span>to</span>
@@ -168,7 +189,12 @@ const MealsAndMenus = () => {
                     type="number"
                     min={filters.priceMin}
                     value={filters.priceMax}
-                    onChange={(e) => setFilters({ ...filters, priceMax: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setFilters({
+                        ...filters,
+                        priceMax: Number(e.target.value),
+                      })
+                    }
                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                   />
                 </div>
@@ -181,7 +207,9 @@ const MealsAndMenus = () => {
                 </label>
                 <select
                   value={filters.sortBy}
-                  onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, sortBy: e.target.value })
+                  }
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                 >
                   <option value="name">Name (A-Z)</option>
@@ -219,7 +247,8 @@ const MealsAndMenus = () => {
       </div>
 
       {/* Loading States */}
-      {(activeTab === 'meals' && isMealsLoading) || (activeTab === 'menus' && isMenusLoading) ? (
+      {(activeTab === "meals" && isMealsLoading) ||
+      (activeTab === "menus" && isMenusLoading) ? (
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
         </div>
@@ -268,12 +297,14 @@ const MealsAndMenus = () => {
                         )}
                         {meal.ingredients && (
                           <p className="text-gray-500 text-xs mt-2">
-                            <span className="font-medium">Ingredients:</span> {meal.ingredients}
+                            <span className="font-medium">Ingredients:</span>{" "}
+                            {meal.ingredients}
                           </p>
                         )}
                         {meal.allergens && (
                           <p className="text-gray-500 text-xs mt-1">
-                            <span className="font-medium">Allergens:</span> {meal.allergens}
+                            <span className="font-medium">Allergens:</span>{" "}
+                            {meal.allergens}
                           </p>
                         )}
                         <button className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition-colors">
@@ -287,7 +318,10 @@ const MealsAndMenus = () => {
                 <div className="text-center py-12">
                   <MdFastfood className="text-gray-300 text-5xl mx-auto mb-3" />
                   <p className="text-gray-500">
-                    {searchQuery || filters.category || filters.priceMin > 0 || filters.priceMax < 50
+                    {searchQuery ||
+                    filters.category ||
+                    filters.priceMin > 0 ||
+                    filters.priceMax < 50
                       ? "No meals match your search criteria"
                       : "No meals available"}
                   </p>
@@ -362,7 +396,8 @@ const MealsAndMenus = () => {
                               Items in this menu:
                             </h4>
                             <ul className="space-y-1">
-                              {menuItemsWithDetails && menuItemsWithDetails.length > 0 ? (
+                              {menuItemsWithDetails &&
+                              menuItemsWithDetails.length > 0 ? (
                                 menuItemsWithDetails.map((item, index) => (
                                   <li
                                     key={item._id || item.id || index}

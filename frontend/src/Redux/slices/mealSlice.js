@@ -73,6 +73,11 @@ export const mealApi = createApi({
       transformResponse: (response) => response.data,
       providesTags: ["Meal"],
     }),
+    getAllMeals: builder.query({
+      query: () => "/meals/all",
+      transformResponse: (response) => response.data,
+      providesTags: ["Meal"],
+    }),
   }),
 });
 
@@ -83,4 +88,5 @@ export const {
   useUpdateMealMutation,
   useDeleteMealMutation,
   useGetPublicRestaurantMealsQuery,
+  useGetAllMealsQuery,
 } = mealApi;
