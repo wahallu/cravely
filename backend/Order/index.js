@@ -2,6 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const orderRoutes = require('./routes/orderRoutes');
 
 dotenv.config();
 
@@ -30,22 +31,22 @@ app.get('/', (req, res) => {
   res.status(200).json({ message: 'Order service is running' });
 });
 
-// Import routes if available
-// const deliveryRoutes = require('./routes/deliveryRoutes');
-// app.use('/', deliveryRoutes);
+// Use routes
+app.use('/api/orders', orderRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
     success: false,
-    error: err.message || 'Server Error'
+    message: 'Server Error',
+    error: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message
   });
 });
 
-// run the app
 app.listen(PORT, () => {
-  console.log(`Order service is running on port ${PORT}`);
+  console.log(`Order service running on port ${PORT}`);
 });
 
+// For testing purposes
 module.exports = app;
