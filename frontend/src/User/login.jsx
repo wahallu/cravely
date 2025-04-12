@@ -4,6 +4,9 @@ import { MdEmail, MdLock, MdVisibility, MdVisibilityOff } from 'react-icons/md'
 import { FaGoogle, FaFacebook } from 'react-icons/fa'
 import { frame, motion, useSpring } from 'motion/react'
 import hamburger from '/hamburger_icon.png'
+import {useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
+import { useLoginMutation } from '../Redux/slices/authSlice'
 
 const spring = { damping: 3, stiffness: 50, restDelta: 0.001 };
 
@@ -34,10 +37,12 @@ function useFollowPointer(ref) {
 }
 
 export default function Login() {
+  const [login] = useLoginMutation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+  const navigate = useNavigate()
 
   // Create refs for the follow pointer effect
   const hamburgerRef = useRef(null);
@@ -58,7 +63,18 @@ export default function Login() {
   const handleSubmit = (e) => {
     e.preventDefault()
     // Handle login logic here
-    console.log({ email, password, rememberMe })
+    login({ email, password }).unwrap()
+      .then((response) => {
+        console.log('Login successful:', response)
+        toast.success('Login successful!')
+        localStorage.setItem('token', response.token)
+        localStorage.setItem('user', JSON.stringify(response.user))
+        navigate('/')
+      })
+      .catch((error) => {
+        console.error('Login failed:', error)
+        toast.error('Login failed. Please check your credentials.')
+      })
   }
 
   return (

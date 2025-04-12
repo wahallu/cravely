@@ -12,6 +12,7 @@ import RestaurantDetails from "./Restaurant/Client/RestaurantDetail";
 import Layout from "./Restaurant/Admin/Layout";
 import ClientLayout from "./Restaurant/Client/Layout";
 import OrderConfirmation from './Order/OrderConfirmation';
+import { AdminProtectedRoutes, UserProtectedRoutes } from "./protectedRoutes";
 
 //order
 import Cart from "../src/Order/OrderLayout";
@@ -56,14 +57,22 @@ export default function App() {
         </Route>
 
         {/* Admin Routes */}
-        <Route path="/admin" element={<AdminLayout />}>
+        <Route path="/admin" element={
+          <AdminProtectedRoutes>
+            <AdminLayout />
+          </AdminProtectedRoutes>
+        }>
           <Route path="" element={<AdminDashboard />} />
           <Route path="restaurants" element={<AdminRestaurant />} />
           <Route path="drivers" element={<AdminDrivers />} />
         </Route>
 
         {/* Customer Routes */}
-        <Route path="/user" element={<UserLayout />}>
+        <Route path="/user" element={
+          <UserProtectedRoutes>
+            <UserLayout />
+          </UserProtectedRoutes>
+        }>
           <Route path="" element={<UserDashboard />} />
         </Route>
         
