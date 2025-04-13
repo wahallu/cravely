@@ -1,93 +1,53 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { IconContext } from 'react-icons';
 import { MdFastfood, MdStar, MdChevronLeft, MdChevronRight } from 'react-icons/md';
 import { motion } from 'framer-motion';
-
-const restaurants = [
-    {
-        id: 1,
-        image: '/hero1.png',
-        name: 'Foodworld',
-        logo: 'https://via.placeholder.com/60x60?text=F',
-        discount: '20% off',
-        fast: true,
-        rating: 46,
-        color: 'bg-blue-500',
-    },
-    {
-        id: 2,
-        image: '/hero1.png',
-        name: 'Pizzahub',
-        logo: 'https://via.placeholder.com/60x60?text=P',
-        discount: '15% off',
-        fast: true,
-        rating: 40,
-        color: 'bg-yellow-500',
-    },
-    {
-        id: 3,
-        image: '/hero1.png',
-        name: 'Donuts hut',
-        logo: 'https://via.placeholder.com/60x60?text=D',
-        discount: '10% off',
-        fast: true,
-        rating: 20,
-        color: 'bg-green-500',
-    },
-    {
-        id: 4,
-        image: '/hero1.png',
-        name: 'Donuts hut',
-        logo: 'https://via.placeholder.com/60x60?text=D',
-        discount: '15% off',
-        fast: true,
-        rating: 50,
-        color: 'bg-green-500',
-    },
-    {
-        id: 5,
-        image: '/hero1.png',
-        name: 'Ruby Tuesday',
-        logo: 'https://via.placeholder.com/60x60?text=R',
-        discount: '10% off',
-        fast: true,
-        rating: 26,
-        color: 'bg-orange-500',
-    },
-    {
-        id: 6,
-        image: '/hero1.png',
-        name: 'Kuakata Fried Chicken',
-        logo: 'https://via.placeholder.com/60x60?text=KFC',
-        discount: '25% off',
-        fast: true,
-        rating: 53,
-        color: 'bg-red-500',
-    },
-    {
-        id: 7,
-        image: '/hero1.png',
-        name: 'Red Square',
-        logo: 'https://via.placeholder.com/60x60?text=R',
-        discount: '10% off',
-        fast: true,
-        rating: 45,
-        color: 'bg-yellow-500',
-    },
-    {
-        id: 8,
-        image: '/hero1.png',
-        name: 'Taco Bell',
-        logo: 'https://via.placeholder.com/60x60?text=T',
-        discount: '10% off',
-        fast: true,
-        rating: 35,
-        color: 'bg-green-500',
-    },
-];
+import { useGetAllRestaurantsQuery } from '../../Redux/slices/restaurantSlice';
+import { Link } from 'react-router-dom';
 
 export default function FeaturedRestaurants() {
     const [hoveredId, setHoveredId] = useState(null);
+    const [featuredRestaurants, setFeaturedRestaurants] = useState([]);
+    
+    // Fetch restaurants data
+    const { data: restaurantsData, isLoading, error } = useGetAllRestaurantsQuery();
+    
+    // Process data when it's loaded
+    useEffect(() => {
+        if (restaurantsData?.data) {
+            // Get all restaurants
+            const restaurants = restaurantsData.data || [];
+            
+            // Filter for featured restaurants or just get first 8 if none are marked as featured
+            let featured = restaurants.filter(r => r.featured);
+            if (featured.length === 0) {
+                featured = restaurants.slice(0, 8);
+            }
+            
+            // Map to our display format
+            const mappedRestaurants = featured.map(restaurant => {
+                // Generate a random color for each restaurant
+                const colors = ['bg-blue-500', 'bg-yellow-500', 'bg-green-500', 'bg-orange-500', 'bg-red-500', 'bg-purple-500'];
+                const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                
+                // Get first letter of restaurant name for the logo placeholder
+                const logoText = restaurant.name ? restaurant.name.charAt(0) : 'R';
+                
+                return {
+                    id: restaurant._id || restaurant.id,
+                    image: restaurant.image || '/hero1.png',
+                    name: restaurant.name || 'Restaurant',
+                    logo: `https://via.placeholder.com/60x60?text=${logoText}`,
+                    discount: restaurant.discount || '10% off',
+                    fast: restaurant.fastDelivery || true,
+                    rating: restaurant.rating ? Math.floor(restaurant.rating * 20) : 45, // Convert 5-scale to 100-scale
+                    color: randomColor
+                };
+            });
+            
+            setFeaturedRestaurants(mappedRestaurants);
+        }
+    }, [restaurantsData]);
     
     // Animation variants
     const containerVariants = {
@@ -124,6 +84,25 @@ export default function FeaturedRestaurants() {
         }
     };
 
+    // Loading state
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center py-16">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (error) {
+        return (
+            <div className="text-center py-16">
+                <h1 className="text-2xl font-bold text-gray-800 mb-4">Featured Restaurants</h1>
+                <p className="text-gray-500">Unable to load restaurants at this time.</p>
+            </div>
+        );
+    }
+
     return (
         <div className='flex flex-col items-center space-y-16 py-10'>
             <motion.h1 
@@ -142,7 +121,7 @@ export default function FeaturedRestaurants() {
                 variants={containerVariants}
             >
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {restaurants.map((restaurant) => (
+                    {featuredRestaurants.map((restaurant) => (
                         <motion.div 
                             key={restaurant.id}
                             className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300"
@@ -212,18 +191,20 @@ export default function FeaturedRestaurants() {
                                 </div>
 
                                 {/* Action Button */}
-                                <motion.button
-                                    className={`mt-4 w-full ${restaurant.color} text-white px-4 py-3 rounded-lg font-semibold flex justify-center items-center`}
-                                    whileHover={{ scale: 1.03 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    initial={{ opacity: 0.9 }}
-                                    animate={{ 
-                                        opacity: 1,
-                                        boxShadow: hoveredId === restaurant.id ? "0 10px 15px -3px rgba(0, 0, 0, 0.1)" : "none"
-                                    }}
-                                >
-                                    View Menu
-                                </motion.button>
+                                <Link to={`/restaurant/${restaurant.id}`}>
+                                    <motion.button
+                                        className={`mt-4 w-full ${restaurant.color} text-white px-4 py-3 rounded-lg font-semibold flex justify-center items-center`}
+                                        whileHover={{ scale: 1.03 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        initial={{ opacity: 0.9 }}
+                                        animate={{ 
+                                            opacity: 1,
+                                            boxShadow: hoveredId === restaurant.id ? "0 10px 15px -3px rgba(0, 0, 0, 0.1)" : "none"
+                                        }}
+                                    >
+                                        View Menu
+                                    </motion.button>
+                                </Link>
                             </div>
                         </motion.div>
                     ))}
@@ -236,13 +217,15 @@ export default function FeaturedRestaurants() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.6 }}
                 >
-                    <motion.button
-                        className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-full font-medium flex items-center shadow-md"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                    >
-                        Explore All Restaurants
-                    </motion.button>
+                    <Link to="/restaurants">
+                        <motion.button
+                            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-full font-medium flex items-center shadow-md"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            Explore All Restaurants
+                        </motion.button>
+                    </Link>
                 </motion.div>
             </motion.div>
         </div>
