@@ -9,6 +9,7 @@ import RestaurantDashboard from "./Restaurant/Admin/RestaurantDashboard";
 import MenuManagement from "./Restaurant/Admin/MenuManagement";
 import RestaurantList from "./Restaurant/Client/RestaurantList";
 import RestaurantDetails from "./Restaurant/Client/RestaurantDetail";
+import MealsMenus from "./Restaurant/Client/MealsAndMenus"
 import Layout from "./Restaurant/Admin/Layout";
 import ClientLayout from "./Restaurant/Client/Layout";
 import OrderConfirmation from './Order/OrderConfirmation';
@@ -26,6 +27,11 @@ import AdminDrivers from "./User/Admin/drivers";
 import UserLayout from "./User/Customer/layout";
 import UserDashboard from "./User/Customer/dashboard";
 import LiveTracking from "./Tracking/LiveTracking";
+
+import DeliveryLayout from "./Delivery/DeliveryLayout";
+import DeliveryDashboard from "./Delivery/DeliveryDashboard";
+import DriverDashboard from "./Delivery/DriverDashboard";
+
 
 
 export default function App() {
@@ -54,6 +60,7 @@ export default function App() {
         <Route path="/" element={<ClientLayout />}>
           <Route path="restaurants" element={<RestaurantList />} />
           <Route path="restaurant/:id" element={<RestaurantDetails />} />
+          <Route path="meals&menus" element={<MealsMenus />} />
         </Route>
 
         {/* Admin Routes */}
@@ -75,7 +82,12 @@ export default function App() {
         }>
           <Route path="" element={<UserDashboard />} />
         </Route>
-        
+
+        <Route path="/delivery" element={<DeliveryLayout />}>
+          <Route path="" element={<DeliveryDashboard />} />
+          <Route path="drivers" element={<DriverDashboard />} />
+        </Route>
+
       </Routes>
     </BrowserRouter>
   );

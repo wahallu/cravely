@@ -1,14 +1,23 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { setupListeners } from '@reduxjs/toolkit/query';
-import { authApi } from './slices/authSlice';
+import { configureStore } from "@reduxjs/toolkit";
+import { setupListeners } from "@reduxjs/toolkit/query";
+import { authApi } from "./slices/authSlice";
+import { restaurantApi } from "./slices/restaurantSlice";
+import { mealApi } from "./slices/mealSlice";
+import { menuApi } from "./slices/menuSlice";
 
 export const store = configureStore({
-    reducer: {
-        [authApi.reducerPath] : authApi.reducer,
-    },
-    middleware: (getDefaultMiddleware) => 
-        getDefaultMiddleware()
-            .concat(authApi.middleware),
-})
+  reducer: {
+    [authApi.reducerPath]: authApi.reducer,
+    [restaurantApi.reducerPath]: restaurantApi.reducer,
+    [mealApi.reducerPath]: mealApi.reducer,
+    [menuApi.reducerPath]: menuApi.reducer,
+  },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware()
+      .concat(authApi.middleware)
+      .concat(restaurantApi.middleware)
+      .concat(mealApi.middleware)
+      .concat(menuApi.middleware),
+});
 
 setupListeners(store.dispatch);

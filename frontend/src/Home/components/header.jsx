@@ -66,6 +66,9 @@ export default function Header() {
             <Link to="/restaurants" className="text-gray-700 hover:text-orange-500 font-medium transition-colors">
               Restaurants
             </Link>
+            <Link to="/meals&menus" className="text-gray-700 hover:text-orange-500 font-medium transition-colors">
+              Meals & Menus
+            </Link>
             <Link to="/offers" className="text-gray-700 hover:text-orange-500 font-medium transition-colors">
               Offers
             </Link>

@@ -1,7 +1,10 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const cors = require('cors');
-const connectDB = require('./config/db');
+const express = require("express");
+const dotenv = require("dotenv");
+const cors = require("cors");
+const connectDB = require("./config/db");
+const restaurantRoutes = require("./routes/restaurantRoutes");
+const mealRoutes = require("./routes/mealRoutes");
+const menuRoutes = require("./routes/menuRoutes");
 
 dotenv.config();
 
@@ -17,29 +20,30 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint - This is required for Gateway service detection
-app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'ok',
-    service: 'Restaurant',
-    timestamp: new Date().toISOString()
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "Restaurant",
+    timestamp: new Date().toISOString(),
   });
 });
 
 // Default route
-app.get('/', (req, res) => {
-  res.status(200).json({ message: 'Restaurant service is running' });
+app.get("/", (req, res) => {
+  res.status(200).json({ message: "Restaurant service is running" });
 });
 
-// Import routes if available
-// const deliveryRoutes = require('./routes/deliveryRoutes');
-// app.use('/', deliveryRoutes);
+// Mount routes
+app.use("/api/restaurants", restaurantRoutes);
+app.use("/api/meals", mealRoutes);
+app.use("/api/menus", menuRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
     success: false,
-    error: err.message || 'Server Error'
+    error: err.message || "Server Error",
   });
 });
 
