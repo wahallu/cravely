@@ -1,14 +1,22 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-// Load cart from localStorage if available, otherwise use initial empty state
+// Update the loadCartFromStorage function to validate structure
 const loadCartFromStorage = () => {
   try {
     const persistedCart = localStorage.getItem('cart');
     if (persistedCart) {
-      return JSON.parse(persistedCart);
+      const parsedCart = JSON.parse(persistedCart);
+      // Validate the structure is intact
+      if (parsedCart && typeof parsedCart === 'object' && 
+          Array.isArray(parsedCart.items)) {
+        return parsedCart;
+      }
+      // If invalid structure, throw to reset
+      console.warn('Invalid cart structure in localStorage, resetting');
     }
   } catch (error) {
     console.error('Error loading cart from storage:', error);
+    localStorage.removeItem('cart'); // Clean up corrupted data
   }
   return {
     items: [],
@@ -30,6 +38,11 @@ export const cartSlice = createSlice({
   reducers: {
     addToCart: (state, action) => {
       const { item, quantity = 1, addAsNew = false } = action.payload;
+      
+      // Ensure state has proper structure
+      if (!state.items) {
+        state.items = [];
+      }
       
       // Generate a unique cart item ID if adding as new
       if (addAsNew) {

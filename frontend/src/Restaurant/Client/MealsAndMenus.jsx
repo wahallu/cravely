@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MdFastfood,
@@ -18,9 +18,12 @@ import "rc-slider/assets/index.css"; // And its styles
 import { useDispatch } from "react-redux";
 import { addToCart } from "../../Redux/slices/cartSlice";
 import { toast } from "react-hot-toast"; // This should already be set up based on your main.jsx
+import { useAddToCartMutation } from "../../Redux/slices/cartApiSlice";
+import { getUserInfo } from "../../utils/auth"; // Assuming you have a utility function to get user info
 
 const MealsAndMenus = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("meals");
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -34,6 +37,7 @@ const MealsAndMenus = () => {
   });
 
   const dispatch = useDispatch();
+  const [addToCartMutation, { isLoading: isAddingToCart }] = useAddToCartMutation();
 
   // Fetch meals for this restaurant
   const { data: mealsData, isLoading: isMealsLoading } = useGetAllMealsQuery();
@@ -120,10 +124,94 @@ const MealsAndMenus = () => {
     setSearchQuery("");
   };
 
-  const handleAddToCart = (item, addAsNew = false) => {
-    dispatch(addToCart({ item, quantity: 1, addAsNew }));
-    toast.success(`${item.name} added to cart!`);
+  const handleAddToCart = async (item, addAsNew = false) => {
+    try {
+      // Get the user info
+      const userInfo = getUserInfo();
+      
+      if (!userInfo) {
+        toast.error("Please log in to add items to cart");
+        navigate('/login');
+        return;
+      }
+
+      // Enhanced restaurant ID validation
+      // Try to get restaurant ID from URL params first, then from the item itself
+      let restaurantId = id;
+      
+      // If URL param id is undefined, try to get it from the item
+      if (!restaurantId && item.restaurant) {
+        restaurantId = item.restaurant;
+      }
+      
+      console.log("Restaurant ID:", restaurantId, "Item being added:", item.name);
+      
+      if (!restaurantId) {
+        toast.error("Restaurant information is missing");
+        console.error("Missing restaurant ID when adding to cart. URL param id:", id, "Item restaurant:", item.restaurant);
+        return;
+      }
+
+      // Ensure item has a unique ID for cart tracking
+      const itemForCart = {
+        ...item,
+        restaurantId, // Use the validated restaurantId
+        // Create a unique cart item ID if adding as new
+        cartItemId: addAsNew ? `${item._id || item.id}_${Date.now()}` : undefined
+      };
+
+      // Update local state first (for immediate UI feedback)
+      dispatch(addToCart({ 
+        item: itemForCart,
+        quantity: 1,
+        addAsNew
+      }));
+
+      // Prepare the item data for the backend API
+      const itemData = {
+        id: item._id || item.id, // Backend expects 'id' field
+        name: item.name,
+        price: parseFloat(item.price || 0),
+        quantity: 1,
+        imageUrl: item.image || '',
+        restaurantId, // Use the validated restaurantId
+      };
+
+      console.log("Sending item data to API:", itemData);
+
+      // Then make API call to persist to database
+      await addToCartMutation(itemData).unwrap();
+      
+      toast.success(`${item.name} added to cart!`);
+    } catch (error) {
+      console.error("Add to cart error:", error);
+      
+      // Add detailed logging for troubleshooting
+      console.log("Error details:", {
+        message: error.message,
+        data: error.data,
+        errorObj: error
+      });
+      
+      // Improved error handling with more specific messages
+      if (error.message) {
+        toast.error(`Failed to add to cart: ${error.message}`);
+      } else if (error.data && error.data.message) {
+        toast.error(`Failed to add to cart: ${error.data.message}`);
+      } else if (error.error) {
+        toast.error(`Failed to add to cart: ${error.error}`);
+      } else {
+        toast.error("Failed to add to cart: Network or server error");
+      }
+    }
   };
+
+  useEffect(() => {
+    console.log("MealsAndMenus component mounted with restaurant ID:", id);
+    if (!id) {
+      console.warn("No restaurant ID found in URL parameters");
+    }
+  }, [id]);
 
   return (
     <div className="min-h-screen relative bg-gray-50">
@@ -519,7 +607,8 @@ const MealsAndMenus = () => {
                                     image: menu.image || "/hero1.png",
                                     description: menu.description,
                                     isMenu: true,
-                                    menuItems: menuItemsWithDetails
+                                    menuItems: menuItemsWithDetails,
+                                    restaurantId: id // Add restaurant ID here
                                   })}
                                 >
                                   Order This Menu

@@ -1,43 +1,63 @@
 const jwt = require('jsonwebtoken');
 
 /**
- * Protect routes - Verify JWT token
+ * Authentication middleware
+ * Protects routes by verifying JWT token
  */
 const protect = async (req, res, next) => {
-  // For testing only - skip authentication
-  req.user = { _id: 'testuser123', role: 'admin' };
-  next();
-  return;
-  
-  // Original authentication code below
-  let token;
-
-  // Check for token in Authorization header
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    try {
-      // Get token from header
+  try {
+    let token;
+    
+    // Check for token in Authorization header
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];
-
-      // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      // Add user from payload to request
-      req.user = decoded;
-
-      next();
-    } catch (error) {
-      console.error('Authentication error:', error);
-      res.status(401).json({
+    }
+    
+    // Check if token exists
+    if (!token) {
+      return res.status(401).json({
         success: false,
-        message: 'Not authorized, token failed'
+        message: 'Not authorized to access this resource'
       });
     }
-  }
-
-  if (!token) {
-    res.status(401).json({
+    
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    console.log('Token verification successful');
+    console.log('Decoded payload:', JSON.stringify(decoded, null, 2));
+    
+    // Set the user ID and role directly from the decoded token
+    // Ensure we're using the actual user ID and role from the token
+    req.user = {
+      _id: decoded.id || decoded._id || decoded.userId,
+      role: decoded.role || 'user' // Add default role
+    };
+    
+    console.log('Authenticated user ID:', req.user._id);
+    
+    next();
+  } catch (error) {
+    console.error('Authentication error:', error);
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token'
+      });
+    }
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Token expired'
+      });
+    }
+    
+    res.status(500).json({
       success: false,
-      message: 'Not authorized, no token'
+      message: 'Server error during authentication',
+      error: error.message
     });
   }
 };

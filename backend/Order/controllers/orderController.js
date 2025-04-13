@@ -10,8 +10,8 @@ const createOrder = async (req, res) => {
   try {
     const { items, customer, payment, restaurantId, subtotal, tax, deliveryFee, total } = req.body;
     
-    // Process payment based on method
-    let paymentResult;
+    // Process payment if needed
+    let paymentResult = { success: false, paymentIntentId: null, status: 'processing' };
     if (payment.method === 'creditCard') {
       try {
         paymentResult = await PaymentService.processCardPayment({
@@ -23,22 +23,7 @@ const createOrder = async (req, res) => {
             customer_email: customer.email
           }
         });
-
-        // Save card if requested
-        if (payment.saveCard && paymentResult.success) {
-          try {
-            await PaymentService.saveCardDetails({
-              customerId: req.user?.stripeCustomerId,
-              paymentMethodId: payment.paymentMethodId,
-              email: customer.email,
-              name: customer.fullName
-            });
-          } catch (cardSaveError) {
-            console.error('Error saving card (non-fatal):', cardSaveError);
-            // Continue with order process even if card saving fails
-          }
-        }
-        
+        // Only update success status based on actual result
         if (!paymentResult.success) {
           return res.status(400).json({
             success: false,
@@ -47,38 +32,23 @@ const createOrder = async (req, res) => {
           });
         }
       } catch (paymentError) {
+        paymentResult.status = 'failed';
+        paymentResult.error = paymentError.message;
         console.error('Payment service error:', paymentError);
-        
-        // Check if this is a connection error to the payment service
-        if (paymentError.code === 'ECONNREFUSED') {
-          // Set payment to pending and notify admin for manual processing
-          paymentResult = {
-            success: true,
-            status: 'pending-verification',
-            paymentIntentId: `manual-${Date.now()}`,
-            message: 'Payment will be verified manually due to service unavailability'
-          };
-          
-          // TODO: Send notification to admin about manual verification needed
-          console.log('Payment requires manual verification - Payment service unavailable');
-        } else {
-          // For other payment errors, return error to client
-          return res.status(500).json({
-            success: false,
-            message: 'Payment processing error',
-            error: paymentError.message || 'Unknown payment error'
-          });
-        }
+        return res.status(500).json({
+          success: false,
+          message: 'Payment processing error',
+          error: paymentError.message || 'Unknown payment error'
+        });
       }
     } else if (payment.method === 'cash') {
-      // For cash payments, we just mark it as pending
-      paymentResult = PaymentService.processCashPayment();
+      paymentResult.status = 'pending';
+      paymentResult.success = true;
     }
 
-    // Create the order
-    const order = await Order.create({
-      orderId: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      userId: req.user?._id || 'guest',
+    // Build order data
+    const orderData = {
+      userId: req.user ? req.user._id : 'guest',
       restaurantId,
       items,
       customer,
@@ -88,16 +58,17 @@ const createOrder = async (req, res) => {
         paymentIntentId: paymentResult.paymentIntentId,
         status: paymentResult.status === 'succeeded' ? 'completed' : paymentResult.status,
         amount: total,
-        needsVerification: paymentResult.status === 'pending-verification'
+        needsVerification: paymentResult.status === 'pending'
       },
       subtotal,
       tax,
       deliveryFee,
       total,
-      status: 'pending',
-      notes: paymentResult.message ? [paymentResult.message] : []
-    });
+      status: 'pending'
+    };
 
+    console.log('Creating order with data:', orderData);
+    const order = await Order.create(orderData);
     res.status(201).json({
       success: true,
       order,

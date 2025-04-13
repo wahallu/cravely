@@ -4,6 +4,9 @@ import { authApi } from "./slices/authSlice";
 import { restaurantApi } from "./slices/restaurantSlice";
 import { mealApi } from "./slices/mealSlice";
 import { menuApi } from "./slices/menuSlice";
+import { orderApi } from "./slices/orderSlice";
+import { cartApi } from "./slices/cartApiSlice";
+import { shippingAddressApi } from "./slices/shippingAddressSlice";
 import cartReducer from "./slices/cartSlice";
 
 export const store = configureStore({
@@ -12,6 +15,9 @@ export const store = configureStore({
     [restaurantApi.reducerPath]: restaurantApi.reducer,
     [mealApi.reducerPath]: mealApi.reducer,
     [menuApi.reducerPath]: menuApi.reducer,
+    [orderApi.reducerPath]: orderApi.reducer,
+    [cartApi.reducerPath]: cartApi.reducer,
+    [shippingAddressApi.reducerPath]: shippingAddressApi.reducer,
     cart: cartReducer,
   },
   middleware: (getDefaultMiddleware) =>
@@ -19,7 +25,10 @@ export const store = configureStore({
       .concat(authApi.middleware)
       .concat(restaurantApi.middleware)
       .concat(mealApi.middleware)
-      .concat(menuApi.middleware),
+      .concat(menuApi.middleware)
+      .concat(orderApi.middleware)
+      .concat(cartApi.middleware)
+      .concat(shippingAddressApi.middleware),
 });
 
 setupListeners(store.dispatch);

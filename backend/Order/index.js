@@ -4,6 +4,7 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const orderRoutes = require('./routes/orderRoutes');
 const cartRoutes = require('./routes/cartRoutes');
+const shippingAddressRoutes = require('./routes/ShippingAddressRoute');
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ app.get('/', (req, res) => {
 // Use routes
 app.use('/api/orders', orderRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api/shipping-addresses', shippingAddressRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

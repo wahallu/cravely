@@ -1,5 +1,12 @@
 const mongoose = require('mongoose');
 
+const ItemSchema = new mongoose.Schema({
+  id: String,
+  name: String,
+  price: Number,
+  quantity: Number
+});
+
 const OrderSchema = new mongoose.Schema({
   orderId: {
     type: String,
@@ -14,14 +21,16 @@ const OrderSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  items: [
-    {
-      id: String,
-      name: String,
-      price: Number,
-      quantity: Number
+  items: {
+    type: [ItemSchema],
+    required: [true, 'Order must have at least one item'],
+    validate: {
+      validator: function(items) {
+        return items && items.length > 0;
+      },
+      message: 'Order must contain at least one item'
     }
-  ],
+  },
   customer: {
     fullName: {
       type: String,
@@ -59,7 +68,16 @@ const OrderSchema = new mongoose.Schema({
   deliveryFee: Number,
   total: {
     type: Number,
-    required: true
+    required: true,
+    min: [0, 'Total cannot be negative'],
+    validate: {
+      validator: function(total) {
+        // Ensure total matches sum of item prices
+        return Math.abs(total - this.items.reduce((sum, item) => 
+          sum + (item.price * item.quantity), 0)) < 0.01;
+      },
+      message: 'Order total does not match item prices'
+    }
   },
   estimatedDeliveryTime: Date,
   specialInstructions: String,

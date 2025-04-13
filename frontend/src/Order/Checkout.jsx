@@ -20,6 +20,14 @@ import {
   selectCartTotalAmount,
   clearCart 
 } from "../Redux/slices/cartSlice";
+import { 
+  useGetUserAddressesQuery,
+  useAddAddressMutation,
+  useUpdateAddressMutation,
+  useDeleteAddressMutation,
+  useSetDefaultAddressMutation
+} from "../Redux/slices/shippingAddressSlice";
+import { useCreateOrderMutation } from "../Redux/slices/orderSlice";
 
 // Initialize Stripe with your publishable key
 // Replace with your actual publishable key
@@ -92,7 +100,9 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
   ]);
 
   const [selectedCardId, setSelectedCardId] = useState(savedCards.length > 0 ? savedCards[0].id : null);
-  
+  const [addAddress] = useAddAddressMutation();
+  const [createOrder] = useCreateOrderMutation();
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
@@ -137,8 +147,8 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
     
     // Save the new address if checkbox is checked
     if (isAddingNewAddress && saveAddress && formData.address) {
-      const newAddress = {
-        id: Date.now().toString(), // Simple unique ID
+      // Prepare the address data for the API
+      const addressData = {
         fullName: formData.fullName,
         phone: formData.phone,
         address: formData.address,
@@ -148,7 +158,16 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
         isDefault: savedAddresses.length === 0
       };
       
-      setSavedAddresses(prev => [...prev, newAddress]);
+      // Call the API to save the address
+      try {
+        const result = await addAddress(addressData).unwrap();
+        // Update local state only after successful API call
+        if (result.success) {
+          console.log("Address saved to database:", result.address);
+        }
+      } catch (error) {
+        console.error("Failed to save address:", error);
+      }
     }
     
     // If not using credit card, use the non-card payment flow
@@ -229,16 +248,48 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
           // In a real app, you would send this to your backend for secure storage
         }
         
-        // Simulate successful payment (replace with actual API call)
-        setTimeout(() => {
-          console.log("Order submitted with payment method:", paymentMethod.id);
+        // After successful payment
+        try {
+          // Prepare order data
+          const orderData = {
+            items: cartSummary.items,
+            customer: formData,
+            payment: {
+              method: formData.paymentMethod,
+              paymentMethodId: paymentMethod.id // from Stripe
+            },
+            restaurantId: cartSummary.items[0]?.restaurantId, // Assuming all items are from same restaurant
+            subtotal: cartSummary.subtotal,
+            tax: cartSummary.tax,
+            deliveryFee: cartSummary.delivery,
+            total: cartSummary.total
+          };
           
-          // Trigger the payment success animation and redirect
-          onPaymentSuccess();
+          // Call the API to create the order
+          const result = await createOrder(orderData).unwrap();
           
-          setProcessing(false);
-          setIsSubmitting(false);
-        }, 1500);
+          if (result.success) {
+            // Now we have a real order ID from the database
+            dispatch(clearCart());
+            
+            setTimeout(() => {
+              setPaymentSuccessful(true);
+              setTimeout(() => {
+                navigate('/confirmation', { 
+                  state: { 
+                    orderDetails: result.order // Use the real order from the database
+                  }
+                });
+              }, 1000);
+            }, 2000);
+          }
+        } catch (error) {
+          console.error("Failed to create order:", error);
+          setCardError("Payment succeeded but order creation failed. Please contact support.");
+        }
+        
+        setProcessing(false);
+        setIsSubmitting(false);
       }
     } catch (err) {
       console.error('Payment error:', err);
@@ -959,29 +1010,12 @@ export default function Checkout() {
     items: cartItems
   };
 
-  // Dummy saved addresses data
-  const [savedAddresses, setSavedAddresses] = useState([
-    {
-      id: '1',
-      fullName: 'John Doe',
-      phone: '(555) 123-4567',
-      address: '123 Main Street',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      isDefault: true
-    },
-    {
-      id: '2',
-      fullName: 'John Doe',
-      phone: '(555) 987-6543',
-      address: '456 Park Avenue',
-      city: 'Brooklyn',
-      state: 'NY',
-      zipCode: '11201',
-      isDefault: false
-    }
-  ]);
+  // Replace your existing address fetching with:
+  const { data: addresses, isLoading: isLoadingAddresses } = useGetUserAddressesQuery();
+  const [addAddress] = useAddAddressMutation();
+  const [updateAddress] = useUpdateAddressMutation();
+  const [deleteAddress] = useDeleteAddressMutation();
+  const [setAddressAsDefault] = useSetDefaultAddressMutation();
 
   // For navigation
   const navigate = useNavigate();
@@ -994,13 +1028,13 @@ export default function Checkout() {
 
   // State for form fields
   const [formData, setFormData] = useState({
-    fullName: savedAddresses[0]?.fullName || '',
+    fullName: addresses?.[0]?.fullName || '',
     email: '',
-    phone: savedAddresses[0]?.phone || '',
-    address: savedAddresses[0]?.address || '',
-    city: savedAddresses[0]?.city || '',
-    state: savedAddresses[0]?.state || '',
-    zipCode: savedAddresses[0]?.zipCode || '',
+    phone: addresses?.[0]?.phone || '',
+    address: addresses?.[0]?.address || '',
+    city: addresses?.[0]?.city || '',
+    state: addresses?.[0]?.state || '',
+    zipCode: addresses?.[0]?.zipCode || '',
     paymentMethod: 'creditCard',
     nameOnCard: '',
     cardNumber: '',
@@ -1020,8 +1054,6 @@ export default function Checkout() {
     
     // Clear the cart
     dispatch(clearCart());
-    
-    // After animation completes, redirect to confirmation page
     setTimeout(() => {
       setPaymentSuccessful(true);
       setTimeout(() => {
@@ -1032,25 +1064,51 @@ export default function Checkout() {
               items: cartSummary.items,
               total: cartSummary.total,
               customer: formData,
-              status: 'pending', // Add status field to indicate restaurant needs to confirm
+              status: 'pending',
               createdAt: new Date().toISOString()
             } 
           }
         });
-      }, 1000); // Delay before actual redirect to let the exit animation complete
-    }, 2000); // Show success animation for 2 seconds
+      }, 1000);
+    }, 2000);
   };
 
   // Handle non-credit card payment methods
-  const processNonCardPayment = () => {
+  const processNonCardPayment = async () => {
     setIsSubmitting(true);
-    // Simulate processing time for non-card payments
-    setTimeout(() => {
-      console.log("Non-card order submitted:", formData);
-      // Trigger the payment success animation and redirect
-      handlePaymentSuccess();
+    try {
+      // Prepare order data - same as with credit card payments
+      const orderData = {
+        items: cartSummary.items,
+        customer: formData,
+        payment: {
+          method: formData.paymentMethod,
+          // No payment method ID for cash payments
+        },
+        restaurantId: cartSummary.items[0]?.restaurantId,
+        subtotal: cartSummary.subtotal,
+        tax: cartSummary.tax,
+        deliveryFee: cartSummary.delivery,
+        total: cartSummary.total
+      };
+      
+      console.log("Submitting cash order to API:", orderData);
+      // Actually call the API
+      const result = await createOrder(orderData).unwrap();
+      
+      if (result.success) {
+        // Now we have a real order ID from the database
+        dispatch(clearCart());
+        handlePaymentSuccess();
+      } else {
+        toast.error("Failed to create order: " + (result.message || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Order creation failed:", error);
+      toast.error("Failed to create order: " + (error.data?.message || error.message || "Unknown error"));
+    } finally {
       setIsSubmitting(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -1184,8 +1242,8 @@ export default function Checkout() {
                       isSubmitting={isSubmitting}
                       setIsSubmitting={setIsSubmitting}
                       onNonCardPayment={formSubmitRef}
-                      savedAddresses={savedAddresses}
-                      setSavedAddresses={setSavedAddresses}
+                      savedAddresses={addresses || []}
+                      setSavedAddresses={() => {}}
                       onPaymentSuccess={handlePaymentSuccess}
                     /> 
                   </Elements>
