@@ -17,15 +17,24 @@ export const orderApi = createApi({
   tagTypes: ['Order'],
   endpoints: (builder) => ({
     createOrder: builder.mutation({
-      query: (orderData) => ({
-        url: '/orders',
-        method: 'POST',
-        body: orderData,
-      }),
+      query: (orderData) => {
+        console.log('Sending order data to API:', JSON.stringify(orderData));
+        return {
+          url: '/orders',
+          method: 'POST',
+          body: orderData,
+        };
+      },
+      // Improved error handling
+      transformErrorResponse: (response, meta, arg) => {
+        console.error('Order API error response:', response);
+        return response;
+      },
       // Clear cart on successful order
       onQueryStarted: async (_, { dispatch, queryFulfilled }) => {
         try {
-          await queryFulfilled;
+          const result = await queryFulfilled;
+          console.log('Order creation successful, response:', result);
           dispatch(clearCart());
         } catch (err) {
           console.error('Order creation failed:', err);

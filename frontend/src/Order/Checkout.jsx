@@ -28,6 +28,11 @@ import {
   useSetDefaultAddressMutation
 } from "../Redux/slices/shippingAddressSlice";
 import { useCreateOrderMutation } from "../Redux/slices/orderSlice";
+import { 
+  useCreatePaymentIntentMutation,
+  useSaveCardMutation,
+  useGetSavedCardsQuery
+} from "../Redux/slices/paymentSlice";
 
 // Initialize Stripe with your publishable key
 // Replace with your actual publishable key
@@ -53,9 +58,10 @@ const cardElementOptions = {
 };
 
 // CheckoutForm component with Stripe
-function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsSubmitting, onNonCardPayment, savedAddresses, setSavedAddresses, onPaymentSuccess }) {
+function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsSubmitting, onNonCardPayment, savedAddresses, setSavedAddresses, onPaymentSuccess, savedCards, createPaymentIntent, saveCard }) {
   const stripe = useStripe();
   const elements = useElements();
+  const dispatch = useDispatch(); // Add this line to get the dispatch function
   const [cardError, setCardError] = useState(null);
   const [processing, setProcessing] = useState(false);
   const formRef = useRef(null);
@@ -68,36 +74,9 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
   // Add state for card details to display on card UI
   const [cardDetails, setCardDetails] = useState({
     number: '•••• •••• •••• ••••',
-    expiry: '',
-    cvc: ''
+    expiry: '12/26',
+    cvc: '123'
   });
-
-  const [savedCards, setSavedCards] = useState([
-    {
-      id: 'card_1',
-      nameOnCard: 'John Doe',
-      cardNumber: '•••• •••• •••• 4242',
-      cardType: 'visa',
-      expiryDate: '12/25',
-      isDefault: true
-    },
-    {
-      id: 'card_2',
-      nameOnCard: 'John Doe',
-      cardNumber: '•••• •••• •••• 5678',
-      cardType: 'mastercard',
-      expiryDate: '09/24',
-      isDefault: false
-    },
-    {
-      id: 'card_3',
-      nameOnCard: 'Jane Doe',
-      cardNumber: '•••• •••• •••• 9012',
-      cardType: 'amex',
-      expiryDate: '04/26',
-      isDefault: false
-    }
-  ]);
 
   const [selectedCardId, setSelectedCardId] = useState(savedCards.length > 0 ? savedCards[0].id : null);
   const [addAddress] = useAddAddressMutation();
@@ -142,43 +121,51 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
     });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handlePaymentSubmission = async (ev) => {
+    ev.preventDefault();
+    setIsSubmitting(true);
+    setCardError(null);
     
-    // Save the new address if checkbox is checked
-    if (isAddingNewAddress && saveAddress && formData.address) {
-      // Prepare the address data for the API
-      const addressData = {
-        fullName: formData.fullName,
-        phone: formData.phone,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        zipCode: formData.zipCode,
-        isDefault: savedAddresses.length === 0
-      };
-      
-      // Call the API to save the address
-      try {
-        const result = await addAddress(addressData).unwrap();
-        // Update local state only after successful API call
-        if (result.success) {
-          console.log("Address saved to database:", result.address);
-        }
-      } catch (error) {
-        console.error("Failed to save address:", error);
-      }
-    }
-    
-    // If not using credit card, use the non-card payment flow
-    if (formData.paymentMethod !== 'creditCard') {
-      onNonCardPayment();
+    // Validate form data
+    if (!formData.fullName || !formData.phone || !formData.address || !formData.city || 
+        !formData.state || !formData.zipCode) {
+      setCardError("Please fill in all required address fields");
+      setIsSubmitting(false);
       return;
     }
     
     if (!stripe || !elements) {
-      // Stripe.js has not loaded yet
-      setCardError("Stripe is still loading. Please try again.");
+      setCardError("Stripe has not loaded. Please refresh the page and try again.");
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Save the new address if checkbox is checked
+    if (isAddingNewAddress && saveAddress && formData.address) {
+      try {
+        const addressData = {
+          fullName: formData.fullName,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          isDefault: savedAddresses.length === 0
+        };
+        
+        const result = await addAddress(addressData).unwrap();
+        if (result.success) {
+          console.log("Address saved successfully:", result.address);
+        }
+      } catch (error) {
+        console.error("Failed to save address:", error);
+        // Continue with payment even if address saving fails
+      }
+    }
+    
+    // Handle cash payment separately
+    if (formData.paymentMethod !== 'creditCard') {
+      onNonCardPayment();
       return;
     }
     
@@ -187,113 +174,189 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
       return;
     }
 
-    // Only check if the card is complete, no expiry date validation
-    if (!cardComplete) {
+    if (!cardComplete && !selectedCardId) {
       setCardError("Please complete your card information.");
       return;
     }
 
-    if (selectedCardId && formData.paymentMethod === 'creditCard') {
-      // When using a saved card, we'd typically send the card ID to server
-      // Here we're simulating the successful payment directly
-      setProcessing(true);
-      setIsSubmitting(true);
-      
-      // Simulate successful payment with saved card
-      setTimeout(() => {
-        console.log("Order submitted with saved card:", selectedCardId);
-        
-        // Trigger the payment success animation and redirect
-        onPaymentSuccess();
-        
-        setProcessing(false);
-        setIsSubmitting(false);
-      }, 1500);
-      return;
-    }
-    
     setProcessing(true);
     setIsSubmitting(true);
     
     try {
-      // Create payment method
-      const { error, paymentMethod } = await stripe.createPaymentMethod({
-        type: 'card',
-        card: elements.getElement(CardElement),
-        billing_details: {
-          name: formData.nameOnCard || formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
-          address: {
-            line1: formData.address,
-            city: formData.city,
-            state: formData.state,
-            postal_code: formData.zipCode,
-            country: 'US', // Hardcoded for now
-          }
-        },
-      });
+      let paymentMethodId;
       
-      if (error) {
-        setCardError(error.message);
-        setProcessing(false);
-        setIsSubmitting(false);
+      // If using a saved card
+      if (selectedCardId) {
+        paymentMethodId = selectedCardId;
+        console.log("Using saved card with ID:", paymentMethodId);
       } else {
-        // Here you would typically send the payment method ID to your server
-        console.log('Payment method created:', paymentMethod.id);
+        // Create a new payment method
+        const { error, paymentMethod } = await stripe.createPaymentMethod({
+          type: 'card',
+          card: elements.getElement(CardElement),
+          billing_details: {
+            name: formData.nameOnCard,
+            email: formData.email,
+            phone: formData.phone,
+            address: {
+              line1: formData.address,
+              city: formData.city,
+              state: formData.state,
+              postal_code: formData.zipCode,
+              country: 'US',
+            }
+          },
+        });
         
-        // If saveCardDetails is true, we would store the card token securely
-        if (saveCardDetails) {
-          console.log('Card details will be saved for future use');
-          // In a real app, you would send this to your backend for secure storage
+        if (error) {
+          setCardError(error.message);
+          setProcessing(false);
+          setIsSubmitting(false);
+          return;
         }
         
-        // After successful payment
-        try {
-          // Prepare order data
-          const orderData = {
-            items: cartSummary.items,
-            customer: formData,
-            payment: {
-              method: formData.paymentMethod,
-              paymentMethodId: paymentMethod.id // from Stripe
-            },
-            restaurantId: cartSummary.items[0]?.restaurantId, // Assuming all items are from same restaurant
-            subtotal: cartSummary.subtotal,
-            tax: cartSummary.tax,
-            deliveryFee: cartSummary.delivery,
-            total: cartSummary.total
-          };
-          
-          // Call the API to create the order
-          const result = await createOrder(orderData).unwrap();
-          
-          if (result.success) {
-            // Now we have a real order ID from the database
-            dispatch(clearCart());
-            
-            setTimeout(() => {
-              setPaymentSuccessful(true);
-              setTimeout(() => {
-                navigate('/confirmation', { 
-                  state: { 
-                    orderDetails: result.order // Use the real order from the database
-                  }
-                });
-              }, 1000);
-            }, 2000);
-          }
-        } catch (error) {
-          console.error("Failed to create order:", error);
-          setCardError("Payment succeeded but order creation failed. Please contact support.");
-        }
-        
-        setProcessing(false);
-        setIsSubmitting(false);
+        paymentMethodId = paymentMethod.id;
+        console.log('Payment method created:', paymentMethodId);
       }
-    } catch (err) {
-      console.error('Payment error:', err);
-      setCardError('An unexpected error occurred.');
+      
+      // 1. Create payment intent through your Gateway service using RTK Query
+      const paymentIntentData = {
+        amount: Math.round(cartSummary.total * 100), // Amount in cents
+        currency: 'usd',
+        paymentMethodId: paymentMethodId,
+        description: `Order from Cravely - ${formData.fullName}`,
+        metadata: {
+          customerName: formData.fullName,
+          customerEmail: formData.email,
+          items: JSON.stringify(cartSummary.items.map(item => `${item.name} x${item.quantity}`))
+        },
+        saveCard: saveCardDetails
+      };
+      
+      console.log("Creating payment intent with data:", paymentIntentData);
+      
+      try {
+        // Use createPaymentIntent mutation instead of fetch
+        const intentResponse = await createPaymentIntent(paymentIntentData).unwrap();
+        
+        if (!intentResponse || !intentResponse.success) {
+          throw new Error(intentResponse?.message || 'Failed to create payment intent');
+        }
+        
+        const { clientSecret, intentId } = intentResponse;
+        
+        // 2. Confirm the payment with Stripe
+        const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: paymentMethodId,
+          // For 3D Secure or other authentication methods
+          return_url: window.location.origin + '/payment-return'
+        });
+        
+        if (confirmError) {
+          setCardError(confirmError.message);
+          setProcessing(false);
+          setIsSubmitting(false);
+          return;
+        }
+        
+        if (paymentIntent.status === 'succeeded') {
+          console.log('Payment succeeded:', paymentIntent);
+          
+          // If the user requested to save the card
+          if (saveCardDetails && !selectedCardId) {
+            try {
+              await saveCard({
+                paymentMethodId: paymentMethod.id,
+                isDefault: formData.makeDefaultCard || false,
+                last4: paymentMethod.card.last4,
+                cardType: paymentMethod.card.brand,
+                expMonth: paymentMethod.card.exp_month,
+                expYear: paymentMethod.card.exp_year,
+                nameOnCard: formData.fullName
+              }).unwrap();
+              console.log("Card saved successfully");
+            } catch (saveCardError) {
+              console.error("Error saving card:", saveCardError);
+              // Don't throw, just log and continue with order creation
+              console.log("Card save feature may not be available yet. Continuing with order creation.");
+            }
+          }
+          
+          // 3. Create the order with payment details
+          try {
+            const orderData = {
+              items: cartSummary.items.map(item => ({
+                id: item.id,
+                name: item.name,
+                price: parseFloat(item.price),
+                quantity: parseInt(item.quantity),
+                image: item.imageUrl || null
+              })),
+              customer: {
+                fullName: formData.fullName,
+                email: formData.email,
+                phone: formData.phone,
+                address: formData.address,
+                city: formData.city,
+                state: formData.state,
+                zipCode: formData.zipCode
+              },
+              payment: {
+                method: 'creditCard',
+                paymentIntentId: paymentIntent.id, // Use direct paymentIntent.id
+                status: 'completed',
+                amount: cartSummary.total
+              },
+              restaurantId: cartSummary.items[0]?.restaurantId,
+              subtotal: parseFloat(cartSummary.subtotal.toFixed(2)),
+              tax: parseFloat(cartSummary.tax.toFixed(2)),
+              deliveryFee: parseFloat(cartSummary.delivery.toFixed(2)),
+              total: parseFloat(cartSummary.total.toFixed(2))
+            };
+            
+            console.log("Creating order with payment data:", orderData);
+            
+            try {
+              const result = await createOrder(orderData).unwrap();
+              
+              if (result.success) {
+                console.log("Order creation succeeded:", result);
+                
+                // Clear cart and proceed with success flow
+                dispatch(clearCart());
+                onPaymentSuccess();
+              } else {
+                console.error("Order API returned success: false", result);
+                // Even if the order recording failed, payment was successful
+                // We should still clear the cart and let the user proceed
+                dispatch(clearCart());
+                onPaymentSuccess();
+              }
+            } catch (orderApiError) {
+              console.error("Order API error:", orderApiError);
+              // If the payment was successful but order recording failed,
+              // still proceed with the success flow from the user's perspective
+              dispatch(clearCart());
+              onPaymentSuccess();
+            }
+          } catch (orderError) {
+            console.error("Order creation failed:", orderError);
+            // Still complete the payment flow since payment succeeded
+            dispatch(clearCart());
+            onPaymentSuccess();
+          }
+        } else {
+          setCardError(`Payment status: ${paymentIntent.status}. Please try again.`);
+        }
+      } catch (intentError) {
+        console.error('Payment intent creation error:', intentError);
+        setCardError(intentError.message || 'Failed to process payment. Please try again.');
+      }
+    } catch (paymentError) {
+      console.error("Payment processing error:", paymentError);
+      setCardError(paymentError.message || "Payment failed. Please try again.");
+      setIsSubmitting(false);
+    } finally {
       setProcessing(false);
       setIsSubmitting(false);
     }
@@ -360,7 +423,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
   };
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit}>
+    <form ref={formRef} onSubmit={handlePaymentSubmission}>
       {/* Shipping Information */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6 transform transition-all hover:shadow-lg border-l-4 border-orange-500">
         <h2 className="text-xl font-semibold mb-6 text-gray-800 flex items-center">
@@ -1012,10 +1075,13 @@ export default function Checkout() {
 
   // Replace your existing address fetching with:
   const { data: addresses, isLoading: isLoadingAddresses } = useGetUserAddressesQuery();
+  const { data: savedCards = [] } = useGetSavedCardsQuery();
   const [addAddress] = useAddAddressMutation();
   const [updateAddress] = useUpdateAddressMutation();
   const [deleteAddress] = useDeleteAddressMutation();
   const [setAddressAsDefault] = useSetDefaultAddressMutation();
+  const [createPaymentIntent] = useCreatePaymentIntentMutation();
+  const [saveCard] = useSaveCardMutation();
 
   // For navigation
   const navigate = useNavigate();
@@ -1077,31 +1143,58 @@ export default function Checkout() {
   const processNonCardPayment = async () => {
     setIsSubmitting(true);
     try {
-      // Prepare order data - same as with credit card payments
+      // Format items for API submission
+      const formattedItems = cartSummary.items.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: parseFloat(item.price),
+        quantity: parseInt(item.quantity),
+        // Include image and other properties if needed by backend
+        image: item.image || null
+      }));
+      
+      // Prepare order data with properly formatted values
       const orderData = {
-        items: cartSummary.items,
-        customer: formData,
+        items: formattedItems,
+        customer: {
+          fullName: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode
+        },
         payment: {
           method: formData.paymentMethod,
           // No payment method ID for cash payments
         },
         restaurantId: cartSummary.items[0]?.restaurantId,
-        subtotal: cartSummary.subtotal,
-        tax: cartSummary.tax,
-        deliveryFee: cartSummary.delivery,
-        total: cartSummary.total
+        subtotal: parseFloat(cartSummary.subtotal.toFixed(2)),
+        tax: parseFloat(cartSummary.tax.toFixed(2)),
+        deliveryFee: parseFloat(cartSummary.delivery.toFixed(2)),
+        total: parseFloat(cartSummary.total.toFixed(2))
       };
       
-      console.log("Submitting cash order to API:", orderData);
-      // Actually call the API
-      const result = await createOrder(orderData).unwrap();
+      console.log("Submitting cash order to API:", JSON.stringify(orderData));
       
-      if (result.success) {
-        // Now we have a real order ID from the database
-        dispatch(clearCart());
-        handlePaymentSuccess();
-      } else {
-        toast.error("Failed to create order: " + (result.message || "Unknown error"));
+      try {
+        // Call the createOrder mutation and unwrap the result
+        const result = await createOrder(orderData).unwrap();
+        
+        if (result.success) {
+          console.log("Order creation succeeded:", result);
+          
+          // Clear cart and proceed with success flow
+          dispatch(clearCart());
+          handlePaymentSuccess();
+        } else {
+          console.error("Order API returned success: false", result);
+          toast.error("Failed to create order: " + (result.message || "Unknown error"));
+        }
+      } catch (apiError) {
+        console.error("Order API call failed:", apiError);
+        toast.error("Failed to create order: " + (apiError.data?.message || apiError.message || "Unknown error"));
       }
     } catch (error) {
       console.error("Order creation failed:", error);
@@ -1245,6 +1338,9 @@ export default function Checkout() {
                       savedAddresses={addresses || []}
                       setSavedAddresses={() => {}}
                       onPaymentSuccess={handlePaymentSuccess}
+                      savedCards={savedCards}
+                      createPaymentIntent={createPaymentIntent}
+                      saveCard={saveCard}
                     /> 
                   </Elements>
                 </div>

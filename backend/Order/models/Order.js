@@ -72,11 +72,13 @@ const OrderSchema = new mongoose.Schema({
     min: [0, 'Total cannot be negative'],
     validate: {
       validator: function(total) {
-        // Ensure total matches sum of item prices
-        return Math.abs(total - this.items.reduce((sum, item) => 
-          sum + (item.price * item.quantity), 0)) < 0.01;
+        const itemsTotal = this.items.reduce((sum, item) => 
+          sum + (item.price * item.quantity), 0);
+        // Include tax and delivery fee in the calculation
+        const calculatedTotal = itemsTotal + this.tax + this.deliveryFee;
+        return Math.abs(total - calculatedTotal) < 0.01;
       },
-      message: 'Order total does not match item prices'
+      message: 'Order total does not match the sum of items, tax, and delivery fee'
     }
   },
   estimatedDeliveryTime: Date,

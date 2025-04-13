@@ -1,5 +1,6 @@
 const Order = require('../models/Order');
 const PaymentService = require('../services/paymentService');
+const mongoose = require('mongoose');
 
 /**
  * Create a new order
@@ -8,12 +9,50 @@ const PaymentService = require('../services/paymentService');
  */
 const createOrder = async (req, res) => {
   try {
-    const { items, customer, payment, restaurantId, subtotal, tax, deliveryFee, total } = req.body;
+    // Log incoming data for debugging
+    console.log('Creating order with request body:', JSON.stringify(req.body, null, 2));
+    console.log('Order creation started with payload:', JSON.stringify(req.body));
+    const { items, customer, payment = {}, restaurantId, subtotal, tax, deliveryFee, total } = req.body;
+    
+    if (!items || items.length === 0) {
+      console.error('No items provided in order creation');
+      return res.status(400).json({
+        success: false,
+        message: 'Order must contain at least one item'
+      });
+    }
+
+    // Validate required fields
+    if (!customer || !customer.fullName) {
+      console.error('Missing customer information');
+      return res.status(400).json({
+        success: false,
+        message: 'Customer information is required'
+      });
+    }
+
+    if (!payment || !payment.method) {
+      console.error('Missing payment method');
+      return res.status(400).json({
+        success: false,
+        message: 'Payment method is required'
+      });
+    }
     
     // Process payment if needed
-    let paymentResult = { success: false, paymentIntentId: null, status: 'processing' };
+    let paymentResult = {
+      paymentIntentId: payment.paymentIntentId || null,
+      status: payment.status || 'pending',
+      amount: payment.amount || total
+    };
     if (payment.method === 'creditCard') {
       try {
+        // Add more detailed logging
+        console.log('Processing card payment:', {
+          amount: total,
+          paymentMethodId: payment.paymentMethodId
+        });
+        
         paymentResult = await PaymentService.processCardPayment({
           amount: total,
           paymentMethodId: payment.paymentMethodId,
@@ -23,6 +62,9 @@ const createOrder = async (req, res) => {
             customer_email: customer.email
           }
         });
+        
+        console.log('Payment result:', paymentResult);
+        
         // Only update success status based on actual result
         if (!paymentResult.success) {
           return res.status(400).json({
@@ -32,13 +74,15 @@ const createOrder = async (req, res) => {
           });
         }
       } catch (paymentError) {
+        console.error('Payment service detailed error:', paymentError);
+        console.error('Error stack:', paymentError.stack);
         paymentResult.status = 'failed';
         paymentResult.error = paymentError.message;
-        console.error('Payment service error:', paymentError);
+        
         return res.status(500).json({
           success: false,
           message: 'Payment processing error',
-          error: paymentError.message || 'Unknown payment error'
+          error: paymentError.message
         });
       }
     } else if (payment.method === 'cash') {
@@ -46,39 +90,90 @@ const createOrder = async (req, res) => {
       paymentResult.success = true;
     }
 
+    // Generate a unique order ID
+    const orderId = 'ORD-' + Date.now().toString().slice(-6) + Math.floor(Math.random() * 1000);
+    
+    // Format order items properly
+    const formattedItems = items.map(item => ({
+      id: item.id,
+      name: item.name,
+      price: parseFloat(item.price || 0),
+      quantity: parseInt(item.quantity || 1)
+    }));
+
+    // Calculate server-side totals for verification
+    const calculatedSubtotal = formattedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const calculatedTax = parseFloat((calculatedSubtotal * 0.1).toFixed(2)); // 10% tax
+    const calculatedDeliveryFee = parseFloat(deliveryFee || 1.99);
+    const calculatedTotal = parseFloat((calculatedSubtotal + calculatedTax + calculatedDeliveryFee).toFixed(2));
+
+    // Check for significant discrepancies in calculations
+    if (Math.abs(calculatedTotal - parseFloat(total || 0)) > 1) {
+      console.error('Total price calculation mismatch', {
+        provided: { subtotal, tax, deliveryFee, total },
+        calculated: { calculatedSubtotal, calculatedTax, calculatedDeliveryFee, calculatedTotal }
+      });
+      // We'll continue but log the discrepancy
+    }
+
     // Build order data
     const orderData = {
-      userId: req.user ? req.user._id : 'guest',
+      orderId,
+      userId: req.user ? req.user._id.toString() : 'guest',
       restaurantId,
-      items,
+      items: formattedItems,
       customer,
       payment: {
         method: payment.method,
         cardId: payment.method === 'creditCard' ? payment.cardId : null,
         paymentIntentId: paymentResult.paymentIntentId,
         status: paymentResult.status === 'succeeded' ? 'completed' : paymentResult.status,
-        amount: total,
-        needsVerification: paymentResult.status === 'pending'
+        amount: calculatedTotal // Use calculated total for consistency
       },
-      subtotal,
-      tax,
-      deliveryFee,
-      total,
+      subtotal: calculatedSubtotal,
+      tax: calculatedTax,
+      deliveryFee: calculatedDeliveryFee,
+      total: calculatedTotal,
       status: 'pending'
     };
 
-    console.log('Creating order with data:', orderData);
-    const order = await Order.create(orderData);
-    res.status(201).json({
-      success: true,
-      order,
-      warnings: paymentResult.message ? [paymentResult.message] : []
-    });
+    console.log('Creating order with data:', JSON.stringify(orderData));
+    
+    // Create and save the order document
+    try {
+      const order = new Order(orderData);
+      const savedOrder = await order.save();
+      
+      if (!savedOrder) {
+        console.error('Order was not saved properly');
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to save order to database'
+        });
+      }
+      
+      console.log('Order created successfully:', savedOrder._id);
+      
+      // Return success response with saved order
+      return res.status(201).json({
+        success: true,
+        order: savedOrder,
+        warnings: paymentResult.message ? [paymentResult.message] : []
+      });
+    } catch (dbError) {
+      console.error('Database error saving order:', dbError);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error when saving order',
+        error: dbError.message
+      });
+    }
   } catch (error) {
     console.error('Order creation error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      message: 'Server error',
+      message: 'Failed to create order',
       error: error.message
     });
   }
