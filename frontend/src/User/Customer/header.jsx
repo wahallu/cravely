@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
   MdMenu, 
@@ -17,6 +17,53 @@ export default function Header({ toggleSidebar }) {
   const [notifications, setNotifications] = useState(2);
   const [cartItems, setCartItems] = useState(3);
   const [profileDropdown, setProfileDropdown] = useState(false);
+  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
+
+  // Get user data on component mount
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setProfileDropdown(false);
+    navigate('/login');
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user) return 'U';
+    
+    if (user.firstName && user.lastName) {
+      return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`;
+    } else if (user.firstName) {
+      return user.firstName.charAt(0);
+    } else if (user.email) {
+      return user.email.charAt(0).toUpperCase();
+    }
+    
+    return 'U';
+  };
+
+  // Get user display name
+  const getUserDisplayName = () => {
+    if (!user) return 'User';
+    
+    if (user.firstName && user.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    } else if (user.firstName) {
+      return user.firstName;
+    } else if (user.email) {
+      return user.email.split('@')[0];
+    }
+    
+    return 'User';
+  };
 
   return (
     <motion.header 
@@ -89,11 +136,10 @@ export default function Header({ toggleSidebar }) {
               className="flex items-center gap-2 p-1.5 rounded-full hover:bg-gray-100 transition-colors"
             >
               <div className="h-9 w-9 rounded-full bg-gradient-to-r from-orange-400 to-orange-600 flex items-center justify-center shadow-sm">
-                <span className="font-medium text-white">JD</span>
+                <span className="font-medium text-white">{getUserInitials()}</span>
               </div>
               <div className="hidden md:block">
-                <h3 className="font-medium text-gray-800 text-sm">John Doe</h3>
-                <p className="text-xs text-gray-500">Premium Customer</p>
+                <h3 className="font-medium text-gray-800 text-sm">{getUserDisplayName()}</h3>
               </div>
               <MdKeyboardArrowDown className={`transition-transform duration-200 text-gray-500 ${profileDropdown ? 'rotate-180' : ''}`} />
             </button>
@@ -106,7 +152,7 @@ export default function Header({ toggleSidebar }) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <Link to="/profile" className="flex items-center px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-500">
+                <Link to="/user" className="flex items-center px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-500">
                   <MdPerson className="mr-2" />
                   My Profile
                 </Link>
@@ -119,7 +165,10 @@ export default function Header({ toggleSidebar }) {
                   Help & Support
                 </Link>
                 <div className="border-t border-gray-100 my-1"></div>
-                <button className="flex items-center w-full text-left px-4 py-2 text-red-500 hover:bg-red-50">
+                <button 
+                  onClick={handleLogout}
+                  className="flex items-center w-full text-left px-4 py-2 text-red-500 hover:bg-red-50"
+                >
                   <MdLogout className="mr-2" />
                   Logout
                 </button>

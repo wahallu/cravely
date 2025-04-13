@@ -65,11 +65,15 @@ export default function Login() {
     // Handle login logic here
     login({ email, password }).unwrap()
       .then((response) => {
-        console.log('Login successful:', response)
         toast.success('Login successful!')
         localStorage.setItem('token', response.token)
         localStorage.setItem('user', JSON.stringify(response.user))
-        navigate('/')
+        
+        if (response.user.role === 'admin') {
+          navigate('/admin')
+        } else {
+          navigate('/')
+        }
       })
       .catch((error) => {
         console.error('Login failed:', error)
