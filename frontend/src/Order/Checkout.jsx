@@ -14,6 +14,12 @@ import {
   useElements
 } from '@stripe/react-stripe-js';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSelector, useDispatch } from "react-redux";
+import { 
+  selectCartItems, 
+  selectCartTotalAmount,
+  clearCart 
+} from "../Redux/slices/cartSlice";
 
 // Initialize Stripe with your publishable key
 // Replace with your actual publishable key
@@ -940,17 +946,17 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
 }
 
 export default function Checkout() {
-  // Sample cart summary data
+  const cartItems = useSelector(selectCartItems);
+  const cartTotal = useSelector(selectCartTotalAmount);
+  const dispatch = useDispatch();
+
+  // Update your cartSummary with Redux data
   const cartSummary = {
-    subtotal: 29.96,
-    tax: 2.99,
+    subtotal: cartTotal,
+    tax: cartTotal * 0.1, // 10% tax as an example
     delivery: 1.99,
-    total: 34.94,
-    items: [
-      { id: 1, name: "Mushroom Pizza", price: 7.49, quantity: 2 },
-      { id: 2, name: "Italian Pizza", price: 7.49, quantity: 1 },
-      { id: 3, name: "Sausage Pizza", price: 7.49, quantity: 1 }
-    ]
+    total: cartTotal + (cartTotal * 0.1) + 1.99,
+    items: cartItems
   };
 
   // Dummy saved addresses data
@@ -1011,6 +1017,9 @@ export default function Checkout() {
   // Handle payment success and redirect
   const handlePaymentSuccess = () => {
     setShowSuccessAnimation(true);
+    
+    // Clear the cart
+    dispatch(clearCart());
     
     // After animation completes, redirect to confirmation page
     setTimeout(() => {

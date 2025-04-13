@@ -1,42 +1,27 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import {
+  selectCartItems,
+  selectCartTotalAmount,
+  removeFromCart,
+  updateQuantity,
+  toggleFavorite,
+  clearCart
+} from "../Redux/slices/cartSlice";
+import { toast } from "react-hot-toast";
 
 export default function RestaurantCart() {
   const navigate = useNavigate();
-  // Track selected items
+  const dispatch = useDispatch();
+  
+  // Get cart items from Redux state
+  const cartItems = useSelector(selectCartItems);
+  const cartTotal = useSelector(selectCartTotalAmount);
+  
+  // Track selected items with local state
   const [selectedItems, setSelectedItems] = useState({});
   const [selectAll, setSelectAll] = useState(false);
-
-  // Sample cart items for a restaurant
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: "Margherita Pizza",
-      price: 8.99,
-      quantity: 1,
-      imageUrl: "https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-1.2.1&auto=format&fit=crop&w=750&q=80",
-      note: "Extra cheese",
-      isFavorite: false,
-    },
-    {
-      id: 2,
-      name: "Caesar Salad",
-      price: 5.49,
-      quantity: 1,
-      imageUrl: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=750&q=80",
-      note: "No croutons",
-      isFavorite: true,
-    },
-    {
-      id: 3,
-      name: "Spaghetti Bolognese",
-      price: 9.99,
-      quantity: 2,
-      imageUrl: "https://images.unsplash.com/photo-1563379926898-05f4575a45d8?ixlib=rb-1.2.1&auto=format&fit=crop&w=750&q=80",
-      note: "",
-      isFavorite: false,
-    },
-  ]);
 
   // Calculate estimated total based on selected items only
   const estimatedTotal = cartItems.reduce(
@@ -49,29 +34,22 @@ export default function RestaurantCart() {
 
   // Remove item by ID
   const handleRemove = (id) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== id));
+    dispatch(removeFromCart({ id }));
+    toast.success("Item removed from cart");
   };
 
   // Increase/Decrease quantity
   const handleChangeQuantity = (id, delta) => {
-    setCartItems((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item
-      )
-    );
+    const item = cartItems.find(item => item.id === id);
+    if (item) {
+      const newQuantity = Math.max(1, item.quantity + delta);
+      dispatch(updateQuantity({ id, quantity: newQuantity }));
+    }
   };
   
   // Toggle favorite status
-  const toggleFavorite = (id) => {
-    setCartItems((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? { ...item, isFavorite: !item.isFavorite }
-          : item
-      )
-    );
+  const handleToggleFavorite = (id) => {
+    dispatch(toggleFavorite({ id }));
   };
 
   // Handle item selection
@@ -102,12 +80,31 @@ export default function RestaurantCart() {
 
   // Navigate to checkout page
   const handleCheckout = () => {
+    // You could optionally only checkout with selected items
     navigate("/checkout");
   };
 
   // Brand colors
   const brandPrimary = "#ff6b00";
   const brandSecondary = "#ff8900";
+
+  // Show empty cart message if no items
+  if (cartItems.length === 0) {
+    return (
+      <div className="max-w-6xl mx-auto p-4 text-center py-16">
+        <div className="bg-gray-50 p-8 rounded-lg shadow-sm">
+          <h2 className="text-2xl font-bold mb-4">Your cart is empty</h2>
+          <p className="text-gray-600 mb-6">Add some delicious items to your cart and they will appear here.</p>
+          <button
+            onClick={() => navigate("/meals&menus")}
+            className="px-6 py-3 bg-orange-500 text-white rounded-full font-medium hover:bg-orange-600 transition"
+          >
+            Browse Meals
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:flex md:space-x-6">
@@ -141,7 +138,7 @@ export default function RestaurantCart() {
         {/* Cart item list */}
         {cartItems.map((item) => (
           <div
-            key={item.id}
+            key={item.cartItemId || item.id}
             className="flex flex-col md:flex-row items-start md:items-center bg-white p-4 mb-4 rounded shadow-sm"
           >
             {/* Checkbox (functional) */}
@@ -149,15 +146,15 @@ export default function RestaurantCart() {
               <input 
                 type="checkbox" 
                 className="mt-1" 
-                checked={selectedItems[item.id] || false}
-                onChange={() => handleSelectItem(item.id)}
+                checked={selectedItems[item.cartItemId || item.id] || false}
+                onChange={() => handleSelectItem(item.cartItemId || item.id)}
                 style={{ accentColor: brandPrimary }}
               />
             </div>
 
             {/* Item image */}
             <img
-              src={item.imageUrl}
+              src={item.image || "/hero1.png"} // Use image directly, or a fallback
               alt={item.name}
               className="w-20 h-20 object-cover rounded-md mr-4 mb-2 md:mb-0"
             />
@@ -181,7 +178,7 @@ export default function RestaurantCart() {
                 <div className="flex items-center">
                   {/* Heart/Favorite icon */}
                   <button 
-                    onClick={() => toggleFavorite(item.id)} 
+                    onClick={() => handleToggleFavorite(item.cartItemId || item.id)} 
                     className="mr-4 focus:outline-none"
                   >
                     {item.isFavorite ? (
@@ -204,21 +201,21 @@ export default function RestaurantCart() {
               <div className="flex items-center mt-3 space-x-4">
                 <div className="flex items-center border rounded">
                   <button
-                    onClick={() => handleChangeQuantity(item.id, -1)}
+                    onClick={() => handleChangeQuantity(item.cartItemId || item.id, -1)}
                     className="px-2 py-1 text-gray-700 hover:bg-gray-200"
                   >
                     -
                   </button>
                   <div className="px-3 py-1">{item.quantity}</div>
                   <button
-                    onClick={() => handleChangeQuantity(item.id, 1)}
+                    onClick={() => handleChangeQuantity(item.cartItemId || item.id, 1)}
                     className="px-2 py-1 text-gray-700 hover:bg-gray-200"
                   >
                     +
                   </button>
                 </div>
                 <button
-                  onClick={() => handleRemove(item.id)}
+                  onClick={() => handleRemove(item.cartItemId || item.id)}
                   className="flex items-center text-white px-3 py-1 rounded transition-colors"
                   style={{ 
                     backgroundColor: brandPrimary,
@@ -251,7 +248,7 @@ export default function RestaurantCart() {
           <div className="flex justify-between mb-3">
             <span className="text-gray-600">Estimated total</span>
             <span className="font-semibold text-gray-800">
-              ${estimatedTotal.toFixed(2)}
+              ${(selectedItemsCount > 0 ? estimatedTotal : cartTotal).toFixed(2)}
             </span>
           </div>
 
@@ -264,9 +261,9 @@ export default function RestaurantCart() {
             }}
             onMouseOver={(e) => e.currentTarget.style.backgroundColor = brandSecondary}
             onMouseOut={(e) => e.currentTarget.style.backgroundColor = brandPrimary}
-            disabled={selectedItemsCount === 0}
+            disabled={selectedItemsCount === 0 && cartItems.length > 0}
           >
-            Checkout ({selectedItemsCount})
+            Checkout {selectedItemsCount > 0 ? `(${selectedItemsCount})` : ''}
           </button>
 
           {/* Payment icons with corrected links */}

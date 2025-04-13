@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { MdLocationOn, MdKeyboardArrowDown, MdRestaurant, MdPersonOutline, MdPerson, MdFavorite, MdLogout, MdHistory } from 'react-icons/md'
 import { FaShoppingBag } from 'react-icons/fa'
+import { useSelector } from 'react-redux'
+import { selectCartTotalItems } from '../../Redux/slices/cartSlice'
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false)
@@ -9,6 +11,9 @@ export default function Header() {
   const [profileDropdown, setProfileDropdown] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [user, setUser] = useState(null)
+  
+  // Get the cart items count from Redux store
+  const cartItemCount = useSelector(selectCartTotalItems)
 
   // Check if user is logged in on component mount
   useEffect(() => {
@@ -121,12 +126,14 @@ export default function Header() {
               )}
             </div>
 
-            {/* Order Button */}
+            {/* Order Button with dynamic cart count */}
             <Link to="/cart" className="bg-gray-100 text-gray-700 p-2 rounded-full hover:bg-gray-200 transition-colors relative">
               <FaShoppingBag className="text-lg" />
-              <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                2
-              </span>
+              {cartItemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {cartItemCount > 99 ? '99+' : cartItemCount}
+                </span>
+              )}
             </Link>
 
             {/* Conditional rendering based on login status */}

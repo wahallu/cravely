@@ -15,6 +15,9 @@ import { useGetAllMealsQuery } from "../../Redux/slices/mealSlice";
 import { useGetAllMenusQuery } from "../../Redux/slices/menuSlice";
 import Slider from "rc-slider"; // You'll need to import this
 import "rc-slider/assets/index.css"; // And its styles
+import { useDispatch } from "react-redux";
+import { addToCart } from "../../Redux/slices/cartSlice";
+import { toast } from "react-hot-toast"; // This should already be set up based on your main.jsx
 
 const MealsAndMenus = () => {
   const { id } = useParams();
@@ -29,6 +32,8 @@ const MealsAndMenus = () => {
     priceRangeValues: [0, 5000], // Add this for the slider
     rating: 0,
   });
+
+  const dispatch = useDispatch();
 
   // Fetch meals for this restaurant
   const { data: mealsData, isLoading: isMealsLoading } = useGetAllMealsQuery();
@@ -113,6 +118,11 @@ const MealsAndMenus = () => {
       rating: 0,
     });
     setSearchQuery("");
+  };
+
+  const handleAddToCart = (item, addAsNew = false) => {
+    dispatch(addToCart({ item, quantity: 1, addAsNew }));
+    toast.success(`${item.name} added to cart!`);
   };
 
   return (
@@ -376,7 +386,10 @@ const MealsAndMenus = () => {
                                   {meal.allergens}
                                 </p>
                               )}
-                              <button className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition-colors">
+                              <button 
+                                className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition-colors"
+                                onClick={() => handleAddToCart(meal, true)} // Pass true to always add as new item
+                              >
                                 Add to Cart
                               </button>
                             </div>
@@ -497,7 +510,18 @@ const MealsAndMenus = () => {
                                   </ul>
                                 </div>
 
-                                <button className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition-colors">
+                                <button 
+                                  className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition-colors"
+                                  onClick={() => handleAddToCart({
+                                    id: menu._id || menu.id,
+                                    name: menu.name,
+                                    price: totalPrice,
+                                    image: menu.image || "/hero1.png",
+                                    description: menu.description,
+                                    isMenu: true,
+                                    menuItems: menuItemsWithDetails
+                                  })}
+                                >
                                   Order This Menu
                                 </button>
                               </div>

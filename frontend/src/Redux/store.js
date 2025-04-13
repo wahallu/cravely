@@ -4,6 +4,7 @@ import { authApi } from "./slices/authSlice";
 import { restaurantApi } from "./slices/restaurantSlice";
 import { mealApi } from "./slices/mealSlice";
 import { menuApi } from "./slices/menuSlice";
+import cartReducer from "./slices/cartSlice";
 
 export const store = configureStore({
   reducer: {
@@ -11,6 +12,7 @@ export const store = configureStore({
     [restaurantApi.reducerPath]: restaurantApi.reducer,
     [mealApi.reducerPath]: mealApi.reducer,
     [menuApi.reducerPath]: menuApi.reducer,
+    cart: cartReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
