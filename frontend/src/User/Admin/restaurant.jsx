@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { 
   MdSearch, 
@@ -16,10 +16,9 @@ import {
   MdEmail,
   MdVisibility
 } from 'react-icons/md'
+import { useGetAllRestaurantsQuery } from '../../Redux/slices/restaurantSlice'
 
 export default function Restaurant() {
-  const [restaurants, setRestaurants] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState({
@@ -30,105 +29,21 @@ export default function Restaurant() {
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  // Mock data loading
-  useEffect(() => {
-    const fetchData = () => {
-      // Simulating API call
-      setTimeout(() => {
-        setRestaurants([
-          {
-            id: 1,
-            name: "Burger Arena",
-            logo: "/hero1.png",
-            cuisine: "American",
-            email: "contact@burgerarena.com",
-            phone: "+1 (555) 123-4567",
-            address: "123 Main St, Downtown",
-            rating: 4.8,
-            reviews: 243,
-            status: "active",
-            since: "2022-01-15",
-            orders: 1245,
-            revenue: "$12,450",
-            verified: true
-          },
-          {
-            id: 2,
-            name: "Pizza Palace",
-            logo: "/hero1.png",
-            cuisine: "Italian",
-            email: "info@pizzapalace.com",
-            phone: "+1 (555) 987-6543",
-            address: "456 Oak St, Midtown",
-            rating: 4.5,
-            reviews: 187,
-            status: "active",
-            since: "2022-03-10",
-            orders: 1048,
-            revenue: "$10,480",
-            verified: true
-          },
-          {
-            id: 3,
-            name: "Sushi Sensation",
-            logo: "/hero1.png",
-            cuisine: "Japanese",
-            email: "hello@sushisensation.com",
-            phone: "+1 (555) 876-5432",
-            address: "789 Elm St, Uptown",
-            rating: 4.7,
-            reviews: 156,
-            status: "pending",
-            since: "2022-05-20",
-            orders: 965,
-            revenue: "$9,650",
-            verified: false
-          },
-          {
-            id: 4,
-            name: "Taco Fiesta",
-            logo: "/hero1.png",
-            cuisine: "Mexican",
-            email: "hola@tacofiesta.com",
-            phone: "+1 (555) 234-5678",
-            address: "101 Pine Rd, Westside",
-            rating: 4.3,
-            reviews: 112,
-            status: "suspended",
-            since: "2022-04-05",
-            orders: 754,
-            revenue: "$7,540",
-            verified: true
-          },
-          {
-            id: 5,
-            name: "Curry House",
-            logo: "/hero1.png",
-            cuisine: "Indian",
-            email: "namaste@curryhouse.com",
-            phone: "+1 (555) 345-6789",
-            address: "202 Cedar Ave, Eastside",
-            rating: 4.6,
-            reviews: 178,
-            status: "active",
-            since: "2022-02-18",
-            orders: 892,
-            revenue: "$8,920",
-            verified: true
-          }
-        ]);
-        setLoading(false);
-      }, 1000);
-    };
-    
-    fetchData();
-  }, []);
+  // Fetch restaurants using RTK Query
+  const { 
+    data: restaurantsData, 
+    isLoading, 
+    isError 
+  } = useGetAllRestaurantsQuery();
+
+  // Get restaurants array from response
+  const restaurants = restaurantsData?.data || [];
 
   // Filter restaurants based on search query and filters
   const filteredRestaurants = restaurants.filter(restaurant => {
     // Search query filter
-    if (searchQuery && !restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
-        !restaurant.cuisine.toLowerCase().includes(searchQuery.toLowerCase())) {
+    if (searchQuery && !restaurant.name?.toLowerCase().includes(searchQuery.toLowerCase()) && 
+        !restaurant.cuisine?.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
     
@@ -164,12 +79,29 @@ export default function Restaurant() {
   };
 
   // Get unique cuisines for filter
-  const cuisines = ['all', ...new Set(restaurants.map(r => r.cuisine))];
+  const cuisines = ['all', ...new Set(restaurants.filter(r => r.cuisine).map(r => r.cuisine))];
 
   const openRestaurantDetails = (restaurant) => {
     setSelectedRestaurant(restaurant);
     setDetailsOpen(true);
   };
+
+  // Show error state
+  if (isError) {
+    return (
+      <div className="flex justify-center items-center h-full p-6">
+        <div className="text-center">
+          <p className="text-red-500 text-lg mb-2">Failed to load restaurants</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -269,7 +201,7 @@ export default function Restaurant() {
       {/* Restaurants Table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          {loading ? (
+          {isLoading ? (
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
             </div>
@@ -288,11 +220,11 @@ export default function Restaurant() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredRestaurants.map((restaurant) => (
-                  <tr key={restaurant.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={restaurant._id || restaurant.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden">
-                          <img src={restaurant.logo} alt={restaurant.name} className="h-full w-full object-cover" />
+                          <img src={restaurant.logo || "/hero1.png"} alt={restaurant.name} className="h-full w-full object-cover" />
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900 flex items-center">
@@ -309,15 +241,17 @@ export default function Restaurant() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <MdStar className="text-yellow-400 mr-1" />
-                        <span className="text-sm text-gray-900">{restaurant.rating}</span>
-                        <span className="text-xs text-gray-500 ml-1">({restaurant.reviews})</span>
+                        <span className="text-sm text-gray-900">{restaurant.rating || "N/A"}</span>
+                        <span className="text-xs text-gray-500 ml-1">({restaurant.reviews || 0})</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(restaurant.status)}
+                      {getStatusBadge(restaurant.status || "unknown")}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{restaurant.orders}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{restaurant.revenue}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{restaurant.orders || 0}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      ${((restaurant.orders || 0) * 10).toFixed(2)}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
                         <button 
@@ -383,7 +317,7 @@ export default function Restaurant() {
                 <div className="w-full sm:w-1/3">
                   <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden">
                     <img 
-                      src={selectedRestaurant.logo} 
+                      src={selectedRestaurant.logo || "/hero1.png"} 
                       alt={selectedRestaurant.name} 
                       className="w-full h-full object-cover"
                     />
@@ -393,26 +327,26 @@ export default function Restaurant() {
                 <div className="w-full sm:w-2/3 space-y-4">
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Status</h3>
-                    {getStatusBadge(selectedRestaurant.status)}
+                    {getStatusBadge(selectedRestaurant.status || "unknown")}
                   </div>
                   
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Cuisine</h3>
-                    <p className="mt-1">{selectedRestaurant.cuisine}</p>
+                    <p className="mt-1">{selectedRestaurant.cuisine || "Not specified"}</p>
                   </div>
                   
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Rating</h3>
                     <div className="mt-1 flex items-center">
                       <MdStar className="text-yellow-400 mr-1" />
-                      <span>{selectedRestaurant.rating}</span>
-                      <span className="text-sm text-gray-500 ml-1">({selectedRestaurant.reviews} reviews)</span>
+                      <span>{selectedRestaurant.rating || "N/A"}</span>
+                      <span className="text-sm text-gray-500 ml-1">({selectedRestaurant.reviews || 0} reviews)</span>
                     </div>
                   </div>
                   
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Joined</h3>
-                    <p className="mt-1">{new Date(selectedRestaurant.since).toLocaleDateString()}</p>
+                    <p className="mt-1">{selectedRestaurant.createdAt ? new Date(selectedRestaurant.createdAt).toLocaleDateString() : "Unknown"}</p>
                   </div>
                 </div>
               </div>
@@ -425,7 +359,7 @@ export default function Restaurant() {
                     <MdEmail className="text-gray-400 mt-1 mr-3" />
                     <div>
                       <h4 className="text-sm font-medium text-gray-500">Email Address</h4>
-                      <p className="mt-1">{selectedRestaurant.email}</p>
+                      <p className="mt-1">{selectedRestaurant.email || "Not available"}</p>
                     </div>
                   </div>
                   
@@ -433,7 +367,7 @@ export default function Restaurant() {
                     <MdPhone className="text-gray-400 mt-1 mr-3" />
                     <div>
                       <h4 className="text-sm font-medium text-gray-500">Phone Number</h4>
-                      <p className="mt-1">{selectedRestaurant.phone}</p>
+                      <p className="mt-1">{selectedRestaurant.phone || "Not available"}</p>
                     </div>
                   </div>
                   
@@ -441,7 +375,7 @@ export default function Restaurant() {
                     <MdLocationOn className="text-gray-400 mt-1 mr-3" />
                     <div>
                       <h4 className="text-sm font-medium text-gray-500">Address</h4>
-                      <p className="mt-1">{selectedRestaurant.address}</p>
+                      <p className="mt-1">{selectedRestaurant.address || "Not available"}</p>
                     </div>
                   </div>
                 </div>
@@ -452,12 +386,12 @@ export default function Restaurant() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h4 className="text-sm font-medium text-gray-500">Total Orders</h4>
-                      <p className="text-xl font-bold mt-1">{selectedRestaurant.orders}</p>
+                      <p className="text-xl font-bold mt-1">{selectedRestaurant.orders || 0}</p>
                     </div>
                     
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h4 className="text-sm font-medium text-gray-500">Total Revenue</h4>
-                      <p className="text-xl font-bold mt-1">{selectedRestaurant.revenue}</p>
+                      <p className="text-xl font-bold mt-1">${((selectedRestaurant.orders || 0) * 10).toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
