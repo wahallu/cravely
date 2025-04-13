@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const orderRoutes = require('./routes/orderRoutes');
+const cartRoutes = require('./routes/cartRoutes');
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.get('/', (req, res) => {
 
 // Use routes
 app.use('/api/orders', orderRoutes);
+app.use('/api/cart', cartRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

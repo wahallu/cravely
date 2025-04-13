@@ -1,0 +1,425 @@
+{
+	"info": {
+		"_postman_id": "a7c54b1d-e65f-4c31-89f7-1c5e1e21a4f3",
+		"name": "Cravely Cart Routes",
+		"description": "Test collection for Cravely's cart API endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get Cart Contents",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has success flag\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.success).to.be.true;",
+							"});",
+							"",
+							"pm.test(\"Response includes cart object\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('cart');",
+							"    pm.expect(jsonData.cart).to.have.property('userId');",
+							"    pm.expect(jsonData.cart).to.have.property('items');",
+							"    pm.expect(jsonData.cart).to.have.property('total');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{authToken}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/cart",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"cart"
+					]
+				},
+				"description": "Get the contents of the current user's cart"
+			},
+			"response": []
+		},
+		{
+			"name": "Add Item to Cart",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test(\"Response has success flag\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.success).to.be.true;",
+							"});",
+							"",
+							"pm.test(\"Item added successfully message\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.message).to.include('added to cart');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{authToken}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"itemId\": \"item123\",\n    \"name\": \"Chicken Burger\",\n    \"price\": 12.99,\n    \"quantity\": 2\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/cart/items",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"cart",
+						"items"
+					]
+				},
+				"description": "Add a new item to the user's cart"
+			},
+			"response": []
+		},
+		{
+			"name": "Update Cart Item",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has success flag\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.success).to.be.true;",
+							"});",
+							"",
+							"pm.test(\"Item updated successfully message\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.message).to.include('updated');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{authToken}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"quantity\": 3\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/cart/items/item123",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"cart",
+						"items",
+						"item123"
+					]
+				},
+				"description": "Update the quantity of an item in the cart"
+			},
+			"response": []
+		},
+		{
+			"name": "Remove Item from Cart",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has success flag\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.success).to.be.true;",
+							"});",
+							"",
+							"pm.test(\"Item removed successfully message\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.message).to.include('removed');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{authToken}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/cart/items/item123",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"cart",
+						"items",
+						"item123"
+					]
+				},
+				"description": "Remove an item from the cart"
+			},
+			"response": []
+		},
+		{
+			"name": "Clear Cart",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has success flag\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.success).to.be.true;",
+							"});",
+							"",
+							"pm.test(\"Cart cleared successfully message\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.message).to.include('cleared');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{authToken}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/cart",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"cart"
+					]
+				},
+				"description": "Clear all items from the cart"
+			},
+			"response": []
+		},
+		{
+			"name": "Add Item to Cart (Bad Request)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 400\", function () {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"pm.test(\"Response has success flag as false\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.success).to.be.false;",
+							"});",
+							"",
+							"pm.test(\"Error message about missing fields\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.message).to.include('required fields');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{authToken}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Chicken Burger\",\n    \"price\": 12.99\n    // Missing required fields\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/cart/items",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"cart",
+						"items"
+					]
+				},
+				"description": "Test error handling when adding an item with missing required fields"
+			},
+			"response": []
+		},
+		{
+			"name": "Update Cart Item (Bad Request)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 400\", function () {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"pm.test(\"Response has success flag as false\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.success).to.be.false;",
+							"});",
+							"",
+							"pm.test(\"Error message about quantity\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.message).to.include('quantity');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{authToken}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    // Missing quantity field\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/cart/items/item123",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"cart",
+						"items",
+						"item123"
+					]
+				},
+				"description": "Test error handling when updating an item without providing quantity"
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5002",
+			"type": "string"
+		},
+		{
+			"key": "authToken",
+			"value": "your-auth-token-here",
+			"type": "string"
+		}
+	]
+}

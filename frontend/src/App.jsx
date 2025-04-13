@@ -14,7 +14,7 @@ import ClientLayout from "./Restaurant/Client/Layout";
 import OrderConfirmation from './Order/OrderConfirmation';
 
 //order
-import Cart from "../src/Order/OrderLayout";
+import Cart from "../src/Order/Cart";
 import Checkout from "./Order/Checkout";
 
 import AdminLayout from "./User/Admin/layout";
