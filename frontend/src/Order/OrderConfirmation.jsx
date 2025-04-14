@@ -15,7 +15,8 @@ import {
   FaUser,
   FaEnvelope,
   FaPhone,
-  FaInfo
+  FaInfo,
+  FaClock
 } from 'react-icons/fa';
 
 export default function OrderConfirmation() {
@@ -89,16 +90,18 @@ export default function OrderConfirmation() {
 
   const { orderId, items, total, customer, subtotal, tax, deliveryFee, status, createdAt } = orderDetails;
   
+  // Ensure order ID is properly displayed
+  const displayOrderId = orderId || orderDetails.id || 'N/A';
+  
   // Calculate the amounts if not provided
   const orderSubtotal = subtotal || items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const orderTax = tax || (orderSubtotal * 0.1); // 10% tax if not specified
   const orderDeliveryFee = deliveryFee || 1.99;
   const orderTotal = total || (orderSubtotal + orderTax + orderDeliveryFee);
   
-  // Estimated delivery date (2 days from now)
+  // Estimated delivery date (same day delivery)
   const orderDate = createdAt ? new Date(createdAt) : new Date();
   const deliveryDate = new Date(orderDate);
-  deliveryDate.setDate(deliveryDate.getDate() + 2);
   const formattedDeliveryDate = deliveryDate.toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long', 
@@ -197,7 +200,7 @@ export default function OrderConfirmation() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-500">Order ID</p>
-                    <p className="font-mono font-bold text-gray-800">{orderId}</p>
+                    <p className="font-mono font-bold text-gray-800">{displayOrderId}</p>
                   </div>
                 </div>
                 
@@ -329,7 +332,15 @@ export default function OrderConfirmation() {
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Estimated Delivery</p>
-                        <p className="font-medium text-gray-800">{formattedDeliveryDate}</p>
+                        <p className="font-medium text-gray-800">
+                          {formattedDeliveryDate}{' '}
+                          {orderDetails.deliveryWindow && (
+                            <span className="text-orange-500">
+                              ({orderDetails.deliveryWindow}
+                              {orderDetails.estimatedDeliveryTime && ` by ${orderDetails.estimatedDeliveryTime}`})
+                            </span>
+                          )}
+                        </p>
                       </div>
                     </div>
                     

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from "../Home/components/header";
 import Footer from "../Home/components/footer";
+import { toast } from 'react-hot-toast'; 
 // Import icons for enhanced visual appeal
 import { FaUser, FaEnvelope, FaPhone, FaHome, FaCity, FaMapMarkerAlt, FaMapPin, FaPlus, FaEdit } from 'react-icons/fa';
 import { FaCreditCard, FaPaypal, FaMoneyBillWave, FaCheck, FaShoppingCart, FaAddressCard, FaLock } from 'react-icons/fa';
@@ -55,6 +56,70 @@ const cardElementOptions = {
     },
   },
   hidePostalCode: true,
+};
+
+// Add this function to your Checkout.jsx file near other utility functions
+const calculateEstimatedDelivery = (restaurantId, customerLocation) => {
+  // Get current time
+  const now = new Date();
+  
+  // Base preparation time (minutes) - can vary by restaurant type
+  const basePreparationTime = 15;
+  
+  // Get distance-based delivery time
+  // In a real system, you would get this from a mapping/distance API
+  // For now, let's simulate with restaurant-specific values
+  const getDeliveryTime = (restaurantId) => {
+    // This could come from a restaurant database with average delivery times
+    const restaurantDeliveryTimes = {
+      // Sample restaurant IDs with their avg delivery times in minutes
+      "r123": 10,
+      "r456": 15,
+      "r789": 20,
+      // Add a default for any other restaurant
+      "default": 18
+    };
+    
+    return restaurantDeliveryTimes[restaurantId] || restaurantDeliveryTimes.default;
+  };
+  
+  // Current traffic conditions factor (1.0 = normal, 1.2 = moderate traffic, 1.5 = heavy)
+  const getTrafficFactor = () => {
+    const hour = now.getHours();
+    // Rush hour periods (breakfast, lunch, dinner times)
+    if ((hour >= 7 && hour <= 9) || (hour >= 12 && hour <= 14) || (hour >= 17 && hour <= 19)) {
+      return 1.3;
+    }
+    return 1.0;
+  };
+  
+  // Weather factor (1.0 = clear, 1.2 = rain, 1.5 = severe)
+  // In a real app, you'd get this from a weather API
+  const weatherFactor = 1.0;
+  
+  // Calculate delivery window
+  const deliveryTime = getDeliveryTime(restaurantId);
+  const trafficFactor = getTrafficFactor();
+  
+  // Total minutes to delivery = preparation + (delivery * traffic * weather)
+  const totalMinutes = basePreparationTime + (deliveryTime * trafficFactor * weatherFactor);
+  
+  // Round to nearest 5 minutes for better user experience
+  const roundedMinutes = Math.ceil(totalMinutes / 5) * 5;
+  
+  // Create a delivery window (e.g., "25-35 minutes")
+  const minDeliveryTime = roundedMinutes - 5;
+  const maxDeliveryTime = roundedMinutes + 5;
+  
+  // Calculate the estimated delivery time
+  const estimatedDelivery = new Date(now.getTime() + roundedMinutes * 60000);
+  
+  return {
+    estimatedMinutes: roundedMinutes,
+    deliveryWindow: `${minDeliveryTime}-${maxDeliveryTime} minutes`,
+    estimatedTime: estimatedDelivery,
+    estimatedTimeString: estimatedDelivery.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
+  };
 };
 
 // CheckoutForm component with Stripe
@@ -126,16 +191,10 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
     setIsSubmitting(true);
     setCardError(null);
     
-    // Validate form data
+    // Validate form data (for both payment methods)
     if (!formData.fullName || !formData.phone || !formData.address || !formData.city || 
         !formData.state || !formData.zipCode) {
       setCardError("Please fill in all required address fields");
-      setIsSubmitting(false);
-      return;
-    }
-    
-    if (!stripe || !elements) {
-      setCardError("Stripe has not loaded. Please refresh the page and try again.");
       setIsSubmitting(false);
       return;
     }
@@ -165,7 +224,61 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
     
     // Handle cash payment separately
     if (formData.paymentMethod !== 'creditCard') {
-      onNonCardPayment();
+      try {
+        // Format items for API submission
+        const formattedItems = cartSummary.items.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: parseFloat(item.price),
+          quantity: parseInt(item.quantity),
+          image: item.imageUrl || null
+        }));
+        
+        const orderData = {
+          items: formattedItems,
+          customer: {
+            fullName: formData.fullName,
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            zipCode: formData.zipCode
+          },
+          payment: {
+            method: 'cash',
+            status: 'pending',
+          },
+          restaurantId: cartSummary.items[0]?.restaurantId,
+          subtotal: parseFloat(cartSummary.subtotal.toFixed(2)),
+          tax: parseFloat(cartSummary.tax.toFixed(2)),
+          deliveryFee: parseFloat(cartSummary.delivery.toFixed(2)),
+          total: parseFloat(cartSummary.total.toFixed(2))
+        };
+        
+        console.log("Creating cash order:", orderData);
+        
+        const result = await createOrder(orderData).unwrap();
+        
+        if (result.success) {
+          console.log("Cash order creation succeeded:", result);
+          dispatch(clearCart());
+          onPaymentSuccess();
+        } else {
+          setCardError("Failed to create order: " + (result.message || "Unknown error"));
+        }
+      } catch (error) {
+        console.error("Cash order creation failed:", error);
+        setCardError("Failed to create order: " + (error.data?.message || error.message || "Unknown error"));
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+    
+    if (!stripe || !elements) {
+      setCardError("Stripe has not loaded. Please refresh the page and try again.");
+      setIsSubmitting(false);
       return;
     }
     
@@ -1117,6 +1230,8 @@ export default function Checkout() {
   // Handle payment success and redirect
   const handlePaymentSuccess = () => {
     setShowSuccessAnimation(true);
+
+    const deliveryInfo = calculateEstimatedDelivery(cartSummary.items[0]?.restaurantId, formData);
     
     // Clear the cart
     dispatch(clearCart());
@@ -1131,7 +1246,10 @@ export default function Checkout() {
               total: cartSummary.total,
               customer: formData,
               status: 'pending',
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
+              estimatedDelivery: deliveryInfo.estimatedTime,
+              deliveryWindow: deliveryInfo.deliveryWindow,
+              estimatedDeliveryTime: deliveryInfo.estimatedTimeString
             } 
           }
         });
@@ -1390,12 +1508,8 @@ export default function Checkout() {
                     
                     <button 
                       onClick={() => {
-                        if (formData.paymentMethod === 'creditCard') {
-                          if (formSubmitRef.current) {
-                            formSubmitRef.current();
-                          }
-                        } else {
-                          processNonCardPayment();
+                        if (formSubmitRef.current) {
+                          formSubmitRef.current();
                         }
                       }}
                       disabled={isSubmitting}
@@ -1418,7 +1532,8 @@ export default function Checkout() {
                             </>
                           ) : (
                             <>
-                              Place Order ${cartSummary.total.toFixed(2)}
+                              <FaMoneyBillWave className="mr-2" />
+                              Place Order (Cash on Delivery)
                             </>
                           )}
                         </>

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { MdLocationOn, MdKeyboardArrowDown, MdRestaurant, MdPersonOutline, MdPerson, MdFavorite, MdLogout, MdHistory } from 'react-icons/md'
-import { FaShoppingBag } from 'react-icons/fa'
+import { FaShoppingBag, FaMotorcycle, FaPizzaSlice, FaHotjar, FaCheckCircle, FaRegClock, FaClipboardList } from 'react-icons/fa'
 import { useSelector } from 'react-redux'
 import { selectCartTotalItems } from '../../Redux/slices/cartSlice'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useGetUserOrdersQuery } from '../../Redux/slices/orderSlice'
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false)
@@ -11,9 +13,19 @@ export default function Header() {
   const [profileDropdown, setProfileDropdown] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [user, setUser] = useState(null)
-  
+  const [hasLiveOrders, setHasLiveOrders] = useState(false)
+  const [liveOrdersCount, setLiveOrdersCount] = useState(0)
+  const [activeOrdersStatus, setActiveOrdersStatus] = useState([])
+  const navigate = useNavigate()
+
   // Get the cart items count from Redux store
   const cartItemCount = useSelector(selectCartTotalItems)
+  
+  // Get user orders directly using the same Redux query hook used in MyOrders
+  const { data: ordersData, isLoading: isLoadingOrders } = useGetUserOrdersQuery(undefined, {
+    skip: !isLoggedIn, // Skip query if user is not logged in
+    pollingInterval: 60000, // Poll every minute for updates
+  })
 
   // Check if user is logged in on component mount
   useEffect(() => {
@@ -26,19 +38,144 @@ export default function Header() {
     }
   }, [])
 
-  // Handle scroll effect for header
+  // Filter and process orders - using the same logic as in MyOrders.jsx
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 10) {
-        setScrolled(true)
+    if (ordersData && Array.isArray(ordersData)) {
+      // Filter active orders with the same statuses as in MyOrders
+      const liveOrderStatuses = ['pending', 'confirmed', 'preparing', 'out_for_delivery']
+      const liveOrders = ordersData.filter(order => 
+        order && order.status && liveOrderStatuses.includes(order.status)
+      )
+      
+      if (liveOrders.length > 0) {
+        setHasLiveOrders(true)
+        setLiveOrdersCount(liveOrders.length)
+        
+        // Format orders for display
+        const formattedOrders = liveOrders.map(order => ({
+          id: order.orderId || order._id,
+          status: formatOrderStatus(order.status),
+          estimatedTime: getEstimatedDeliveryTime(order)
+        }))
+        
+        setActiveOrdersStatus(formattedOrders)
       } else {
-        setScrolled(false)
+        setHasLiveOrders(false)
+        setLiveOrdersCount(0)
+        setActiveOrdersStatus([])
       }
     }
+  }, [ordersData])
+
+  // Format order status to be more user-friendly
+  const formatOrderStatus = (status) => {
+    switch(status) {
+      case 'pending': return 'Pending confirmation'
+      case 'confirmed': return 'Order confirmed'
+      case 'preparing': return 'Being prepared'
+      case 'out_for_delivery': return 'On the way'
+      default: return status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ')
+    }
+  }
+
+  // Get status icon based on order status - similar to MyOrders
+  const getStatusIcon = (status) => {
+    switch(status.toLowerCase()) {
+      case 'on the way':
+        return (
+          <motion.div
+            animate={{ 
+              rotate: [0, 10, 0, -10, 0],
+            }}
+            transition={{ 
+              repeat: Infinity, 
+              duration: 1.5,
+              repeatDelay: 1
+            }}
+          >
+            <FaMotorcycle className="text-white" />
+          </motion.div>
+        );
+      case 'being prepared':
+        return (
+          <motion.div
+            animate={{ 
+              rotate: [0, 15, 0, 15, 0],
+            }}
+            transition={{ 
+              repeat: Infinity, 
+              duration: 1.5,
+              repeatDelay: 0.5
+            }}
+          >
+            <MdRestaurant className="text-white" />
+          </motion.div>
+        );
+      case 'order confirmed':
+        return (
+          <motion.div
+            animate={{ 
+              scale: [1, 1.2, 1],
+            }}
+            transition={{ 
+              repeat: Infinity, 
+              duration: 1.5,
+            }}
+          >
+            <FaCheckCircle className="text-white" />
+          </motion.div>
+        );
+      case 'pending confirmation':
+        return (
+          <motion.div
+            animate={{ 
+              opacity: [1, 0.5, 1],
+            }}
+            transition={{ 
+              repeat: Infinity, 
+              duration: 1.5,
+            }}
+          >
+            <FaRegClock className="text-white" />
+          </motion.div>
+        );
+      default:
+        return <FaPizzaSlice className="text-white" />;
+    }
+  };
+
+  // Get estimated delivery time
+  const getEstimatedDeliveryTime = (order) => {
+    if (!order) return 'Soon';
     
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+    // If order has explicit estimatedDeliveryTime field, use that
+    if (order.estimatedDeliveryTime) {
+      return formatTimeRemaining(new Date(order.estimatedDeliveryTime));
+    }
+    
+    // Otherwise estimate based on status and creation time
+    const createdAt = order.createdAt ? new Date(order.createdAt) : new Date();
+    let estimatedMinutes = 0;
+    
+    switch(order.status) {
+      case 'pending': return '45 min';
+      case 'confirmed': return '35 min';
+      case 'preparing': return '25 min';
+      case 'out_for_delivery': return '15 min';
+      default: return 'Soon';
+    }
+  }
+  
+  // Format time remaining in a user-friendly way
+  const formatTimeRemaining = (estimatedTime) => {
+    const now = new Date();
+    const diffInMs = estimatedTime - now;
+    const diffInMinutes = Math.round(diffInMs / 60000);
+    
+    if (diffInMinutes <= 0) return 'Any moment';
+    if (diffInMinutes === 1) return '1 min';
+    return `${diffInMinutes} mins`;
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -125,6 +262,99 @@ export default function Header() {
                 </div>
               )}
             </div>
+
+            {/* Live Orders Indicator - Only shown when user has active orders */}
+            <AnimatePresence>
+              {isLoggedIn && (isLoadingOrders ? (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="hidden md:flex items-center"
+                >
+                  <div className="relative">
+                    <motion.div 
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                      className="w-8 h-8 bg-gradient-to-r from-orange-400 to-yellow-400 rounded-full flex items-center justify-center shadow-sm"
+                    >
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full" />
+                    </motion.div>
+                  </div>
+                </motion.div>
+              ) : hasLiveOrders && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="hidden md:block"
+                >
+                  <div className="relative group">
+                    {/* Compact button with live pulse effect */}
+                    <div className="w-8 h-8 bg-gradient-to-r from-orange-400 to-yellow-400 rounded-full flex items-center justify-center shadow-sm relative cursor-pointer">
+                      <motion.div 
+                        className="absolute w-full h-full rounded-full bg-orange-400"
+                        animate={{ 
+                          scale: [1, 1.2, 1],
+                          opacity: [0.7, 0, 0.7]
+                        }}
+                        transition={{ 
+                          repeat: Infinity,
+                          duration: 1.5,
+                          ease: "easeInOut" 
+                        }}
+                      />
+                      {activeOrdersStatus.length > 0 && (() => {
+                        // Display different icon based on the latest order's status
+                        const latestOrderStatus = activeOrdersStatus[0].status.toLowerCase();
+                        switch(true) {
+                          case latestOrderStatus.includes('pending'):
+                            return <FaRegClock className="text-white text-sm" />;
+                          case latestOrderStatus.includes('confirmed'):
+                            return <FaClipboardList className="text-white text-sm" />;
+                          case latestOrderStatus.includes('prepared') || latestOrderStatus.includes('preparing'):
+                            return <MdRestaurant className="text-white text-sm" />;
+                          case latestOrderStatus.includes('delivery') || latestOrderStatus.includes('way'):
+                            return <FaMotorcycle className="text-white text-sm" />;
+                          default:
+                            return <FaPizzaSlice className="text-white text-sm" />;
+                        }
+                      })()}
+                    </div>
+                    
+                    {/* Tooltip/popover with order details on hover */}
+                    <div className="opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 absolute -right-2 top-full mt-2 z-50 transform origin-top-right">
+                      <div className="bg-white rounded-lg shadow-lg border border-gray-100 overflow-hidden w-52">
+                        <div className="bg-gradient-to-r from-orange-500 to-yellow-400 px-3 py-1.5 text-white flex items-center justify-between">
+                          <div className="text-sm font-medium">Active Orders</div>
+                          <Link to="/orders?filter=live" className="text-xs underline hover:no-underline">
+                            View All
+                          </Link>
+                        </div>
+                        
+                        <div className="max-h-40 overflow-y-auto">
+                          {activeOrdersStatus.map((order, index) => (
+                            <Link 
+                              to={`/orders/${order.id}`} 
+                              key={order.id} 
+                              className="flex items-center justify-between px-3 py-2 hover:bg-orange-50 border-b border-gray-100 last:border-b-0"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center">
+                                  {getStatusIcon(order.status)}
+                                </div>
+                                <span className="text-xs text-gray-700">{order.status}</span>
+                              </div>
+                              <span className="text-xs font-bold text-orange-500">{order.estimatedTime}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
 
             {/* Order Button with dynamic cart count */}
             <Link to="/cart" className="bg-gray-100 text-gray-700 p-2 rounded-full hover:bg-gray-200 transition-colors relative">
@@ -218,6 +448,90 @@ export default function Header() {
           </Link>
         </div>
       </div>
+
+      {/* Mobile Live Orders indicator */}
+      <AnimatePresence>
+        {isLoggedIn && (isLoadingOrders ? (
+          <motion.div 
+            initial={{ opacity: 0, y: 0 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 0 }}
+            className="md:hidden fixed bottom-16 right-4 z-40"
+          >
+            <motion.div 
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+              className="w-10 h-10 bg-gradient-to-r from-orange-400 to-yellow-400 rounded-full flex items-center justify-center shadow-lg"
+            >
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+            </motion.div>
+          </motion.div>
+        ) : hasLiveOrders && (
+          <motion.div 
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 100 }}
+            className="md:hidden fixed bottom-16 right-4 z-40"
+          >
+            <Link to="/orders?filter=live">
+              <div className="relative">
+                {/* Pulsing circle effect */}
+                <motion.div 
+                  className="absolute -inset-1 rounded-full bg-orange-400 opacity-50"
+                  animate={{ 
+                    scale: [1, 1.2, 1],
+                    opacity: [0.5, 0.2, 0.5]
+                  }}
+                  transition={{ 
+                    repeat: Infinity,
+                    duration: 1.5,
+                    ease: "easeInOut" 
+                  }}
+                />
+                
+                {/* Main button */}
+                <div className="bg-gradient-to-r from-orange-500 to-yellow-400 w-12 h-12 rounded-full shadow-lg flex items-center justify-center relative">
+                  {activeOrdersStatus.length > 0 && (() => {
+                    // Display different icon based on the latest order's status
+                    const latestOrderStatus = activeOrdersStatus[0].status.toLowerCase();
+                    switch(true) {
+                      case latestOrderStatus.includes('pending'):
+                        return <FaRegClock className="text-white text-lg" />;
+                      case latestOrderStatus.includes('confirmed'):
+                        return <FaClipboardList className="text-white text-lg" />;
+                      case latestOrderStatus.includes('prepared') || latestOrderStatus.includes('preparing'):
+                        return <MdRestaurant className="text-white text-lg" />;
+                      case latestOrderStatus.includes('delivery') || latestOrderStatus.includes('way'):
+                        return <FaMotorcycle className="text-white text-lg" />;
+                      default:
+                        return <FaPizzaSlice className="text-white text-lg" />;
+                    }
+                  })()}
+                  
+                  {/* Latest order status indicator */}
+                  {activeOrdersStatus.length > 0 && (
+                    <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center">
+                      {getStatusIcon(activeOrdersStatus[0].status)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Link>
+            
+            {/* Tiny floating time bubble for first order */}
+            {activeOrdersStatus.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2 }}
+                className="absolute -top-3 -right-2 bg-white text-orange-500 text-xs font-bold px-2 py-0.5 rounded-full shadow-sm"
+              >
+                {activeOrdersStatus[0].estimatedTime}
+              </motion.div>
+            )}
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </nav>
   )
 }

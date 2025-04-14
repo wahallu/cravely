@@ -13,11 +13,13 @@ import MealsMenus from "./Restaurant/Client/MealsAndMenus"
 import Layout from "./Restaurant/Admin/Layout";
 import ClientLayout from "./Restaurant/Client/Layout";
 import OrderConfirmation from './Order/OrderConfirmation';
+import Order from "./Order/Order";
 import { AdminProtectedRoutes, UserProtectedRoutes } from "./protectedRoutes";
 
 //order
 import Cart from "../src/Order/Cart";
 import Checkout from "./Order/Checkout";
+import MyOrders from './Order/MyOrders';
 
 import AdminLayout from "./User/Admin/layout";
 import AdminDashboard from "./User/Admin/dashboard";
@@ -49,6 +51,8 @@ export default function App() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/confirmation" element={<OrderConfirmation />} />
+        <Route path="/orders" element={<MyOrders />} />
+        <Route path="/orders/:id" element={<Order />} />
 
         {/* Restaurant Admin Dashboard Routes */}
         <Route path="/restaurant" element={<Layout />}>
