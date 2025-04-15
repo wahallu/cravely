@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { NotificationProvider } from '../src/Order/NotifyContext';
 import Home from "./Home/pages/layout";
 import Login from "./User/login";
 import Register from "./User/register";
@@ -39,7 +40,10 @@ import DriverDashboard from "./Delivery/DriverDashboard";
 export default function App() {
   return (
     <BrowserRouter>
+          <NotificationProvider>
+
       <Routes>
+
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -93,6 +97,8 @@ export default function App() {
         </Route>
 
       </Routes>
+      </NotificationProvider>
+
     </BrowserRouter>
   );
 }

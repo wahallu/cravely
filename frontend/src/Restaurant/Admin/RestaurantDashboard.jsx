@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { MdArrowUpward, MdArrowDownward, MdNotifications, MdSearch } from 'react-icons/md';
 import { FaMoneyBillWave, FaStar, FaUtensils } from 'react-icons/fa';
 import { motion } from 'motion/react';
+import { useNotification } from '../../Order/NotifyContext';
 
 export default function RestaurantDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [notifications, setNotifications] = useState(3);
-  
+  const { showNotification } = useNotification();
+
   // Mock data for the dashboard
   const restaurantData = {
     name: "Burger Arena",
@@ -59,6 +61,34 @@ export default function RestaurantDashboard() {
         return 'bg-red-100 text-red-600';
       default:
         return 'bg-gray-100 text-gray-600';
+    }
+  };
+
+  const handleOrderStatusUpdate = async (orderId, newStatus, restaurantName, estimatedTime) => {
+    try {
+      const response = await fetch(`/api/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        showNotification({
+          orderId,
+          status: newStatus,
+          restaurant: restaurantName,
+          estimatedTime: estimatedTime
+        });
+
+        // Update local state or refetch data
+        // refreshOrdersList();
+      }
+    } catch (error) {
+      console.error('Failed to update order status:', error);
     }
   };
 
@@ -172,6 +202,75 @@ export default function RestaurantDashboard() {
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.time}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex space-x-2">
+                                {order.status !== 'confirmed' && (
+                                  <button
+                                    onClick={() => handleOrderStatusUpdate(
+                                      order.id, 
+                                      'confirmed',
+                                      restaurantData.name, 
+                                      '30-45 min'
+                                    )}
+                                    className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs"
+                                  >
+                                    Confirm
+                                  </button>
+                                )}
+                                {order.status !== 'preparing' && order.status === 'confirmed' && (
+                                  <button
+                                    onClick={() => handleOrderStatusUpdate(
+                                      order.id, 
+                                      'preparing', 
+                                      restaurantData.name,
+                                      '20-30 min'
+                                    )}
+                                    className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs"
+                                  >
+                                    Preparing
+                                  </button>
+                                )}
+                                {order.status !== 'out_for_delivery' && order.status === 'preparing' && (
+                                  <button
+                                    onClick={() => handleOrderStatusUpdate(
+                                      order.id, 
+                                      'out_for_delivery',
+                                      restaurantData.name,
+                                      '10-15 min'
+                                    )}
+                                    className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs"
+                                  >
+                                    Out for Delivery
+                                  </button>
+                                )}
+                                {order.status !== 'delivered' && order.status === 'out_for_delivery' && (
+                                  <button
+                                    onClick={() => handleOrderStatusUpdate(
+                                      order.id, 
+                                      'delivered',
+                                      restaurantData.name,
+                                      null
+                                    )}
+                                    className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs"
+                                  >
+                                    Delivered
+                                  </button>
+                                )}
+                                {order.status !== 'canceled' && order.status !== 'delivered' && (
+                                  <button
+                                    onClick={() => handleOrderStatusUpdate(
+                                      order.id, 
+                                      'canceled',
+                                      restaurantData.name,
+                                      null
+                                    )}
+                                    className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs"
+                                  >
+                                    Cancel
+                                  </button>
+                                )}
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
