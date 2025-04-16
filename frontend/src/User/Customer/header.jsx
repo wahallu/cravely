@@ -12,13 +12,22 @@ import {
   MdHelp,
   MdLogout
 } from 'react-icons/md'
+import { useSelector } from 'react-redux'
+import { selectCartItems, selectCartTotalItems } from '../../Redux/slices/cartSlice'
+import { useNotification } from '../../Order/NotifyContext'
 
 export default function Header({ toggleSidebar }) {
-  const [notifications, setNotifications] = useState(2);
-  const [cartItems, setCartItems] = useState(3);
   const [profileDropdown, setProfileDropdown] = useState(false);
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
+  
+  // Connect to cart state in Redux
+  const cartItems = useSelector(selectCartItems);
+  const cartItemsCount = useSelector(selectCartTotalItems);
+  
+  // Get active notifications
+  const { activeNotifications = [] } = useNotification() || {};
+  const notificationCount = activeNotifications.length;
 
   // Get user data on component mount
   useEffect(() => {
@@ -102,14 +111,14 @@ export default function Header({ toggleSidebar }) {
           {/* Cart */}
           <Link to="/cart" className="relative p-2 rounded-full hover:bg-gray-100 transition-colors">
             <MdShoppingCart className="text-2xl text-gray-600" />
-            {cartItems > 0 && (
+            {cartItemsCount > 0 && (
               <motion.span 
                 className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 500 }}
               >
-                {cartItems}
+                {cartItemsCount}
               </motion.span>
             )}
           </Link>
@@ -117,14 +126,14 @@ export default function Header({ toggleSidebar }) {
           {/* Notifications */}
           <button className="relative p-2 rounded-full hover:bg-gray-100 transition-colors">
             <MdNotifications className="text-2xl text-gray-600" />
-            {notifications > 0 && (
+            {notificationCount > 0 && (
               <motion.span 
                 className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 500 }}
               >
-                {notifications}
+                {notificationCount}
               </motion.span>
             )}
           </button>
