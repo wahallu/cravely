@@ -39,7 +39,7 @@ export default function Sidebar({
       id: 'menu', 
       icon: <MdRestaurantMenu className="text-2xl" />, 
       label: 'Explore Menu',
-      href: '/menu' 
+      href: '/meals&menus' 
     },
     { 
       id: 'cart', 
@@ -57,13 +57,13 @@ export default function Sidebar({
       id: 'favorites', 
       icon: <MdFavorite className="text-2xl" />, 
       label: 'Favorites',
-      href: '/favorites' 
+      href: '/user/favorites' 
     },
     { 
       id: 'offers', 
       icon: <MdLocalOffer className="text-2xl" />, 
       label: 'Offers & Promos',
-      href: '/offers' 
+      href: 'offers' 
     },
     { 
       id: 'payments', 

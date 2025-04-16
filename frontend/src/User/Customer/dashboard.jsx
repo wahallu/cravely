@@ -17,7 +17,7 @@ export default function Dashboard() {
   const quickActions = [
     { id: 'restaurants', icon: <MdRestaurant className="text-white" />, label: 'Restaurants', href: '/restaurants', color: 'from-blue-400 to-blue-600' },
     { id: 'orders', icon: <MdDeliveryDining className="text-white" />, label: 'My Orders', href: '/orders', color: 'from-green-400 to-green-600' },
-    { id: 'favorites', icon: <MdFavorite className="text-white" />, label: 'Favorites', href: '/favorites', color: 'from-red-400 to-red-600' },
+    { id: 'favorites', icon: <MdFavorite className="text-white" />, label: 'Favorites', href: 'favorites', color: 'from-red-400 to-red-600' },
     { id: 'offers', icon: <MdLocalOffer className="text-white" />, label: 'Offers', href: '/offers', color: 'from-purple-400 to-purple-600' },
   ];
 
