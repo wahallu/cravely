@@ -165,13 +165,9 @@ export default function Header({ toggleSidebar }) {
                   <MdPerson className="mr-2" />
                   My Profile
                 </Link>
-                <Link to="/favorites" className="flex items-center px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-500">
+                <Link to="favorites" className="flex items-center px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-500">
                   <MdFavorite className="mr-2" />
                   Favorites
-                </Link>
-                <Link to="/help" className="flex items-center px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-500">
-                  <MdHelp className="mr-2" />
-                  Help & Support
                 </Link>
                 <div className="border-t border-gray-100 my-1"></div>
                 <button 

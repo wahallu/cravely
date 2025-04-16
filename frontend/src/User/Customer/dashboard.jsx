@@ -9,10 +9,12 @@ import {
   MdFavorite,
   MdArrowForward,
   MdHistory,
-  MdLocationOn
+  MdLocationOn,
+  MdKeyboardArrowDown
 } from 'react-icons/md'
 import { useGetUserOrdersQuery } from '../../Redux/slices/orderSlice'
 import { useGetAllRestaurantsQuery } from '../../Redux/slices/restaurantSlice'
+import { useGetUserAddressesQuery } from '../../Redux/slices/shippingAddressSlice'
 
 export default function Dashboard() {
   // State for storing formatted data
@@ -20,6 +22,7 @@ export default function Dashboard() {
   const [nearbyRestaurants, setNearbyRestaurants] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
   const [specialOffers, setSpecialOffers] = useState([]);
+  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
   
   // Fetch orders using RTK Query
   const { 
@@ -32,6 +35,26 @@ export default function Dashboard() {
     data: restaurantsData, 
     isLoading: isRestaurantsLoading 
   } = useGetAllRestaurantsQuery();
+  
+  // Fetch user addresses
+  const {
+    data: addressesData,
+    isLoading: isAddressesLoading
+  } = useGetUserAddressesQuery();
+
+  // Get user's default address
+  const [defaultAddress, setDefaultAddress] = useState(null);
+  
+  // Process addresses when they load
+  useEffect(() => {
+    if (addressesData && Array.isArray(addressesData)) {
+      // Find default address or use first address
+      const defaultAddr = addressesData.find(addr => addr.isDefault) || addressesData[0];
+      if (defaultAddr) {
+        setDefaultAddress(defaultAddr);
+      }
+    }
+  }, [addressesData]);
 
   // Process restaurant data when it loads
   useEffect(() => {
@@ -110,7 +133,7 @@ export default function Dashboard() {
     { id: 'restaurants', icon: <MdRestaurant className="text-white" />, label: 'Restaurants', href: '/restaurants', color: 'from-blue-400 to-blue-600' },
     { id: 'orders', icon: <MdDeliveryDining className="text-white" />, label: 'My Orders', href: '/orders', color: 'from-green-400 to-green-600' },
     { id: 'favorites', icon: <MdFavorite className="text-white" />, label: 'Favorites', href: 'favorites', color: 'from-red-400 to-red-600' },
-    { id: 'offers', icon: <MdLocalOffer className="text-white" />, label: 'Offers', href: '/offers', color: 'from-purple-400 to-purple-600' },
+    { id: 'offers', icon: <MdLocalOffer className="text-white" />, label: 'Offers', href: 'offers', color: 'from-purple-400 to-purple-600' },
   ];
 
   // Get user name from localStorage
@@ -124,6 +147,13 @@ export default function Dashboard() {
       }
     }
   }, []);
+
+  // Get formatted address string
+  const getFormattedAddress = () => {
+    if (!defaultAddress) return "Select delivery address";
+    
+    return `${defaultAddress.address}, ${defaultAddress.city}`;
+  };
 
   // Loading state
   if (isOrdersLoading || isRestaurantsLoading) {
@@ -186,10 +216,61 @@ export default function Dashboard() {
             <p className="text-gray-600 mt-1">Ready to satisfy your cravings today?</p>
           </div>
           <div className="hidden md:block">
-            <div className="flex items-center text-sm text-gray-500">
-              <MdLocationOn className="text-gray-400 mr-1" />
-              <span>Delivering to: 123 Main St, Springfield</span>
-              <button className="ml-2 text-orange-500 hover:text-orange-600">Change</button>
+            <div className="relative">
+              <button 
+                className="flex items-center text-sm text-gray-700 hover:text-orange-500 transition-colors py-1 px-2 rounded-lg hover:bg-orange-50"
+                onClick={() => setShowAddressDropdown(!showAddressDropdown)}
+              >
+                <MdLocationOn className="text-orange-500 mr-1" />
+                <span className="max-w-[200px] truncate">{getFormattedAddress()}</span>
+                <MdKeyboardArrowDown className={`ml-1 transition-transform ${showAddressDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {/* Address dropdown */}
+              {showAddressDropdown && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg z-10 border border-gray-100"
+                >
+                  <div className="py-2">
+                    <h3 className="px-4 py-2 text-sm font-medium text-gray-700 border-b">Delivery Addresses</h3>
+                    
+                    {/* Address List */}
+                    <div className="max-h-60 overflow-y-auto">
+                      {isAddressesLoading ? (
+                        <div className="px-4 py-3 text-sm text-gray-500">Loading addresses...</div>
+                      ) : addressesData?.length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-gray-500">No saved addresses</div>
+                      ) : (
+                        addressesData?.map(address => (
+                          <button 
+                            key={address.id || address._id}
+                            onClick={() => {
+                              setDefaultAddress(address);
+                              setShowAddressDropdown(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 hover:bg-orange-50 flex items-center ${defaultAddress?.id === address.id ? 'bg-orange-50' : ''}`}
+                          >
+                            <MdLocationOn className={`mr-2 ${defaultAddress?.id === address.id ? 'text-orange-500' : 'text-gray-400'}`} />
+                            <div>
+                              <div className="font-medium text-gray-800">{address.fullName}</div>
+                              <div className="text-xs text-gray-600 truncate">{address.address}, {address.city}</div>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                    
+                    {/* Add new address link */}
+                    <div className="px-4 py-2 border-t border-gray-100">
+                      <Link to="settings" className="w-full text-orange-500 text-sm font-medium hover:text-orange-600 flex items-center">
+                        + Add New Address
+                      </Link>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
             </div>
           </div>
         </div>
@@ -226,7 +307,7 @@ export default function Dashboard() {
       <div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-800">Special Offers</h2>
-          <Link to="/offers" className="text-orange-500 hover:text-orange-600 flex items-center text-sm font-medium">
+          <Link to="offers" className="text-orange-500 hover:text-orange-600 flex items-center text-sm font-medium">
             View All <MdArrowForward className="ml-1" />
           </Link>
         </div>

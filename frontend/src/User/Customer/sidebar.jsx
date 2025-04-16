@@ -63,19 +63,19 @@ export default function Sidebar({
       id: 'offers', 
       icon: <MdLocalOffer className="text-2xl" />, 
       label: 'Offers & Promos',
-      href: 'offers' 
+      href: '/user/offers' 
     },
     { 
       id: 'payments', 
       icon: <MdCreditCard className="text-2xl" />, 
       label: 'Payment Methods',
-      href: '/payments' 
+      href: '/user/payments' 
     },
     { 
       id: 'settings', 
       icon: <MdSettings className="text-2xl" />, 
       label: 'Settings',
-      href: 'settings' 
+      href: '/user/settings' 
     },
   ];
 

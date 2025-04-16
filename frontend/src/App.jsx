@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { NotificationProvider } from '../src/Order/NotifyContext';
 import Home from "./Home/pages/layout";
+import AboutUs from "./Home/pages/aboutus";
 import Login from "./User/login";
 import Register from "./User/register";
 import RestaurantRegister from "./Restaurant/Admin/RestaurantRegister";
@@ -33,6 +34,7 @@ import LiveTracking from "./Tracking/LiveTracking";
 import Favourite from "./User/Customer/favourite";
 import Offers from "./User/Customer/offers";
 import Settings from "./User/Customer/settings";
+import PaymentMethods from "./User/Customer/paymentMethods";
 
 import DeliveryLayout from "./Delivery/DeliveryLayout";
 import DeliveryDashboard from "./Delivery/DeliveryDashboard";
@@ -47,6 +49,7 @@ export default function App() {
 
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/about" element={<AboutUs />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/restaurant/register" element={<RestaurantRegister />} />
@@ -94,6 +97,7 @@ export default function App() {
             <Route path="favorites" element={<Favourite />} />
             <Route path="offers" element={<Offers />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="payments" element={<PaymentMethods />} />
           </Route>
 
           <Route path="/delivery" element={<DeliveryLayout />}>
