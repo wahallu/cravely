@@ -75,7 +75,7 @@ export default function Sidebar({
       id: 'settings', 
       icon: <MdSettings className="text-2xl" />, 
       label: 'Settings',
-      href: '/settings' 
+      href: 'settings' 
     },
   ];
 

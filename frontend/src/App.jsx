@@ -32,6 +32,7 @@ import UserDashboard from "./User/Customer/dashboard";
 import LiveTracking from "./Tracking/LiveTracking";
 import Favourite from "./User/Customer/favourite";
 import Offers from "./User/Customer/offers";
+import Settings from "./User/Customer/settings";
 
 import DeliveryLayout from "./Delivery/DeliveryLayout";
 import DeliveryDashboard from "./Delivery/DeliveryDashboard";
@@ -92,6 +93,7 @@ export default function App() {
             <Route path="" element={<UserDashboard />} />
             <Route path="favorites" element={<Favourite />} />
             <Route path="offers" element={<Offers />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
 
           <Route path="/delivery" element={<DeliveryLayout />}>
