@@ -4,7 +4,7 @@ import { getToken } from '../../utils/auth';
 export const paymentApi = createApi({
   reducerPath: 'paymentApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: 'http://localhost:5006/api', // Gateway service URL
+    baseUrl: 'http://localhost:5002/api',
     prepareHeaders: (headers) => {
       const token = getToken();
       if (token) {
@@ -17,7 +17,7 @@ export const paymentApi = createApi({
   endpoints: (builder) => ({
     createPaymentIntent: builder.mutation({
       query: (paymentData) => ({
-        url: '/payments/create-intent', // Remove the leading 'api'
+        url: '/payments/create-intent',
         method: 'POST',
         body: paymentData,
       }),

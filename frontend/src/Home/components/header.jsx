@@ -211,9 +211,6 @@ export default function Header() {
             <Link to="/meals&menus" className="text-gray-700 hover:text-orange-500 font-medium transition-colors">
               Meals & Menus
             </Link>
-            <Link to="/offers" className="text-gray-700 hover:text-orange-500 font-medium transition-colors">
-              Offers
-            </Link>
             <Link to="/about" className="text-gray-700 hover:text-orange-500 font-medium transition-colors">
               About Us
             </Link>
@@ -401,7 +398,7 @@ export default function Header() {
                       <MdHistory className="mr-2" />
                       My Orders
                     </Link>
-                    <Link to="/favorites" className="flex items-center px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-500">
+                    <Link to="/user/favorites" className="flex items-center px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-500">
                       <MdFavorite className="mr-2" />
                       Favorites
                     </Link>
@@ -437,10 +434,6 @@ export default function Header() {
           <Link to="/restaurants" className="flex flex-col items-center text-xs text-gray-700 hover:text-orange-500 font-medium px-3 py-1">
             <MdRestaurant className="text-lg mb-1" />
             <span>Restaurants</span>
-          </Link>
-          <Link to="/offers" className="flex flex-col items-center text-xs text-gray-700 hover:text-orange-500 font-medium px-3 py-1">
-            <MdRestaurant className="text-lg mb-1" />
-            <span>Offers</span>
           </Link>
           <Link to="/about" className="flex flex-col items-center text-xs text-gray-700 hover:text-orange-500 font-medium px-3 py-1">
             <MdRestaurant className="text-lg mb-1" />

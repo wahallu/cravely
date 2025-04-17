@@ -41,8 +41,43 @@ const userSchema = new mongoose.Schema({
         trim: true
     },
     address: {
+        street: {
+            type: String,
+            trim: true
+        },
+        city: {
+            type: String,
+            trim: true
+        },
+        state: {
+            type: String,
+            trim: true
+        },
+        zipCode: {
+            type: String,
+            trim: true
+        }
+    },
+    profileImage: {
         type: String,
-        trim: true
+        default: '/default-avatar.png'
+    },
+    preferences: {
+        notifications: {
+            email: {
+                type: Boolean,
+                default: true
+            },
+            sms: {
+                type: Boolean,
+                default: false
+            },
+            marketing: {
+                type: Boolean,
+                default: false
+            }
+        },
+        favorites: [String]
     }
 }, {
     timestamps: true // Automatically manage createdAt and updatedAt fields

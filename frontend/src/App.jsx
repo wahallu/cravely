@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { NotificationProvider } from '../src/Order/NotifyContext';
 import Home from "./Home/pages/layout";
+import AboutUs from "./Home/pages/aboutus";
 import Login from "./User/login";
 import Register from "./User/register";
 import RestaurantRegister from "./Restaurant/Admin/RestaurantRegister";
@@ -30,6 +31,10 @@ import AdminDrivers from "./User/Admin/drivers";
 import UserLayout from "./User/Customer/layout";
 import UserDashboard from "./User/Customer/dashboard";
 import LiveTracking from "./Tracking/LiveTracking";
+import Favourite from "./User/Customer/favourite";
+import Offers from "./User/Customer/offers";
+import Settings from "./User/Customer/settings";
+import PaymentMethods from "./User/Customer/paymentMethods";
 
 import DeliveryLayout from "./Delivery/DeliveryLayout";
 import DeliveryDashboard from "./Delivery/DeliveryDashboard";
@@ -40,63 +45,67 @@ import DriverDashboard from "./Delivery/DriverDashboard";
 export default function App() {
   return (
     <BrowserRouter>
-          <NotificationProvider>
+      <NotificationProvider>
 
-      <Routes>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/restaurant/register" element={<RestaurantRegister />} />
+          <Route path="/restaurant/login" element={<RestaurantLogin />} />
+          <Route path="/restaurant/livetracking" element={<LiveTracking />} />
 
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/restaurant/register" element={<RestaurantRegister />} />
-        <Route path="/restaurant/login" element={<RestaurantLogin />} />
-        <Route path="/restaurant/livetracking" element={<LiveTracking />} />
+          {/* Order */}
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/confirmation" element={<OrderConfirmation />} />
+          <Route path="/orders" element={<MyOrders />} />
+          <Route path="/orders/:id" element={<Order />} />
 
-        {/* Order */}
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/confirmation" element={<OrderConfirmation />} />
-        <Route path="/orders" element={<MyOrders />} />
-        <Route path="/orders/:id" element={<Order />} />
+          {/* Restaurant Admin Dashboard Routes */}
+          <Route path="/restaurant" element={<Layout />}>
+            <Route path="dashboard" element={<RestaurantDashboard />} />
+            <Route path="menu" element={<MenuManagement />} />
+          </Route>
 
-        {/* Restaurant Admin Dashboard Routes */}
-        <Route path="/restaurant" element={<Layout />}>
-          <Route path="dashboard" element={<RestaurantDashboard />} />
-          <Route path="menu" element={<MenuManagement />} />
-        </Route>
+          {/* Restaurant Client */}
+          <Route path="/" element={<ClientLayout />}>
+            <Route path="restaurants" element={<RestaurantList />} />
+            <Route path="restaurant/:id" element={<RestaurantDetails />} />
+            <Route path="meals&menus" element={<MealsMenus />} />
+          </Route>
 
-        {/* Restaurant Client */}
-        <Route path="/" element={<ClientLayout />}>
-          <Route path="restaurants" element={<RestaurantList />} />
-          <Route path="restaurant/:id" element={<RestaurantDetails />} />
-          <Route path="meals&menus" element={<MealsMenus />} />
-        </Route>
+          {/* Admin Routes */}
+          <Route path="/admin" element={
+            <AdminProtectedRoutes>
+              <AdminLayout />
+            </AdminProtectedRoutes>
+          }>
+            <Route path="" element={<AdminDashboard />} />
+            <Route path="restaurants" element={<AdminRestaurant />} />
+            <Route path="drivers" element={<AdminDrivers />} />
+          </Route>
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={
-          <AdminProtectedRoutes>
-            <AdminLayout />
-          </AdminProtectedRoutes>
-        }>
-          <Route path="" element={<AdminDashboard />} />
-          <Route path="restaurants" element={<AdminRestaurant />} />
-          <Route path="drivers" element={<AdminDrivers />} />
-        </Route>
+          {/* Customer Routes */}
+          <Route path="/user" element={
+            <UserProtectedRoutes>
+              <UserLayout />
+            </UserProtectedRoutes>
+          }>
+            <Route path="" element={<UserDashboard />} />
+            <Route path="favorites" element={<Favourite />} />
+            <Route path="offers" element={<Offers />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="payments" element={<PaymentMethods />} />
+          </Route>
 
-        {/* Customer Routes */}
-        <Route path="/user" element={
-          <UserProtectedRoutes>
-            <UserLayout />
-          </UserProtectedRoutes>
-        }>
-          <Route path="" element={<UserDashboard />} />
-        </Route>
+          <Route path="/delivery" element={<DeliveryLayout />}>
+            <Route path="" element={<DeliveryDashboard />} />
+            <Route path="drivers" element={<DriverDashboard />} />
+          </Route>
 
-        <Route path="/delivery" element={<DeliveryLayout />}>
-          <Route path="" element={<DeliveryDashboard />} />
-          <Route path="drivers" element={<DriverDashboard />} />
-        </Route>
-
-      </Routes>
+        </Routes>
       </NotificationProvider>
 
     </BrowserRouter>
