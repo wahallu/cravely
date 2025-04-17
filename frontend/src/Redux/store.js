@@ -8,6 +8,7 @@ import { orderApi } from "./slices/orderSlice";
 import { cartApi } from "./slices/cartApiSlice";
 import { paymentApi } from "./slices/paymentSlice";
 import { shippingAddressApi } from "./slices/shippingAddressSlice";
+import { userApi } from "./slices/userSlice";
 import cartReducer from "./slices/cartSlice";
 
 export const store = configureStore({
@@ -20,6 +21,7 @@ export const store = configureStore({
     [cartApi.reducerPath]: cartApi.reducer,
     [shippingAddressApi.reducerPath]: shippingAddressApi.reducer,
     [paymentApi.reducerPath]: paymentApi.reducer,
+    [userApi.reducerPath]: userApi.reducer,
     cart: cartReducer,
   },
   middleware: (getDefaultMiddleware) =>
@@ -31,7 +33,8 @@ export const store = configureStore({
       .concat(orderApi.middleware)
       .concat(cartApi.middleware)
       .concat(shippingAddressApi.middleware)
-      .concat(paymentApi.middleware),
+      .concat(paymentApi.middleware)
+      .concat(userApi.middleware),
 });
 
 setupListeners(store.dispatch);

@@ -15,7 +15,7 @@ import { useGetAllMealsQuery } from "../../Redux/slices/mealSlice";
 import { useGetAllMenusQuery } from "../../Redux/slices/menuSlice";
 import Slider from "rc-slider"; // You'll need to import this
 import "rc-slider/assets/index.css"; // And its styles
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux"; // Added useSelector
 import { addToCart } from "../../Redux/slices/cartSlice";
 import { toast } from "react-hot-toast"; // This should already be set up based on your main.jsx
 import { useAddToCartMutation } from "../../Redux/slices/cartApiSlice";
@@ -124,24 +124,47 @@ const MealsAndMenus = () => {
     setSearchQuery("");
   };
 
+  // Check for token directly in localStorage as a fallback
+  const isUserLoggedIn = () => {
+    // First check for auth token
+    const token = localStorage.getItem('token');
+    // Then check for user object as backup
+    const userObject = localStorage.getItem('user');
+    
+    return !!(token && userObject);
+  };
+
   const handleAddToCart = async (item, addAsNew = false) => {
     try {
-      // Get the user info
-      const userInfo = getUserInfo();
-      
-      if (!userInfo) {
+      // Improved auth check with fallback
+      if (!isUserLoggedIn()) {
         toast.error("Please log in to add items to cart");
         navigate('/login');
         return;
       }
 
+      // Get stored user info
+      const userStoredData = localStorage.getItem('user');
+      const userInfo = userStoredData ? JSON.parse(userStoredData) : null;
+      
+      if (!userInfo || !userInfo._id) {
+        console.error("User info missing or incomplete:", userInfo);
+        toast.error("Session expired. Please log in again.");
+        navigate('/login');
+        return;
+      }
+
       // Enhanced restaurant ID validation
-      // Try to get restaurant ID from URL params first, then from the item itself
       let restaurantId = id;
       
       // If URL param id is undefined, try to get it from the item
       if (!restaurantId && item.restaurant) {
         restaurantId = item.restaurant;
+      }
+      
+      // Another fallback for restaurant ID
+      if (!restaurantId && item.restaurantId) {
+        restaurantId = item.restaurantId;
       }
       
       console.log("Restaurant ID:", restaurantId, "Item being added:", item.name);
@@ -180,9 +203,15 @@ const MealsAndMenus = () => {
       console.log("Sending item data to API:", itemData);
 
       // Then make API call to persist to database
-      await addToCartMutation(itemData).unwrap();
+      const result = await addToCartMutation(itemData).unwrap();
       
-      toast.success(`${item.name} added to cart!`);
+      if (result.success) {
+        toast.success(`${item.name} added to cart!`);
+      } else {
+        // Handle potential server error with success: false
+        console.warn("API returned success:false", result);
+        toast.success(`${item.name} added to cart locally`);
+      }
     } catch (error) {
       console.error("Add to cart error:", error);
       
@@ -193,23 +222,22 @@ const MealsAndMenus = () => {
         errorObj: error
       });
       
-      // Improved error handling with more specific messages
-      if (error.message) {
-        toast.error(`Failed to add to cart: ${error.message}`);
-      } else if (error.data && error.data.message) {
-        toast.error(`Failed to add to cart: ${error.data.message}`);
-      } else if (error.error) {
-        toast.error(`Failed to add to cart: ${error.error}`);
-      } else {
-        toast.error("Failed to add to cart: Network or server error");
+      if (error.status === 401) {
+        toast.error("Your session has expired. Please log in again.");
+        navigate('/login');
+        return;
       }
+      
+      // Show error but keep item in local cart
+      toast.error(`Server error adding to cart. Item added locally.`);
     }
   };
 
+  // Check for valid restaurant ID on load
   useEffect(() => {
-    console.log("MealsAndMenus component mounted with restaurant ID:", id);
     if (!id) {
       console.warn("No restaurant ID found in URL parameters");
+      toast.error("Restaurant information is missing");
     }
   }, [id]);
 
