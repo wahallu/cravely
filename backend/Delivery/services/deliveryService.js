@@ -3,7 +3,7 @@ const Delivery = require('../models/Delivery');
 require('dotenv').config();
 
 // Base URL for the Order Service 
-const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://order-service:5173/api/orders';
+const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://order-service:5002/api/orders';
 
 /**
  * Get all delivery orders from the Order Service

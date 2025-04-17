@@ -2,6 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const deliveryRoutes = require("./routes/deliveryRoutes");
 
 dotenv.config();
 
@@ -9,7 +10,7 @@ dotenv.config();
 connectDB();
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5003;
 
 // middleware
 app.use(cors());
@@ -30,9 +31,7 @@ app.get('/', (req, res) => {
   res.status(200).json({ message: 'Delivery service is running' });
 });
 
-// Import routes if available
-// const deliveryRoutes = require('./routes/deliveryRoutes');
-// app.use('/', deliveryRoutes);
+app.use("/api/deliveries", protect, deliveryRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
