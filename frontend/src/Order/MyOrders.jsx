@@ -16,7 +16,7 @@ import {
   FaBan
 } from 'react-icons/fa';
 import { MdKeyboardArrowRight, MdDeliveryDining, MdLocalDining } from 'react-icons/md';
-import { toast } from 'react-toastify';
+import { toast } from 'react-hot-toast';
 
 export default function MyOrders() {
   // Fetch user orders
