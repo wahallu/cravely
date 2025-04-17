@@ -38,7 +38,7 @@ app.get('/', (req, res) => {
 app.use('/api/orders', orderRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/shipping-addresses', shippingAddressRoutes);
-app.use('/api', paymentRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

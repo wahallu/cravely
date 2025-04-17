@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const UserService = require('../services/userService');
+const Card = require('../models/Card');
 const { protect } = require('../middleware/auth');
 // Load environment variables properly
 require('dotenv').config();
@@ -9,7 +11,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // Make sure these routes are registered and working properly
 
-router.post('/payments/create-intent', protect, async (req, res) => {
+router.post('/create-intent', protect, async (req, res) => {
   try {
     const { amount, currency, paymentMethodId, description, metadata, saveCard } = req.body;
     
@@ -53,22 +55,36 @@ router.post('/save-card', protect, async (req, res) => {
   try {
     const { paymentMethodId, cardholderName, last4 } = req.body;
     
+    // Extract token from request
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication token is required'
+      });
+    }
+    
+    // Get user from User service
+    let user;
+    try {
+      user = await UserService.getUserById(req.user._id, token);
+    } catch (error) {
+      console.error('Error fetching user from User service:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve user information'
+      });
+    }
+    
     // Attach the payment method to the customer
-    // First ensure the user has a Stripe customer ID
-    let customerId;
-    // This would typically be stored in your user database
-    // Here, we're creating a new one for simplicity
+    let customerId = user.stripeCustomerId;
     
-    // Check if user already has a Stripe customer ID
-    const user = await User.findById(req.user._id);
-    
-    if (user.stripeCustomerId) {
-      customerId = user.stripeCustomerId;
-    } else {
-      // Create a new customer
+    // If user doesn't have a Stripe customer ID, create one
+    if (!customerId) {
+      // Create a new customer in Stripe
       const customer = await stripe.customers.create({
         email: user.email,
-        name: user.fullName,
+        name: `${user.firstName} ${user.lastName}`,
         metadata: {
           userId: req.user._id
         }
@@ -76,10 +92,17 @@ router.post('/save-card', protect, async (req, res) => {
       
       customerId = customer.id;
       
-      // Save the customer ID to the user
-      await User.findByIdAndUpdate(req.user._id, {
-        stripeCustomerId: customerId
-      });
+      // Update user with stripe customer ID via User service
+      try {
+        await UserService.updateUser(
+          req.user._id, 
+          { stripeCustomerId: customerId },
+          token
+        );
+      } catch (error) {
+        console.error('Error updating user with Stripe customer ID:', error);
+        // Continue anyway since we have the customer ID
+      }
     }
     
     // Attach the payment method to the customer
@@ -124,7 +147,26 @@ router.post('/save-card', protect, async (req, res) => {
 // Get saved cards
 router.get('/saved-cards', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    // Extract token from request
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication token is required'
+      });
+    }
+    
+    // Get user from User service
+    let user;
+    try {
+      user = await UserService.getUserById(req.user._id, token);
+    } catch (error) {
+      console.error('Error fetching user from User service:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve user information'
+      });
+    }
     
     if (!user.stripeCustomerId) {
       return res.json({
