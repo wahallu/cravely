@@ -10,7 +10,6 @@ require('dotenv').config();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // Make sure these routes are registered and working properly
-
 router.post('/create-intent', protect, async (req, res) => {
   try {
     const { amount, currency, paymentMethodId, description, metadata, saveCard } = req.body;
@@ -66,13 +65,14 @@ router.post('/save-card', protect, async (req, res) => {
     
     // Get user from User service
     let user;
+    // res.json({user: req.user._id, token: token})
     try {
       user = await UserService.getUserById(req.user._id, token);
+      console.log('User fetched from User service:', user);
     } catch (error) {
-      console.error('Error fetching user from User service:', error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to retrieve user information'
+        message: 'Failed to retrieve user information: ' + error.message
       });
     }
     

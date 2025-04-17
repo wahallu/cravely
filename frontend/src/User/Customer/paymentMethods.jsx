@@ -90,7 +90,7 @@ function AddCardForm({ onSuccess, onCancel }) {
       // Save card to backend through our API
       const result = await saveCard({
         paymentMethodId: paymentMethod.id,
-        nameOnCard: cardholderName,
+        cardholderName: cardholderName,
         last4: paymentMethod.card.last4,
         isDefault
       }).unwrap();
