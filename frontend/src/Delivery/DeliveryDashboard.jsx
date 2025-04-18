@@ -32,7 +32,7 @@ export default function DeliveryDashboard() {
 
       {/* Orders List */}
       <div className="mt-6 grid gap-6">
-        {orders.map((order) => (
+        {deliveries.map((order) => (
           <div
             key={order.id}
             className="bg-white p-4 rounded-lg shadow-md transition transform hover:scale-105 hover:shadow-lg border border-yellow-400"

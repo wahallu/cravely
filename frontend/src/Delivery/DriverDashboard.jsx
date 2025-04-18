@@ -1,13 +1,21 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { FaMoneyBillWave, FaCheckCircle } from "react-icons/fa";
+import { fetchDriverStats } from "../Redux/slices/driverSlice";
 
-const driverStats = {
-  totalEarnings: 520.75,
-  completedOrders: 35,
-};
 
 export default function DriverDashboard() {
+  const dispatch = useDispatch();
+  const { totalEarnings, completedOrders, loading, error } = useSelector((state) => state.driver);
+
+  useEffect(() => {
+    dispatch(fetchDriverStats());
+  }, [dispatch]);
+
+  if (loading) return <p className="text-center mt-6">Loading stats...</p>;
+  if (error) return <p className="text-center text-red-500 mt-6">{error}</p>;
+
   return (
     <div className="min-h-screen bg-yellow-200 p-6">
       {/* Header */}
