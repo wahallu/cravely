@@ -11,14 +11,14 @@ const getAllDrivers = async () => {
  * Get a driver by ID
  */
 const getDriverById = async (driverId) => {
-  return await Driver.findById(driverId);
+  return await Driver.findOne({ driverId });
 };
 
 /**
  * Update driver's earnings and completed orders
  */
 const updateDriverStats = async (driverId, earnings) => {
-  const driver = await Driver.findById(driverId);
+  const driver = await Driver.findOne({ driverId });
   if (!driver) throw new Error('Driver not found');
 
   driver.totalEarnings += earnings;

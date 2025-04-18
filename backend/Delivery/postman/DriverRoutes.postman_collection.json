@@ -1,54 +1,115 @@
 {
-    "info": {
-      "_postman_id": "e89b1abc-45de-6789-f012-3456driverapi",
-      "name": "Cravely Driver Routes",
-      "description": "Test collection for Cravely's driver API endpoints",
-      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-    },
-    "item": [
-      {
-        "name": "Get Driver Stats by Name",
-        "request": {
-          "method": "GET",
-          "header": [],
-          "url": {
-            "raw": "{{baseUrl}}/api/drivers/stats?name=John%20Doe",
-            "host": ["{{baseUrl}}"],
-            "path": ["api", "drivers", "stats"],
-            "query": [
-              {
-                "key": "name",
-                "value": "John Doe"
-              }
-            ]
-          },
-          "description": "Retrieve stats of a driver by their name"
+  "info": {
+    "_postman_id": "e89b1abc-45de-6789-f012-3456driverapi",
+    "name": "Cravely Driver Routes",
+    "description": "Test collection for Cravely's driver API endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get Driver Stats by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/drivers/stats/{{driverId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "drivers", "stats", "{{driverId}}"]
         },
-        "event": [
-          {
-            "listen": "test",
-            "script": {
-              "exec": [
-                "pm.test(\"Status code is 200\", function () {",
-                "    pm.response.to.have.status(200);",
-                "});",
-                "",
-                "pm.test(\"Response has driver name\", function () {",
-                "    const jsonData = pm.response.json();",
-                "    pm.expect(jsonData.name).to.eql(\"John Doe\");",
-                "});"
-              ],
-              "type": "text/javascript"
-            }
+        "description": "Retrieve stats of a driver by their ID"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response contains driver stats\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('totalEarnings');",
+              "    pm.expect(jsonData).to.have.property('completedOrders');",
+              "});"
+            ],
+            "type": "text/javascript"
           }
-        ]
-      }
-    ],
-    "variable": [
-      {
-        "key": "baseUrl",
-        "value": "http://localhost:5003"
-      }
-    ]
-  }
-  
+        }
+      ]
+    },
+    {
+      "name": "Get All Drivers",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/drivers",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "drivers"]
+        },
+        "description": "Retrieve a list of all drivers"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response is an array\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.be.an('array');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get Driver by Driver ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/drivers/{{driverId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "drivers", "{{driverId}}"]
+        },
+        "description": "Retrieve a driver by their driver ID"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response contains driver details\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('driverId');",
+              "    pm.expect(jsonData).to.have.property('name');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5003"
+    },
+    {
+      "key": "driverId",
+      "value": "12345"
+    }
+  ]
+}

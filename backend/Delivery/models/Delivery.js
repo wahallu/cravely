@@ -7,6 +7,7 @@ const deliverySchema = new mongoose.Schema({
   items: [{ name: String, price: Number }],
   total: Number,
   paymentMethod: String,
+  driver: { type: String },
   driverStatus: {
     type: String,
     enum: ["Pending", "In Transit", "Delivered"],

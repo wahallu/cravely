@@ -45,7 +45,7 @@
           ],
           "body": {
             "mode": "raw",
-            "raw": "{\n    \"customerName\": \"John Doe\",\n    \"address\": \"123 Main St\",\n    \"items\": [\"Pizza\", \"Burger\"],\n    \"driverStatus\": \"pending\"\n}"
+            "raw": "{\n  \"orderId\": \"ORD123\",\n  \"customer\": \"John Doe\",\n  \"address\": \"123 Main St\",\n  \"items\": [\n    { \"name\": \"Pizza\", \"price\": 12 },\n    { \"name\": \"Burger\", \"price\": 8 }\n  ],\n  \"total\": 20,\n  \"paymentMethod\": \"Cash\",\n  \"driver\": \"DriverA\",\n  \"driverStatus\": \"Pending\"\n}"
           },
           "url": {
             "raw": "{{baseUrl}}/api/deliveries",
@@ -81,7 +81,7 @@
           ],
           "body": {
             "mode": "raw",
-            "raw": "{\n    \"driverStatus\": \"delivered\"\n}"
+            "raw": "{\n    \"driverStatus\": \"Delivered\"\n}"
           },
           "url": {
             "raw": "{{baseUrl}}/api/deliveries/DELIVERY_ID",
@@ -108,7 +108,7 @@
     "variable": [
       {
         "key": "baseUrl",
-        "value": "http://localhost:5000"
+        "value": "http://localhost:5003"
       }
     ]
   }
