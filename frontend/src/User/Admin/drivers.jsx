@@ -1,28 +1,15 @@
-import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { MdSearch, MdFilterList, MdAdd, MdDelete, MdEdit, MdCancel, MdDeliveryDining, MdVisibility, MdDirectionsBike, MdDirectionsCar, MdLocalShipping } from 'react-icons/md';
 import { 
-  MdSearch, 
-  MdFilterList, 
-  MdAdd, 
-  MdStar, 
-  MdDelete, 
-  MdEdit, 
-  MdCheckCircle, 
-  MdCancel,
-  MdDeliveryDining,
-  MdLocationOn,
-  MdPhone,
-  MdEmail,
-  MdVisibility,
-  MdDirectionsBike,
-  MdDirectionsCar,
-  MdLocalShipping,
-  MdVerified
-} from 'react-icons/md'
+  useGetAllDriversQuery, 
+  useAddDriverMutation,
+  useUpdateDriverMutation,
+  useDeleteDriverMutation
+} from '../../Redux/slices/driverSlice';
 
 export default function Drivers() {
-  const [drivers, setDrivers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Local state
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState({
@@ -33,183 +20,343 @@ export default function Drivers() {
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  // Mock data loading
-  useEffect(() => {
-    const fetchData = () => {
-      // Simulating API call
-      setTimeout(() => {
-        setDrivers([
-          {
-            id: 1,
-            name: "John Smith",
-            photo: "/hero1.png",
-            vehicleType: "Motorcycle",
-            email: "john.smith@example.com",
-            phone: "+1 (555) 123-4567",
-            address: "123 Main St, Downtown",
-            rating: 4.8,
-            reviews: 143,
-            status: "active",
-            since: "2022-01-15",
-            deliveries: 245,
-            earnings: "$2,450",
-            verified: true,
-            vehicleInfo: {
-              model: "Honda CBR",
-              licensePlate: "MTC-123",
-              color: "Red"
-            }
-          },
-          {
-            id: 2,
-            name: "Emma Johnson",
-            photo: "/hero1.png",
-            vehicleType: "Car",
-            email: "emma.johnson@example.com",
-            phone: "+1 (555) 987-6543",
-            address: "456 Oak St, Midtown",
-            rating: 4.5,
-            reviews: 87,
-            status: "active",
-            since: "2022-03-10",
-            deliveries: 148,
-            earnings: "$1,680",
-            verified: true,
-            vehicleInfo: {
-              model: "Toyota Corolla",
-              licensePlate: "CAR-456",
-              color: "Blue"
-            }
-          },
-          {
-            id: 3,
-            name: "Michael Brown",
-            photo: "/hero1.png",
-            vehicleType: "Bicycle",
-            email: "michael.brown@example.com",
-            phone: "+1 (555) 876-5432",
-            address: "789 Elm St, Uptown",
-            rating: 4.7,
-            reviews: 56,
-            status: "pending",
-            since: "2022-05-20",
-            deliveries: 65,
-            earnings: "$650",
-            verified: false,
-            vehicleInfo: {
-              model: "Trek Mountain Bike",
-              licensePlate: "N/A",
-              color: "Green"
-            }
-          },
-          {
-            id: 4,
-            name: "Sophia Davis",
-            photo: "/hero1.png",
-            vehicleType: "Car",
-            email: "sophia.davis@example.com",
-            phone: "+1 (555) 234-5678",
-            address: "101 Pine Rd, Westside",
-            rating: 4.3,
-            reviews: 72,
-            status: "suspended",
-            since: "2022-04-05",
-            deliveries: 54,
-            earnings: "$740",
-            verified: true,
-            vehicleInfo: {
-              model: "Honda Civic",
-              licensePlate: "CAR-789",
-              color: "Silver"
-            }
-          },
-          {
-            id: 5,
-            name: "David Wilson",
-            photo: "/hero1.png",
-            vehicleType: "Motorcycle",
-            email: "david.wilson@example.com",
-            phone: "+1 (555) 345-6789",
-            address: "202 Cedar Ave, Eastside",
-            rating: 4.6,
-            reviews: 98,
-            status: "active",
-            since: "2022-02-18",
-            deliveries: 192,
-            earnings: "$1,920",
-            verified: true,
-            vehicleInfo: {
-              model: "Yamaha FZ",
-              licensePlate: "MTC-456",
-              color: "Black"
-            }
-          }
-        ]);
-        setLoading(false);
-      }, 1000);
-    };
-    
-    fetchData();
-  }, []);
+  // Form states
+  const [addDriverOpen, setAddDriverOpen] = useState(false);
+  const [editDriverOpen, setEditDriverOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    driverId: '',
+    name: '',
+    status: 'Available',
+    phone: '',
+    licenseNumber: '',
+    vehicleType: '',
+  });
+
+  // RTK Query hooks
+  const { 
+    data: drivers = [], 
+    isLoading, 
+    isError, 
+    error: fetchError,
+    refetch 
+  } = useGetAllDriversQuery();
+  
+  const [addDriver, { isLoading: isAddingDriver }] = useAddDriverMutation();
+  const [updateDriver, { isLoading: isUpdatingDriver }] = useUpdateDriverMutation();
+  const [deleteDriver, { isLoading: isDeletingDriver }] = useDeleteDriverMutation();
 
   // Filter drivers based on search query and filters
   const filteredDrivers = drivers.filter(driver => {
     // Search query filter
-    if (searchQuery && !driver.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
-        !driver.email.toLowerCase().includes(searchQuery.toLowerCase())) {
+    if (searchQuery && !driver.name?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !driver.driverId?.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
-    
+
     // Status filter
     if (filters.status !== 'all' && driver.status !== filters.status) {
       return false;
     }
-    
+
     // Vehicle type filter
     if (filters.vehicleType !== 'all' && driver.vehicleType !== filters.vehicleType) {
       return false;
     }
-    
-    // Rating filter
-    if (filters.rating > 0 && driver.rating < filters.rating) {
-      return false;
-    }
-    
+
     return true;
   });
 
+  // Get unique vehicle types for filter
+  const vehicleTypes = ['all', ...new Set(drivers.filter(d => d.vehicleType).map(d => d.vehicleType))];
+
+  // Status badge component
   const getStatusBadge = (status) => {
-    switch(status) {
-      case 'active':
-        return <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Active</span>;
-      case 'pending':
-        return <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>;
-      case 'suspended':
-        return <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Suspended</span>;
+    switch (status) {
+      case 'Available':
+        return <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Available</span>;
+      case 'On Delivery':
+        return <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">On Delivery</span>;
+      case 'Unavailable':
+        return <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Unavailable</span>;
       default:
         return <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">{status}</span>;
     }
   };
 
+  // Vehicle icon component
   const getVehicleIcon = (vehicleType) => {
-    switch(vehicleType) {
-      case 'Motorcycle':
+    if (!vehicleType) return <MdLocalShipping className="text-gray-500" />;
+
+    switch (vehicleType.toLowerCase()) {
+      case 'motorcycle':
         return <MdDirectionsBike className="text-orange-500" />;
-      case 'Car':
+      case 'car':
         return <MdDirectionsCar className="text-blue-500" />;
-      case 'Bicycle':
+      case 'bicycle':
         return <MdDirectionsBike className="text-green-500" />;
       default:
         return <MdLocalShipping className="text-gray-500" />;
     }
   };
 
-  // Get unique vehicle types for filter
-  const vehicleTypes = ['all', ...new Set(drivers.map(d => d.vehicleType))];
-
+  // Handle opening driver details
   const openDriverDetails = (driver) => {
     setSelectedDriver(driver);
     setDetailsOpen(true);
+  };
+
+  // Handle form input changes
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prevData => ({
+      ...prevData,
+      [name]: value
+    }));
+  };
+
+  // Reset form data
+  const resetFormData = () => {
+    setFormData({
+      driverId: '',
+      name: '',
+      status: 'Available',
+      phone: '',
+      licenseNumber: '',
+      vehicleType: '',
+    });
+  };
+
+  // Open add driver form
+  const openAddDriverForm = () => {
+    resetFormData();
+    setAddDriverOpen(true);
+  };
+
+  // Open edit driver form
+  const openEditDriverForm = (driver) => {
+    setFormData({
+      driverId: driver.driverId,
+      name: driver.name || '',
+      status: driver.status || 'Available',
+      phone: driver.phone || '',
+      licenseNumber: driver.licenseNumber || '',
+      vehicleType: driver.vehicleType || '',
+    });
+    setSelectedDriver(driver);
+    setEditDriverOpen(true);
+  };
+
+  // Handle add driver submission
+  const handleAddDriver = async (e) => {
+    e.preventDefault();
+    try {
+      await addDriver(formData).unwrap();
+      setAddDriverOpen(false);
+      resetFormData();
+    } catch (error) {
+      console.error('Failed to add driver:', error);
+    }
+  };
+
+  // Handle edit driver submission
+  const handleEditDriver = async (e) => {
+    e.preventDefault();
+    try {
+      await updateDriver({ 
+        driverId: selectedDriver.driverId, 
+        ...formData 
+      }).unwrap();
+      setEditDriverOpen(false);
+      setSelectedDriver(null);
+      resetFormData();
+    } catch (error) {
+      console.error('Failed to update driver:', error);
+    }
+  };
+
+  // Handle delete driver confirmation
+  const handleDeleteConfirmation = (driver) => {
+    setSelectedDriver(driver);
+    setConfirmDeleteOpen(true);
+  };
+
+  // Handle driver deletion
+  const handleDeleteDriver = async () => {
+    try {
+      await deleteDriver(selectedDriver.driverId).unwrap();
+      setConfirmDeleteOpen(false);
+      setSelectedDriver(null);
+    } catch (error) {
+      console.error('Failed to delete driver:', error);
+    }
+  };
+
+  // Form modal component
+  const DriverFormModal = ({ isOpen, onClose, title, onSubmit, isEditing }) => {
+    if (!isOpen) return null;
+
+    const handleFormSubmit = (e) => {
+      e.preventDefault();
+      onSubmit(e);
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-xl max-w-md w-full p-6"
+        >
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-gray-800">{title}</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+              type="button"
+            >
+              <MdCancel className="text-2xl" />
+            </button>
+          </div>
+
+          <form onSubmit={handleFormSubmit} className="space-y-4">
+            {!isEditing && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Driver ID</label>
+                <input
+                  type="text"
+                  name="driverId"
+                  value={formData.driverId}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="e.g., D001"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                required
+                placeholder="Full Name"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                name="status"
+                value={formData.status}
+                onChange={handleInputChange}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+              >
+                <option value="Available">Available</option>
+                <option value="On Delivery">On Delivery</option>
+                <option value="Unavailable">Unavailable</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                placeholder="Phone Number"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">License Number</label>
+              <input
+                type="text"
+                name="licenseNumber"
+                value={formData.licenseNumber}
+                onChange={handleInputChange}
+                placeholder="License Number"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
+              <input
+                type="text"
+                name="vehicleType"
+                value={formData.vehicleType}
+                onChange={handleInputChange}
+                placeholder="Motorcycle, Car, Bicycle, etc."
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+              />
+            </div>
+
+            <div className="pt-4 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+                disabled={isAddingDriver || isUpdatingDriver}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                disabled={isAddingDriver || isUpdatingDriver}
+              >
+                {isEditing ? 'Update Driver' : 'Add Driver'}
+                {(isAddingDriver || isUpdatingDriver) && '...'}
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </div>
+    );
+  };
+
+  // Delete confirmation modal
+  const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm }) => {
+    if (!isOpen || !selectedDriver) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-xl max-w-md w-full p-6"
+        >
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Confirm Delete</h2>
+          <p className="text-gray-600 mb-6">
+            Are you sure you want to delete driver <span className="font-semibold">{selectedDriver.name}</span> (ID: {selectedDriver.driverId})? This action cannot be undone.
+          </p>
+
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+              disabled={isDeletingDriver}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              disabled={isDeletingDriver}
+            >
+              {isDeletingDriver ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
   };
 
   return (
@@ -217,7 +364,7 @@ export default function Drivers() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-800">Driver Management</h1>
-        
+
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Search */}
           <div className="relative">
@@ -230,28 +377,29 @@ export default function Drivers() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          
+
           {/* Filter Button */}
-          <button 
+          <button
             onClick={() => setFilterOpen(!filterOpen)}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
           >
-            <MdFilterList /> 
+            <MdFilterList />
             <span>Filters</span>
           </button>
-          
+
           {/* Add Driver Button */}
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+            onClick={openAddDriverForm}
           >
             <MdAdd />
             <span>Add Driver</span>
           </motion.button>
         </div>
       </div>
-      
+
       {/* Filters */}
       {filterOpen && (
         <motion.div
@@ -260,26 +408,26 @@ export default function Drivers() {
           exit={{ opacity: 0, height: 0 }}
           className="bg-white p-4 rounded-xl shadow-sm border border-gray-200"
         >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select
                 value={filters.status}
-                onChange={(e) => setFilters({...filters, status: e.target.value})}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent"
               >
                 <option value="all">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="pending">Pending</option>
-                <option value="suspended">Suspended</option>
+                <option value="Available">Available</option>
+                <option value="On Delivery">On Delivery</option>
+                <option value="Unavailable">Unavailable</option>
               </select>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
               <select
                 value={filters.vehicleType}
-                onChange={(e) => setFilters({...filters, vehicleType: e.target.value})}
+                onChange={(e) => setFilters({ ...filters, vehicleType: e.target.value })}
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent"
               >
                 {vehicleTypes.map((type, index) => (
@@ -289,30 +437,26 @@ export default function Drivers() {
                 ))}
               </select>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Minimum Rating</label>
-              <select
-                value={filters.rating}
-                onChange={(e) => setFilters({...filters, rating: parseFloat(e.target.value)})}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent"
-              >
-                <option value="0">Any Rating</option>
-                <option value="3">3+ Stars</option>
-                <option value="4">4+ Stars</option>
-                <option value="4.5">4.5+ Stars</option>
-              </select>
-            </div>
           </div>
         </motion.div>
       )}
-      
+
       {/* Drivers Table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          {loading ? (
+          {isLoading ? (
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center h-64 text-red-500">
+              <p>{fetchError?.data?.message || 'Error loading drivers'}</p>
+              <button
+                onClick={refetch}
+                className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                Try Again
+              </button>
             </div>
           ) : filteredDrivers.length > 0 ? (
             <table className="min-w-full divide-y divide-gray-200">
@@ -320,66 +464,65 @@ export default function Drivers() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Driver</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deliveries</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">License</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completed Orders</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Earnings</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredDrivers.map((driver) => (
-                  <tr key={driver.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={driver.driverId} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden">
-                          <img src={driver.photo} alt={driver.name} className="h-full w-full object-cover" />
-                        </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900 flex items-center">
                             {driver.name}
-                            {driver.verified && (
-                              <MdVerified className="ml-1 text-blue-500 text-base" title="Verified" />
-                            )}
                           </div>
-                          <div className="text-sm text-gray-500">{driver.email}</div>
+                          <div className="text-sm text-gray-500">ID: {driver.driverId}</div>
+                          {driver.phone && (
+                            <div className="text-sm text-gray-500">{driver.phone}</div>
+                          )}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         {getVehicleIcon(driver.vehicleType)}
-                        <span className="ml-2 text-sm text-gray-900">{driver.vehicleType}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <MdStar className="text-yellow-400 mr-1" />
-                        <span className="text-sm text-gray-900">{driver.rating}</span>
-                        <span className="text-xs text-gray-500 ml-1">({driver.reviews})</span>
+                        <span className="ml-2 text-sm text-gray-900">{driver.vehicleType || 'N/A'}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(driver.status)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{driver.deliveries}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{driver.earnings}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {driver.licenseNumber || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {driver.completedOrders || 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      ${driver.totalEarnings ? driver.totalEarnings.toFixed(2) : '0.00'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
-                        <button 
+                        <button
                           onClick={() => openDriverDetails(driver)}
                           className="text-blue-600 hover:text-blue-900 transition-colors"
                           title="View Details"
                         >
                           <MdVisibility className="text-xl" />
                         </button>
-                        <button 
+                        <button
+                          onClick={() => openEditDriverForm(driver)}
                           className="text-orange-600 hover:text-orange-900 transition-colors"
                           title="Edit Driver"
                         >
                           <MdEdit className="text-xl" />
                         </button>
-                        <button 
+                        <button
+                          onClick={() => handleDeleteConfirmation(driver)}
                           className="text-red-600 hover:text-red-900 transition-colors"
                           title="Delete Driver"
                         >
@@ -404,7 +547,7 @@ export default function Drivers() {
       {/* Driver Details Modal */}
       {detailsOpen && selectedDriver && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-auto"
@@ -412,147 +555,118 @@ export default function Drivers() {
             <div className="border-b border-gray-200 p-6 flex justify-between items-center sticky top-0 bg-white z-10">
               <h2 className="text-xl font-bold text-gray-800 flex items-center">
                 {selectedDriver.name}
-                {selectedDriver.verified && (
-                  <MdVerified className="ml-2 text-blue-500" />
-                )}
               </h2>
-              <button 
+              <button
                 onClick={() => setDetailsOpen(false)}
                 className="text-gray-500 hover:text-gray-700 transition-colors"
               >
                 <MdCancel className="text-2xl" />
               </button>
             </div>
-            
+
             <div className="p-6">
               <div className="flex flex-col sm:flex-row gap-6 mb-6">
-                <div className="w-full sm:w-1/3">
-                  <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden">
-                    <img 
-                      src={selectedDriver.photo} 
-                      alt={selectedDriver.name} 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                </div>
-                
-                <div className="w-full sm:w-2/3 space-y-4">
+                <div className="w-full">
                   <div>
+                    <h3 className="text-sm font-medium text-gray-500">Driver ID</h3>
+                    <p className="mt-1 font-bold text-lg">{selectedDriver.driverId}</p>
+                  </div>
+
+                  <div className="mt-4">
                     <h3 className="text-sm font-medium text-gray-500">Status</h3>
                     {getStatusBadge(selectedDriver.status)}
                   </div>
-                  
-                  <div>
+
+                  <div className="mt-4">
                     <h3 className="text-sm font-medium text-gray-500">Vehicle Type</h3>
                     <div className="mt-1 flex items-center">
                       {getVehicleIcon(selectedDriver.vehicleType)}
-                      <span className="ml-2">{selectedDriver.vehicleType}</span>
+                      <span className="ml-2">{selectedDriver.vehicleType || 'N/A'}</span>
                     </div>
                   </div>
-                  
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Rating</h3>
-                    <div className="mt-1 flex items-center">
-                      <MdStar className="text-yellow-400 mr-1" />
-                      <span>{selectedDriver.rating}</span>
-                      <span className="text-sm text-gray-500 ml-1">({selectedDriver.reviews} reviews)</span>
-                    </div>
+
+                  <div className="mt-4">
+                    <h3 className="text-sm font-medium text-gray-500">License Number</h3>
+                    <p className="mt-1">{selectedDriver.licenseNumber || 'N/A'}</p>
                   </div>
-                  
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Joined</h3>
-                    <p className="mt-1">{new Date(selectedDriver.since).toLocaleDateString()}</p>
+
+                  <div className="mt-4">
+                    <h3 className="text-sm font-medium text-gray-500">Phone</h3>
+                    <p className="mt-1">{selectedDriver.phone || 'N/A'}</p>
                   </div>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
                 <div className="space-y-4">
-                  <h3 className="font-medium text-gray-800 border-b pb-2">Contact Information</h3>
-                  
-                  <div className="flex items-start">
-                    <MdEmail className="text-gray-400 mt-1 mr-3" />
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Email Address</h4>
-                      <p className="mt-1">{selectedDriver.email}</p>
-                    </div>
+                  <h3 className="font-medium text-gray-800 border-b pb-2">Performance</h3>
+
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-gray-500">Total Completed Orders</h4>
+                    <p className="text-xl font-bold mt-1">{selectedDriver.completedOrders || 0}</p>
                   </div>
-                  
-                  <div className="flex items-start">
-                    <MdPhone className="text-gray-400 mt-1 mr-3" />
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Phone Number</h4>
-                      <p className="mt-1">{selectedDriver.phone}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start">
-                    <MdLocationOn className="text-gray-400 mt-1 mr-3" />
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Address</h4>
-                      <p className="mt-1">{selectedDriver.address}</p>
-                    </div>
+
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-gray-500">Total Earnings</h4>
+                    <p className="text-xl font-bold mt-1">${selectedDriver.totalEarnings ? selectedDriver.totalEarnings.toFixed(2) : '0.00'}</p>
                   </div>
                 </div>
-                
+
                 <div className="space-y-4">
-                  <h3 className="font-medium text-gray-800 border-b pb-2">Vehicle Information</h3>
-                  
+                  <h3 className="font-medium text-gray-800 border-b pb-2">System Information</h3>
+
                   <div>
-                    <h4 className="text-sm font-medium text-gray-500">Model</h4>
-                    <p className="mt-1">{selectedDriver.vehicleInfo.model}</p>
+                    <h4 className="text-sm font-medium text-gray-500">Created Date</h4>
+                    <p className="mt-1">{selectedDriver.createdAt ? new Date(selectedDriver.createdAt).toLocaleDateString() : 'N/A'}</p>
                   </div>
-                  
+
                   <div>
-                    <h4 className="text-sm font-medium text-gray-500">License Plate</h4>
-                    <p className="mt-1">{selectedDriver.vehicleInfo.licensePlate}</p>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Color</h4>
-                    <p className="mt-1">{selectedDriver.vehicleInfo.color}</p>
-                  </div>
-                  
-                  <h3 className="font-medium text-gray-800 border-b pb-2 mt-6">Performance</h3>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-gray-500">Total Deliveries</h4>
-                      <p className="text-xl font-bold mt-1">{selectedDriver.deliveries}</p>
-                    </div>
-                    
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-gray-500">Total Earnings</h4>
-                      <p className="text-xl font-bold mt-1">{selectedDriver.earnings}</p>
-                    </div>
+                    <h4 className="text-sm font-medium text-gray-500">Last Updated</h4>
+                    <p className="mt-1">{selectedDriver.updatedAt ? new Date(selectedDriver.updatedAt).toLocaleDateString() : 'N/A'}</p>
                   </div>
                 </div>
               </div>
-              
+
               <div className="mt-8 flex justify-end space-x-3">
-                {selectedDriver.status === 'pending' && (
-                  <button className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
-                    Approve
-                  </button>
-                )}
-                {selectedDriver.status === 'suspended' && (
-                  <button className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
-                    Reactivate
-                  </button>
-                )}
-                {selectedDriver.status === 'active' && (
-                  <button className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors">
-                    Suspend
-                  </button>
-                )}
-                <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
-                  Edit
+                <button
+                  onClick={() => {
+                    setDetailsOpen(false);
+                    openEditDriverForm(selectedDriver);
+                  }}
+                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                >
+                  Edit Driver
                 </button>
               </div>
             </div>
           </motion.div>
         </div>
       )}
+
+      {/* Add Driver Modal */}
+      <DriverFormModal
+        isOpen={addDriverOpen}
+        onClose={() => setAddDriverOpen(false)}
+        title="Add New Driver"
+        onSubmit={handleAddDriver}
+        isEditing={false}
+      />
+
+      {/* Edit Driver Modal */}
+      <DriverFormModal
+        isOpen={editDriverOpen}
+        onClose={() => setEditDriverOpen(false)}
+        title="Edit Driver"
+        onSubmit={handleEditDriver}
+        isEditing={true}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={confirmDeleteOpen}
+        onClose={() => setConfirmDeleteOpen(false)}
+        onConfirm={handleDeleteDriver}
+      />
     </div>
-  )
+  );
 }

@@ -11,7 +11,7 @@ import { shippingAddressApi } from "./slices/shippingAddressSlice";
 import { userApi } from "./slices/userSlice";
 import cartReducer from "./slices/cartSlice";
 import deliveryReducer from "./slices/deliverySlice";
-import driverReducer from './slices/driverSlice';
+import { driverApi } from './slices/driverSlice';
 
 
 export const store = configureStore({
@@ -25,9 +25,9 @@ export const store = configureStore({
     [shippingAddressApi.reducerPath]: shippingAddressApi.reducer,
     [paymentApi.reducerPath]: paymentApi.reducer,
     [userApi.reducerPath]: userApi.reducer,
+    [driverApi.reducerPath]: driverApi.reducer,
     cart: cartReducer,
     delivery: deliveryReducer,
-    driver: driverReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -39,7 +39,8 @@ export const store = configureStore({
       .concat(cartApi.middleware)
       .concat(shippingAddressApi.middleware)
       .concat(paymentApi.middleware)
-      .concat(userApi.middleware),
+      .concat(userApi.middleware)
+      .concat(driverApi.middleware),
 });
 
 setupListeners(store.dispatch);
