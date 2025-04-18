@@ -1,0 +1,115 @@
+{
+    "info": {
+      "_postman_id": "d57a8e01-f1a3-4b19-bbaf-5e408c10e999",
+      "name": "Cravely Delivery Routes",
+      "description": "Test collection for Cravely's delivery API endpoints",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+      {
+        "name": "Get All Deliveries",
+        "request": {
+          "method": "GET",
+          "header": [],
+          "url": {
+            "raw": "{{baseUrl}}/api/deliveries",
+            "host": ["{{baseUrl}}"],
+            "path": ["api", "deliveries"]
+          },
+          "description": "Retrieve a list of all deliveries"
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test(\"Status code is 200\", function () {",
+                "    pm.response.to.have.status(200);",
+                "});"
+              ],
+              "type": "text/javascript"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Create Delivery",
+        "request": {
+          "method": "POST",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json",
+              "type": "text"
+            }
+          ],
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"orderId\": \"ORD123\",\n  \"customer\": \"John Doe\",\n  \"address\": \"123 Main St\",\n  \"items\": [\n    { \"name\": \"Pizza\", \"price\": 12 },\n    { \"name\": \"Burger\", \"price\": 8 }\n  ],\n  \"total\": 20,\n  \"paymentMethod\": \"Cash\",\n  \"driver\": \"DriverA\",\n  \"driverStatus\": \"Pending\"\n}"
+          },
+          "url": {
+            "raw": "{{baseUrl}}/api/deliveries",
+            "host": ["{{baseUrl}}"],
+            "path": ["api", "deliveries"]
+          },
+          "description": "Create a new delivery entry"
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test(\"Status code is 201\", function () {",
+                "    pm.response.to.have.status(201);",
+                "});"
+              ],
+              "type": "text/javascript"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Update Delivery Status",
+        "request": {
+          "method": "PUT",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json",
+              "type": "text"
+            }
+          ],
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"driverStatus\": \"Delivered\"\n}"
+          },
+          "url": {
+            "raw": "{{baseUrl}}/api/deliveries/DELIVERY_ID",
+            "host": ["{{baseUrl}}"],
+            "path": ["api", "deliveries", "DELIVERY_ID"]
+          },
+          "description": "Update the status of a specific delivery"
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test(\"Status code is 200\", function () {",
+                "    pm.response.to.have.status(200);",
+                "});"
+              ],
+              "type": "text/javascript"
+            }
+          }
+        ]
+      }
+    ],
+    "variable": [
+      {
+        "key": "baseUrl",
+        "value": "http://localhost:5003"
+      }
+    ]
+  }
+  

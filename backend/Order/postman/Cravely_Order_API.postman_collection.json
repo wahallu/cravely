@@ -1,0 +1,260 @@
+{
+  "info": {
+    "name": "Cravely Order API",
+    "description": "Collection for testing the Order API endpoints for Cravely food delivery platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "login"]
+            },
+            "description": "Login to get JWT token for authenticated requests"
+          },
+          "response": []
+        }
+      ],
+      "description": "Authentication requests to get token for protected endpoints"
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"restaurantId\": \"rest123\",\n    \"items\": [\n        {\n            \"id\": \"item1\",\n            \"name\": \"Margherita Pizza\",\n            \"price\": 12.99,\n            \"quantity\": 1\n        },\n        {\n            \"id\": \"item2\",\n            \"name\": \"Garlic Bread\",\n            \"price\": 4.99,\n            \"quantity\": 2\n        }\n    ],\n    \"customer\": {\n        \"fullName\": \"John Doe\",\n        \"email\": \"john@example.com\",\n        \"phone\": \"(555) 123-4567\",\n        \"address\": \"123 Main St\",\n        \"city\": \"New York\",\n        \"state\": \"NY\",\n        \"zipCode\": \"10001\"\n    },\n    \"payment\": {\n        \"method\": \"creditCard\",\n        \"paymentMethodId\": \"pm_card_visa\",\n        \"saveCard\": true\n    },\n    \"subtotal\": 22.97,\n    \"tax\": 2.30,\n    \"deliveryFee\": 1.99,\n    \"total\": 27.26\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/orders",
+              "host": ["{{base_url}}"],
+              "path": ["api", "orders"]
+            },
+            "description": "Create a new order"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Order (Cash Payment)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"restaurantId\": \"rest123\",\n    \"items\": [\n        {\n            \"id\": \"item1\",\n            \"name\": \"Chicken Biryani\",\n            \"price\": 14.99,\n            \"quantity\": 1\n        },\n        {\n            \"id\": \"item2\",\n            \"name\": \"Naan Bread\",\n            \"price\": 2.99,\n            \"quantity\": 2\n        }\n    ],\n    \"customer\": {\n        \"fullName\": \"Jane Smith\",\n        \"email\": \"jane@example.com\",\n        \"phone\": \"(555) 987-6543\",\n        \"address\": \"456 Park Ave\",\n        \"city\": \"New York\",\n        \"state\": \"NY\",\n        \"zipCode\": \"10002\"\n    },\n    \"payment\": {\n        \"method\": \"cash\"\n    },\n    \"subtotal\": 20.97,\n    \"tax\": 2.10,\n    \"deliveryFee\": 1.99,\n    \"total\": 25.06\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/orders",
+              "host": ["{{base_url}}"],
+              "path": ["api", "orders"]
+            },
+            "description": "Create a new order with cash payment"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Order By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "orders", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "ORD-123456",
+                  "description": "Order ID"
+                }
+              ]
+            },
+            "description": "Get order details by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders/user/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "orders", "user", "me"]
+            },
+            "description": "Get all orders for the current user"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Restaurant Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders/restaurant/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "orders", "restaurant", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "rest123",
+                  "description": "Restaurant ID"
+                }
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "description": "Filter by status",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get all orders for a restaurant with optional status filter"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Order Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"confirmed\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/orders/:id/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "orders", ":id", "status"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "ORD-123456",
+                  "description": "Order ID"
+                }
+              ]
+            },
+            "description": "Update order status (pending, confirmed, preparing, out_for_delivery, delivered, canceled)"
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Order",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders/:id/cancel",
+              "host": ["{{base_url}}"],
+              "path": ["api", "orders", ":id", "cancel"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "ORD-123456",
+                  "description": "Order ID"
+                }
+              ]
+            },
+            "description": "Cancel an order"
+          },
+          "response": []
+        }
+      ],
+      "description": "Order management endpoints"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    }
+  ]
+}

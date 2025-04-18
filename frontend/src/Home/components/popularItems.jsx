@@ -2,50 +2,49 @@ import React, { useState, useRef, useEffect } from 'react'
 import { IconContext } from 'react-icons';
 import { MdArrowBackIosNew, MdArrowForwardIos, MdLocationOn } from 'react-icons/md';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useGetAllMealsQuery } from '../../Redux/slices/mealSlice';
+import { useGetAllRestaurantsQuery } from '../../Redux/slices/restaurantSlice';
 
 export default function PopularItems() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [itemsPerPage, setItemsPerPage] = useState(3);
     const sliderRef = useRef(null);
     const containerRef = useRef(null);
+    const [popularItems, setPopularItems] = useState([]);
 
-    const popularItems = [
-        {
-            id: 1,
-            image: '/hero1.png',
-            name: 'Cheese Burger',
-            restaurant: 'Burger Arena',
-            price: '3.88',
-        },
-        {
-            id: 2,
-            image: '/hero1.png',
-            name: 'Toffee\'s Cake',
-            restaurant: 'Top Sticks',
-            price: '4.00',
-        },
-        {
-            id: 3,
-            image: '/hero1.png',
-            name: 'Dancake',
-            restaurant: 'Cake World',
-            price: '1.99',
-        },
-        {
-            id: 4,
-            image: '/hero1.png',
-            name: 'Crispy Sandwich',
-            restaurant: 'Fastfood Dine',
-            price: '3.00',
-        },
-        {
-            id: 5,
-            image: '/hero1.png',
-            name: 'Thai Soup',
-            restaurant: 'Foody man',
-            price: '2.79',
-        },
-    ];
+    // Fetch meals and restaurants data
+    const { data: mealsData, isLoading: isMealsLoading } = useGetAllMealsQuery();
+    const { data: restaurantsData, isLoading: isRestaurantsLoading } = useGetAllRestaurantsQuery();
+
+    // Process data when it's loaded
+    useEffect(() => {
+        if (mealsData && restaurantsData?.data) {
+            // Get all meals and prepare them with restaurant info
+            const meals = mealsData || [];
+            const restaurants = restaurantsData.data || [];
+            
+            // Map and prepare the popular items
+            const items = meals.map(meal => {
+                // Find the restaurant for this meal
+                const restaurant = restaurants.find(r => r._id === meal.restaurant || r.id === meal.restaurant);
+                
+                return {
+                    id: meal._id || meal.id,
+                    image: meal.image || '/hero1.png',
+                    name: meal.name,
+                    restaurant: restaurant?.name || 'Restaurant',
+                    price: meal.price ? meal.price.toFixed(2) : '0.00',
+                    rating: meal.rating || 4.5 // Default rating if not available
+                };
+            });
+            
+            // Sort by some criteria like rating or add a "popular" flag in your backend
+            const sortedItems = items.sort((a, b) => b.rating - a.rating);
+            
+            // Take top 5 or however many you want to display
+            setPopularItems(sortedItems.slice(0, 5));
+        }
+    }, [mealsData, restaurantsData]);
 
     // Determine how many items to show based on container width
     useEffect(() => {
@@ -91,7 +90,7 @@ export default function PopularItems() {
 
     const scrollToItem = (index) => {
         if (sliderRef.current) {
-            const itemWidth = sliderRef.current.children[0].offsetWidth;
+            const itemWidth = sliderRef.current.children[0]?.offsetWidth || 0;
             const margin = 16; // Equivalent to space-x-4 (1rem = 16px)
             sliderRef.current.scrollTo({
                 left: index * (itemWidth + margin),
@@ -99,12 +98,25 @@ export default function PopularItems() {
             });
         }
     };
-    
-    // Calculate visible items
-    const visibleItems = popularItems.slice(
-        currentIndex,
-        currentIndex + itemsPerPage
-    );
+
+    // Loading state
+    if (isMealsLoading || isRestaurantsLoading) {
+        return (
+            <div className="flex justify-center items-center py-16">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div>
+            </div>
+        );
+    }
+
+    // Handle case with no items
+    if (popularItems.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-16">
+                <h1 className="text-4xl font-bold text-center mb-6">Popular Items</h1>
+                <p className="text-gray-500">No items available at the moment</p>
+            </div>
+        );
+    }
 
     return (
         <motion.div 
