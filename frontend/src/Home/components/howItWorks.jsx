@@ -78,6 +78,7 @@ export default function HowItWorks() {
                 <div className="flex space-x-8 overflow-x-auto">
                     {steps.map((step) => (
                         <motion.div
+                            key={step.id}
                             variants={iconContainerVariants}
                             initial="hidden"
                             whileInView="visible"

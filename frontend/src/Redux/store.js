@@ -10,6 +10,9 @@ import { paymentApi } from "./slices/paymentSlice";
 import { shippingAddressApi } from "./slices/shippingAddressSlice";
 import { userApi } from "./slices/userSlice";
 import cartReducer from "./slices/cartSlice";
+import deliveryReducer from "./slices/deliverySlice";
+import driverReducer from './slices/driverSlice';
+
 
 export const store = configureStore({
   reducer: {
@@ -23,6 +26,8 @@ export const store = configureStore({
     [paymentApi.reducerPath]: paymentApi.reducer,
     [userApi.reducerPath]: userApi.reducer,
     cart: cartReducer,
+    delivery: deliveryReducer,
+    driver: driverReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
