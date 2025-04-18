@@ -2,6 +2,9 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const deliveryRoutes = require("./routes/deliveryRoutes");
+const driverRoutes = require("./routes/driverRoutes");
+const { protect } = require('./middleware/auth');
 
 dotenv.config();
 
@@ -30,9 +33,8 @@ app.get('/', (req, res) => {
   res.status(200).json({ message: 'Delivery service is running' });
 });
 
-// Import routes if available
-// const deliveryRoutes = require('./routes/deliveryRoutes');
-// app.use('/', deliveryRoutes);
+app.use("/api/deliveries", protect, deliveryRoutes);
+app.use("/api/drivers", protect, driverRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -39,6 +39,8 @@ import PaymentMethods from "./User/Customer/paymentMethods";
 import DeliveryLayout from "./Delivery/DeliveryLayout";
 import DeliveryDashboard from "./Delivery/DeliveryDashboard";
 import DriverDashboard from "./Delivery/DriverDashboard";
+import DriverProfile from "./Delivery/DriverProfile";
+import AllDrivers from "./Delivery/AllDrivers";
 
 
 
@@ -103,6 +105,8 @@ export default function App() {
           <Route path="/delivery" element={<DeliveryLayout />}>
             <Route path="" element={<DeliveryDashboard />} />
             <Route path="drivers" element={<DriverDashboard />} />
+            <Route path="all-drivers" element={<AllDrivers />} />
+            <Route path="drivers/:id" element={<DriverProfile />} />
           </Route>
 
         </Routes>
