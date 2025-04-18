@@ -134,7 +134,7 @@ export default function MyOrders() {
   // Helper function for payment status
   const getPaymentStatus = (order) => {
     const isCashOnDelivery = order.payment?.method === 'cash';
-    const isCreditCard = order.payment?.method === 'card';
+    const isCreditCard = order.payment?.method === 'card' || order.payment?.method === 'creditCard';
     
     if (isCashOnDelivery) {
       return {
