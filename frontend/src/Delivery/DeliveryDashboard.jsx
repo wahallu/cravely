@@ -1,30 +1,22 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchDeliveries } from "../Redux/slices/deliverySlice";
 import { Link } from "react-router-dom";
 import { FaMapMarkerAlt } from "react-icons/fa";
 import { MdPayment } from "react-icons/md";
 
-const orders = [
-  {
-    id: "ORD-1234",
-    customer: "Selena Heather",
-    address: "456 Oak Street, Springfield",
-    items: [{ name: "Pepperoni Pizza", price: 15.99 }, { name: "Coke", price: 2.50 }],
-    total: 18.49,
-    paymentMethod: "Card",
-    driverStatus: "In Transit",
-  },
-  {
-    id: "ORD-5678",
-    customer: "anne marie",
-    address: "789 Maple Ave, Springfield",
-    items: [{ name: "Cheeseburger", price: 12.99 }, { name: "Fries", price: 4.50 }],
-    total: 17.49,
-    paymentMethod: "Cash on Delivery",
-    driverStatus: "Delivered",
-  },
-];
 
 export default function DeliveryDashboard() {
+    const dispatch = useDispatch();
+    const { deliveries, loading, error } = useSelector((state) => state.delivery);
+
+    useEffect(() => {
+      dispatch(fetchDeliveries());
+    }, [dispatch]);
+
+    if (loading) return <p className="text-center mt-6">Loading deliveries...</p>;
+    if (error) return <p className="text-center text-red-500 mt-6">{error}</p>;
+
   return (
     <div className="min-h-screen bg-yellow-200 p-6">
       {/* Header */}
@@ -40,7 +32,7 @@ export default function DeliveryDashboard() {
 
       {/* Orders List */}
       <div className="mt-6 grid gap-6">
-        {orders.map((order) => (
+        {deliveries.map((order) => (
           <div
             key={order.id}
             className="bg-white p-4 rounded-lg shadow-md transition transform hover:scale-105 hover:shadow-lg border border-yellow-400"

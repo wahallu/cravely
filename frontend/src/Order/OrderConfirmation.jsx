@@ -15,7 +15,8 @@ import {
   FaUser,
   FaEnvelope,
   FaPhone,
-  FaInfo
+  FaInfo,
+  FaClock
 } from 'react-icons/fa';
 
 export default function OrderConfirmation() {
@@ -87,15 +88,33 @@ export default function OrderConfirmation() {
     }
   };
 
-  const { orderId, items, total, customer } = orderDetails;
+  const { orderId, items, total, customer, subtotal, tax, deliveryFee, status, createdAt } = orderDetails;
   
-  // Estimated delivery date (2 days from now)
-  const deliveryDate = new Date();
-  deliveryDate.setDate(deliveryDate.getDate() + 2);
+  // Ensure order ID is properly displayed
+  const displayOrderId = orderId || orderDetails.id || 'N/A';
+  
+  // Calculate the amounts if not provided
+  const orderSubtotal = subtotal || items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const orderTax = tax || (orderSubtotal * 0.1); // 10% tax if not specified
+  const orderDeliveryFee = deliveryFee || 1.99;
+  const orderTotal = total || (orderSubtotal + orderTax + orderDeliveryFee);
+  
+  // Estimated delivery date (same day delivery)
+  const orderDate = createdAt ? new Date(createdAt) : new Date();
+  const deliveryDate = new Date(orderDate);
   const formattedDeliveryDate = deliveryDate.toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long', 
     day: 'numeric'
+  });
+  
+  // Format created date
+  const formattedOrderDate = orderDate.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
   });
 
   return (
@@ -176,12 +195,12 @@ export default function OrderConfirmation() {
                     </div>
                     <div className="ml-4">
                       <h1 className="text-2xl font-bold text-gray-800 mb-2">Order Placed!</h1>
-                      <p className="text-gray-600">Awaiting restaurant confirmation</p>
+                      <p className="text-gray-600">Status: {status || 'Awaiting restaurant confirmation'}</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-500">Order ID</p>
-                    <p className="font-mono font-bold text-gray-800">{orderId}</p>
+                    <p className="font-mono font-bold text-gray-800">{displayOrderId}</p>
                   </div>
                 </div>
                 
@@ -227,7 +246,15 @@ export default function OrderConfirmation() {
                       >
                         <div className="flex items-start">
                           <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center text-orange-500 mr-3">
-                            {item.name.charAt(0)}
+                            {item.image ? (
+                              <img 
+                                src={item.image} 
+                                alt={item.name}
+                                className="h-full w-full object-cover rounded-full"
+                              />
+                            ) : (
+                              item.name.charAt(0)
+                            )}
                           </div>
                           <div>
                             <p className="font-medium text-gray-800">{item.name}</p>
@@ -259,15 +286,19 @@ export default function OrderConfirmation() {
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <div className="flex justify-between mb-2">
                       <span className="text-gray-600">Subtotal</span>
-                      <span className="text-gray-800">${(total - 4.98).toFixed(2)}</span>
+                      <span className="text-gray-800">${orderSubtotal.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between mb-2">
-                      <span className="text-gray-600">Tax & Fees</span>
-                      <span className="text-gray-800">$4.98</span>
+                      <span className="text-gray-600">Tax</span>
+                      <span className="text-gray-800">${orderTax.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-gray-600">Delivery Fee</span>
+                      <span className="text-gray-800">${orderDeliveryFee.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between font-semibold pt-2 border-t border-gray-200">
                       <span className="text-gray-800">Total</span>
-                      <span className="text-xl text-orange-600">${total.toFixed(2)}</span>
+                      <span className="text-xl text-orange-600">${orderTotal.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -301,7 +332,25 @@ export default function OrderConfirmation() {
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Estimated Delivery</p>
-                        <p className="font-medium text-gray-800">{formattedDeliveryDate}</p>
+                        <p className="font-medium text-gray-800">
+                          {formattedDeliveryDate}{' '}
+                          {orderDetails.deliveryWindow && (
+                            <span className="text-orange-500">
+                              ({orderDetails.deliveryWindow}
+                              {orderDetails.estimatedDeliveryTime && ` by ${orderDetails.estimatedDeliveryTime}`})
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start">
+                      <div className="bg-orange-100 p-2 rounded-full text-orange-500 mr-3 mt-1">
+                        <FaCalendarAlt />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Order Date</p>
+                        <p className="font-medium text-gray-800">{formattedOrderDate}</p>
                       </div>
                     </div>
                   </div>

@@ -1,11 +1,19 @@
 import React, { useState } from 'react'
 import { MdSearch, MdNotifications, MdMenu, MdPersonOutline, MdKeyboardArrowDown } from 'react-icons/md'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
 export default function Header({ toggleSidebar }) {
   const [notifications, setNotifications] = useState(3);
   const [profileDropdown, setProfileDropdown] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setProfileDropdown(false);
+    navigate('/login');
+  };
 
   return (
     <motion.header 
@@ -76,14 +84,14 @@ export default function Header({ toggleSidebar }) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <Link to="/admin/profile" className="block px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-500">
+                <Link to="/user" className="block px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-500">
                   My Profile
                 </Link>
-                <Link to="/admin/settings" className="block px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-500">
+                <Link to="/user/settings" className="block px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-500">
                   Settings
                 </Link>
                 <div className="border-t border-gray-100 my-1"></div>
-                <button className="block w-full text-left px-4 py-2 text-red-500 hover:bg-red-50">
+                <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-red-500 hover:bg-red-50">
                   Logout
                 </button>
               </motion.div>

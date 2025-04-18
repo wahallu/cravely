@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MdFastfood,
@@ -15,9 +15,15 @@ import { useGetAllMealsQuery } from "../../Redux/slices/mealSlice";
 import { useGetAllMenusQuery } from "../../Redux/slices/menuSlice";
 import Slider from "rc-slider"; // You'll need to import this
 import "rc-slider/assets/index.css"; // And its styles
+import { useDispatch, useSelector } from "react-redux"; // Added useSelector
+import { addToCart } from "../../Redux/slices/cartSlice";
+import { toast } from "react-hot-toast"; // This should already be set up based on your main.jsx
+import { useAddToCartMutation } from "../../Redux/slices/cartApiSlice";
+import { getUserInfo } from "../../utils/auth"; // Assuming you have a utility function to get user info
 
 const MealsAndMenus = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("meals");
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -29,6 +35,9 @@ const MealsAndMenus = () => {
     priceRangeValues: [0, 5000], // Add this for the slider
     rating: 0,
   });
+
+  const dispatch = useDispatch();
+  const [addToCartMutation, { isLoading: isAddingToCart }] = useAddToCartMutation();
 
   // Fetch meals for this restaurant
   const { data: mealsData, isLoading: isMealsLoading } = useGetAllMealsQuery();
@@ -114,6 +123,123 @@ const MealsAndMenus = () => {
     });
     setSearchQuery("");
   };
+
+  // Check for token directly in localStorage as a fallback
+  const isUserLoggedIn = () => {
+    // First check for auth token
+    const token = localStorage.getItem('token');
+    // Then check for user object as backup
+    const userObject = localStorage.getItem('user');
+    
+    return !!(token && userObject);
+  };
+
+  const handleAddToCart = async (item, addAsNew = false) => {
+    try {
+      // Improved auth check with fallback
+      if (!isUserLoggedIn()) {
+        toast.error("Please log in to add items to cart");
+        navigate('/login');
+        return;
+      }
+
+      // Get stored user info
+      const userStoredData = localStorage.getItem('user');
+      const userInfo = userStoredData ? JSON.parse(userStoredData) : null;
+      
+      if (!userInfo || !userInfo._id) {
+        console.error("User info missing or incomplete:", userInfo);
+        toast.error("Session expired. Please log in again.");
+        navigate('/login');
+        return;
+      }
+
+      // Enhanced restaurant ID validation
+      let restaurantId = id;
+      
+      // If URL param id is undefined, try to get it from the item
+      if (!restaurantId && item.restaurant) {
+        restaurantId = item.restaurant;
+      }
+      
+      // Another fallback for restaurant ID
+      if (!restaurantId && item.restaurantId) {
+        restaurantId = item.restaurantId;
+      }
+      
+      console.log("Restaurant ID:", restaurantId, "Item being added:", item.name);
+      
+      if (!restaurantId) {
+        toast.error("Restaurant information is missing");
+        console.error("Missing restaurant ID when adding to cart. URL param id:", id, "Item restaurant:", item.restaurant);
+        return;
+      }
+
+      // Ensure item has a unique ID for cart tracking
+      const itemForCart = {
+        ...item,
+        restaurantId, // Use the validated restaurantId
+        // Create a unique cart item ID if adding as new
+        cartItemId: addAsNew ? `${item._id || item.id}_${Date.now()}` : undefined
+      };
+
+      // Update local state first (for immediate UI feedback)
+      dispatch(addToCart({ 
+        item: itemForCart,
+        quantity: 1,
+        addAsNew
+      }));
+
+      // Prepare the item data for the backend API
+      const itemData = {
+        id: item._id || item.id, // Backend expects 'id' field
+        name: item.name,
+        price: parseFloat(item.price || 0),
+        quantity: 1,
+        imageUrl: item.image || '',
+        restaurantId, // Use the validated restaurantId
+      };
+
+      console.log("Sending item data to API:", itemData);
+
+      // Then make API call to persist to database
+      const result = await addToCartMutation(itemData).unwrap();
+      
+      if (result.success) {
+        toast.success(`${item.name} added to cart!`);
+      } else {
+        // Handle potential server error with success: false
+        console.warn("API returned success:false", result);
+        toast.success(`${item.name} added to cart locally`);
+      }
+    } catch (error) {
+      console.error("Add to cart error:", error);
+      
+      // Add detailed logging for troubleshooting
+      console.log("Error details:", {
+        message: error.message,
+        data: error.data,
+        errorObj: error
+      });
+      
+      if (error.status === 401) {
+        toast.error("Your session has expired. Please log in again.");
+        navigate('/login');
+        return;
+      }
+      
+      // Show error but keep item in local cart
+      toast.error(`Server error adding to cart. Item added locally.`);
+    }
+  };
+
+  // Check for valid restaurant ID on load
+  useEffect(() => {
+    if (!id) {
+      console.warn("No restaurant ID found in URL parameters");
+      toast.error("Restaurant information is missing");
+    }
+  }, [id]);
 
   return (
     <div className="min-h-screen relative bg-gray-50">
@@ -376,7 +502,10 @@ const MealsAndMenus = () => {
                                   {meal.allergens}
                                 </p>
                               )}
-                              <button className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition-colors">
+                              <button 
+                                className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition-colors"
+                                onClick={() => handleAddToCart(meal, true)} // Pass true to always add as new item
+                              >
                                 Add to Cart
                               </button>
                             </div>
@@ -497,7 +626,19 @@ const MealsAndMenus = () => {
                                   </ul>
                                 </div>
 
-                                <button className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition-colors">
+                                <button 
+                                  className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition-colors"
+                                  onClick={() => handleAddToCart({
+                                    id: menu._id || menu.id,
+                                    name: menu.name,
+                                    price: totalPrice,
+                                    image: menu.image || "/hero1.png",
+                                    description: menu.description,
+                                    isMenu: true,
+                                    menuItems: menuItemsWithDetails,
+                                    restaurantId: id // Add restaurant ID here
+                                  })}
+                                >
                                   Order This Menu
                                 </button>
                               </div>
