@@ -3,7 +3,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 export const fetchDriverStats = createAsyncThunk(
   'driver/fetchDriverStats',
   async (driverId) => {
-    const response = await fetch(`http://localhost:5004/api/drivers/stats/${driverId}`);
+    const response = await fetch(`http://localhost:5001/api/drivers/stats/${driverId}`);
     const data = await response.json();
     return data;
   }
@@ -12,7 +12,7 @@ export const fetchDriverStats = createAsyncThunk(
 export const fetchAllDrivers = createAsyncThunk(
   'driver/fetchAllDrivers',
   async () => {
-    const response = await fetch('http://localhost:5004/api/drivers');
+    const response = await fetch('http://localhost:5001/api/drivers');
     const data = await response.json();
     return data;
   }
