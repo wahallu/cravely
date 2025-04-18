@@ -1,13 +1,19 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
+import { fetchAllDrivers } from "../Redux/slices/driverSlice";
 
-const dummyDrivers = [
-  { id: "D001", name: "Ayesh Silva", status: "Available" },
-  { id: "D002", name: "Nimal Perera", status: "On Delivery" },
-  { id: "D003", name: "Kasun Fernando", status: "Unavailable" },
-];
 
 export default function AllDrivers() {
+  const dispatch = useDispatch();
+  const { drivers, status, error } = useSelector((state) => state.driver);
+
+  useEffect(() => {
+    dispatch(fetchAllDrivers());
+  }, [dispatch]);
+
+  if (status === "loading") return <p className="p-6">Loading drivers...</p>;
+  if (status === "failed") return <p className="p-6 text-red-500">{error}</p>;
   return (
     <div className="min-h-screen bg-yellow-100 p-6">
       <h1 className="text-3xl font-bold mb-6 text-yellow-700">All Drivers</h1>

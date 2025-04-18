@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchDeliveries } from "../../redux/features/deliverySlice";
+import { fetchDeliveries } from "../Redux/slices/deliverySlice";
 import { Link } from "react-router-dom";
 import { FaMapMarkerAlt } from "react-icons/fa";
 import { MdPayment } from "react-icons/md";

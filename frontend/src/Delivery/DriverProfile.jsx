@@ -1,50 +1,34 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchDriverStats } from "../Redux/slices/driverSlice";
 import { useParams, Link } from "react-router-dom";
 
-const dummyDrivers = {
-  D001: {
-    name: "Ayesh Silva",
-    id: "D001",
-    status: "Available",
-    earnings: 430.25,
-    completedOrders: 28,
-    phone: "077-1234567",
-    licenseNumber: "B1234567",
-    vehicleType: "Van",
-  },
-  D002: {
-    name: "Nimal Perera",
-    id: "D002",
-    status: "On Delivery",
-    earnings: 210.75,
-    completedOrders: 14,
-    phone: "071-9876543",
-    licenseNumber: "C9876543",
-    vehicleType: "Bike",
-  },
-  D003: {
-    name: "Kasun Fernando",
-    id: "D003",
-    status: "Unavailable",
-    earnings: 0,
-    completedOrders: 0,
-    phone: "075-1122334",
-    licenseNumber: "D4567890",
-    vehicleType: "Car",
-  },
-};
-
 export default function DriverProfile() {
-  const { id } = useParams();
-  const driver = dummyDrivers[id];
+          const { id } = useParams();
+          const dispatch = useDispatch();
+          const { selectedDriver, status, error } = useSelector((state) => state.driver);
 
-  if (!driver) {
-    return (
-      <div className="p-6 text-red-600 font-semibold">
-        Driver not found. <Link to="/drivers" className="text-blue-500 underline">Back to Drivers</Link>
-      </div>
-    );
-  }
+          useEffect(() => {
+            if (id) {
+              dispatch(fetchDriverStats(id));
+            }
+          }, [dispatch, id]);
+
+          if (status === "loading") return <p className="p-6">Loading profile...</p>;
+          if (status === "failed") return <p className="p-6 text-red-600">{error}</p>;
+          if (!selectedDriver) {
+            return (
+              <div className="p-6 text-red-600 font-semibold">
+                Driver not found.{" "}
+                <Link to="/delivery/all-drivers" className="text-blue-500 underline">
+                  Back to Drivers
+                </Link>
+              </div>
+            );
+          }
+
+          const driver = selectedDriver;
+
 
   return (
     <div className="min-h-screen bg-yellow-50 p-6">
