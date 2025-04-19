@@ -6,7 +6,8 @@ import {
   selectCartTotalAmount, 
   updateQuantity as updateLocalQuantity, 
   toggleFavorite,
-  removeFromCart
+  removeFromCart,
+  setCartItems // Import this action
 } from "../Redux/slices/cartSlice";
 import { 
   useGetCartQuery,
@@ -64,25 +65,65 @@ export default function RestaurantCart() {
     }
   }, [selectAll, cartItems]); // Remove selectedItems from dependency array
 
+  // Add this effect to sync backend data with Redux store
+  useEffect(() => {
+    if (backendCart && backendCart.success && backendCart.cart && backendCart.cart.items) {
+      console.log('Syncing backend cart to Redux store:', backendCart.cart.items);
+      
+      // Format items to match Redux store structure
+      const formattedItems = backendCart.cart.items.map(item => ({
+        id: item.id,
+        cartItemId: item.id, // Use same ID for cartItemId
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        image: item.imageUrl, // Map imageUrl to image property
+        note: item.note || '',
+        isFavorite: item.isFavorite || false,
+        restaurantId: backendCart.cart.restaurantId
+      }));
+      
+      // Update Redux store with backend cart items
+      dispatch(setCartItems(formattedItems));
+    }
+  }, [backendCart, dispatch]);
+
   // Remove item by ID
   const handleRemove = async (id) => {
     try {
+      // Find the item in cart to get its actual backend ID
+      const item = cartItems.find(item => item.cartItemId === id || item.id === id);
+      
+      if (!item) {
+        toast.error("Item not found in cart");
+        return;
+      }
+      
+      // Always use item.id for backend API calls, not cartItemId which is frontend-only
+      const apiItemId = item.id;
+      
+      console.log("Removing item with ID:", apiItemId);
+      
       // First update local state for immediate UI feedback
       dispatch(removeFromCart({ id }));
       
-      // For API call, use the actual item ID (not the cartItemId)
-      const item = cartItems.find(item => item.cartItemId === id || item.id === id);
-      const apiItemId = item ? (item.id || id) : id;
-      
       // Then update the backend with the correct ID
-      await removeItem(apiItemId).unwrap();
-      
-      toast.success("Item removed from cart");
+      if (apiItemId && apiItemId !== 'undefined') {
+        const result = await removeItem(apiItemId).unwrap();
+        
+        if (result.success) {
+          toast.success("Item removed from cart");
+        } else {
+          toast.error("Server couldn't remove item: " + (result.message || "Unknown error"));
+          // Refetch to sync frontend with backend
+          refetch();
+        }
+      }
     } catch (error) {
-      // Note: If you want to be extra careful, you could re-fetch the cart here
-      // to sync with backend in case the API call failed but local state changed
-      toast.error("Failed to remove item: " + (error.data?.message || "Unknown error"));
-      refetch(); // Optional: refetch cart from backend to ensure sync
+      console.error("Error removing item:", error);
+      toast.error("Failed to remove item: " + (error.data?.message || error.message || "Unknown error"));
+      // Always refetch on error to ensure frontend/backend sync
+      refetch();
     }
   };
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useParams, Link, useNavigate } from "react-router-dom"; // Add useNavigate
+import { motion, AnimatePresence } from "framer-motion";
 import {
   MdArrowBack,
   MdLocationOn,
@@ -9,6 +9,10 @@ import {
   MdFastfood,
   MdRestaurantMenu,
 } from "react-icons/md";
+import { useSelector, useDispatch } from "react-redux"; // Add Redux hooks
+import { addToCart } from "../../Redux/slices/cartSlice"; // Import cart action
+import { useAddToCartMutation } from "../../Redux/slices/cartApiSlice"; // Import API mutation
+import { toast } from "react-hot-toast"; // Import toast
 import { useGetRestaurantProfileQuery } from "../../Redux/slices/restaurantSlice";
 import { useGetPublicRestaurantMealsQuery } from "../../Redux/slices/mealSlice";
 import { useGetRestaurantPublicMenusQuery } from "../../Redux/slices/menuSlice";
@@ -43,6 +47,81 @@ export default function RestaurantDetail() {
 
   // Check if everything is loading
   const isLoading = isRestaurantLoading || isMealsLoading || isMenusLoading;
+
+  const navigate = useNavigate(); // Add navigate
+  const dispatch = useDispatch(); // Add dispatch
+  const [addToCartMutation, { isLoading: isAddingToCart }] = useAddToCartMutation(); // Add API mutation hook
+  
+  // Add the handleAddToCart function
+  const handleAddToCart = async (item, addAsNew = false) => {
+    try {
+      // Check authentication
+      const isUserLoggedIn = () => {
+        const token = localStorage.getItem('token');
+        const userObject = localStorage.getItem('user');
+        return !!(token && userObject);
+      };
+      
+      if (!isUserLoggedIn()) {
+        toast.error("Please log in to add items to cart");
+        navigate('/login');
+        return;
+      }
+
+      // Get user info
+      const userStoredData = localStorage.getItem('user');
+      const userInfo = userStoredData ? JSON.parse(userStoredData) : null;
+      
+      if (!userInfo || !userInfo._id) {
+        toast.error("Session expired. Please log in again.");
+        navigate('/login');
+        return;
+      }
+
+      // Use restaurant ID from URL params
+      const restaurantId = id;
+      
+      if (!restaurantId) {
+        toast.error("Restaurant information is missing");
+        return;
+      }
+
+      // Prepare item data
+      const itemData = {
+        id: item._id || item.id,
+        name: item.name,
+        price: parseFloat(item.price || 0),
+        quantity: 1,
+        imageUrl: item.image || '',
+        restaurantId,
+      };
+
+      // Make API call
+      const result = await addToCartMutation(itemData).unwrap();
+      
+      if (result.success) {
+        // Add to local state after server success
+        const itemForCart = {
+          ...item,
+          restaurantId,
+          cartItemId: addAsNew ? `${item._id || item.id}_${Date.now()}` : undefined
+        };
+
+        dispatch(addToCart({ 
+          item: itemForCart,
+          quantity: 1,
+          addAsNew
+        }));
+        
+        toast.success(`${item.name} added to cart!`);
+      } else {
+        toast.error(result.message || `Could not add ${item.name} to cart`);
+      }
+    } catch (error) {
+      console.error("Add to cart error:", error);
+      toast.error(`Failed to add to cart: ${error.data?.message || "Server error"}`);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -196,7 +275,10 @@ export default function RestaurantDetail() {
                         </span>
                       </div>
                     )}
-                    <button className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition-colors">
+                    <button 
+                      className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition-colors"
+                      onClick={() => handleAddToCart(meal, true)}
+                    >
                       Add to Cart
                     </button>
                   </div>
@@ -294,7 +376,19 @@ export default function RestaurantDetail() {
                         </ul>
                       </div>
 
-                      <button className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition-colors">
+                      <button 
+                        className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition-colors"
+                        onClick={() => handleAddToCart({
+                          id: menu._id || menu.id,
+                          name: menu.name,
+                          price: totalPrice,  // This should be defined in your component
+                          image: menu.image || "/hero1.png",
+                          description: menu.description,
+                          isMenu: true,
+                          menuItems: menuItemsWithDetails,
+                          restaurantId: id
+                        })}
+                      >
                         Order This Menu
                       </button>
                     </div>

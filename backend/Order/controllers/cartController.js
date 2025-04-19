@@ -208,6 +208,8 @@ const updateCartItem = async (req, res) => {
 const removeFromCart = async (req, res) => {
   try {
     const { itemId } = req.params;
+    console.log("Backend received remove request for item:", itemId);
+    
     const cart = await Cart.findOne({ userId: req.user._id });
     
     if (!cart) {
@@ -217,16 +219,30 @@ const removeFromCart = async (req, res) => {
       });
     }
     
+    // Log before removal for debugging
+    console.log("Current cart items:", cart.items);
+    const initialCount = cart.items.length;
+    
     // Filter items using helper function
-    cart.items = cart.items.filter(item => 
-      !compareIds(item.id, itemId)
-    );
+    cart.items = cart.items.filter(item => {
+      const match = !compareIds(item.id, itemId);
+      console.log(`Comparing ${item.id} with ${itemId}: keep=${match}`);
+      return match;
+    });
+    
+    // Log after removal for debugging
+    console.log("Items after filter:", cart.items.length);
+    
+    if (cart.items.length === initialCount) {
+      console.log("Warning: No items were removed from cart");
+    }
     
     await cart.save();
     
     res.status(200).json({
       success: true,
-      message: 'Item removed from cart'
+      message: 'Item removed from cart',
+      cart: cart
     });
   } catch (error) {
     console.error('Remove from cart error:', error);
