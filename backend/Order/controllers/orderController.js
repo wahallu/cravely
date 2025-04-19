@@ -1,6 +1,7 @@
 const Order = require('../models/Order');
 const PaymentService = require('../services/paymentService');
 const RestaurantService = require('../services/restaurantService');
+const NotificationService = require('../services/notificationService');
 const mongoose = require('mongoose');
 
 /**
@@ -155,6 +156,13 @@ const createOrder = async (req, res) => {
       
       console.log('Order created successfully:', savedOrder._id);
       
+      // Send WhatsApp notification for payment completion
+      await NotificationService.sendPaymentNotification({
+        customer: orderData.customer,
+        orderId: savedOrder.orderId,
+        payment: orderData.payment
+      });
+
       // Return success response with saved order
       return res.status(201).json({
         success: true,
@@ -324,6 +332,25 @@ const updateOrderStatus = async (req, res) => {
     order.updatedAt = Date.now();
     
     await order.save();
+    
+    // Get restaurant details for notifications
+    const restaurant = await RestaurantService.getRestaurantById(order.restaurantId);
+    
+    // Send WhatsApp notifications based on the new status
+    if (status === 'confirmed') {
+      await NotificationService.sendOrderConfirmedNotification({
+        customer: order.customer,
+        orderId: order.orderId,
+        restaurant,
+        estimatedDelivery: order.estimatedDelivery
+      });
+    } else if (status === 'delivered') {
+      await NotificationService.sendOrderDeliveredNotification({
+        customer: order.customer,
+        orderId: order.orderId,
+        restaurant
+      });
+    }
     
     res.status(200).json({
       success: true,

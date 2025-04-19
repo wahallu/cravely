@@ -73,13 +73,14 @@ export default function Order() {
   // Handle cancel order
   const handleCancelOrder = async () => {
     try {
-      const cancelData = {
-        orderId: id,
+      // No need to check for orderToCancel - we already have the id from useParams()
+      
+      // Pass the ID as the first argument and the data as the second argument
+      await cancelOrder(id, {
         reason: cancelReason,
         comment: cancelComment
-      };
+      }).unwrap();
       
-      await cancelOrder(cancelData).unwrap();
       setShowCancelModal(false);
       setCancelReason('');
       setCancelComment('');

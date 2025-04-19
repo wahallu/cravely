@@ -81,13 +81,12 @@ export default function MyOrders() {
     try {
       if (!orderToCancel) return;
       
-      const cancelData = {
-        orderId: orderToCancel.orderId,
+      // Pass orderId directly as the first parameter
+      await cancelOrder(orderToCancel.orderId, {
         reason: cancelReason,
         comment: cancelComment
-      };
+      }).unwrap();
       
-      await cancelOrder(cancelData).unwrap();
       setShowCancelModal(false);
       setOrderToCancel(null);
       setCancelReason('');
