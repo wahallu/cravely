@@ -2,7 +2,6 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const proxy = require('express-http-proxy');
-const paymentRoutes = require('./routes/paymentRoutes');
 
 dotenv.config();
 
@@ -78,9 +77,6 @@ app.use('/delivery', proxyWithErrorHandling(serviceUrls.delivery));
 app.use('/order', proxyWithErrorHandling(serviceUrls.order));
 app.use('/restaurant', proxyWithErrorHandling(serviceUrls.restaurant));
 app.use('/user', proxyWithErrorHandling(serviceUrls.user));
-
-// Add payment routes directly to the Gateway
-app.use('/api', paymentRoutes);
 
 // Error handling
 app.use((err, req, res, next) => {
