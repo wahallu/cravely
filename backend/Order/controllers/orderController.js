@@ -1,5 +1,6 @@
 const Order = require('../models/Order');
 const PaymentService = require('../services/paymentService');
+const RestaurantService = require('../services/restaurantService');
 const mongoose = require('mongoose');
 
 /**
@@ -194,18 +195,19 @@ const getOrderById = async (req, res) => {
         message: 'Order not found'
       });
     }
-
-    // Security check - only allow user to access their own orders or admin
-    if (req.user.role !== 'admin' && order.userId !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this order'
-      });
-    }
-
+    
+    // Fetch restaurant details from Restaurant service
+    const restaurant = await RestaurantService.getRestaurantById(order.restaurantId);
+    
+    // Transform the response to include restaurant details
+    const transformedOrder = {
+      ...order._doc,
+      restaurant // Add restaurant field with data from Restaurant service
+    };
+    
     res.status(200).json({
       success: true,
-      order
+      order: transformedOrder
     });
   } catch (error) {
     console.error('Get order error:', error);
@@ -219,17 +221,30 @@ const getOrderById = async (req, res) => {
 
 /**
  * Get all orders for a user
- * @route GET /api/orders
+ * @route GET /api/orders/user/me
  * @access Private
  */
 const getUserOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ userId: req.user._id }).sort({ createdAt: -1 });
+    const userId = req.user._id;
+    
+    // Get orders without trying to populate restaurant
+    const orders = await Order.find({ userId }).sort({ createdAt: -1 });
+    
+    // For each order, fetch restaurant details from Restaurant service
+    const ordersWithRestaurants = await Promise.all(orders.map(async (order) => {
+      const restaurant = await RestaurantService.getRestaurantById(order.restaurantId);
+      
+      return {
+        ...order._doc,
+        restaurant // Add restaurant field with data from Restaurant service
+      };
+    }));
     
     res.status(200).json({
       success: true,
       count: orders.length,
-      orders
+      orders: ordersWithRestaurants
     });
   } catch (error) {
     console.error('Get user orders error:', error);
@@ -261,10 +276,19 @@ const getRestaurantOrders = async (req, res) => {
     
     const orders = await Order.find(filter).sort({ createdAt: -1 });
     
+    // Get restaurant details once for all orders
+    const restaurant = await RestaurantService.getRestaurantById(id);
+    
+    // Add restaurant info to each order
+    const transformedOrders = orders.map(order => ({
+      ...order._doc,
+      restaurant
+    }));
+    
     res.status(200).json({
       success: true,
       count: orders.length,
-      orders
+      orders: transformedOrders
     });
   } catch (error) {
     console.error('Get restaurant orders error:', error);

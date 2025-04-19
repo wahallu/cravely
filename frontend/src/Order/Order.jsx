@@ -24,13 +24,32 @@ import {
   FaMoneyBillWave, 
   FaCreditCard,
   FaArrowLeft,
-  FaInfo
+  FaInfo,
+  FaInfoCircle,
+  FaBan,
+  FaSadTear,
+  FaExchangeAlt,
+  FaRegCommentDots
 } from 'react-icons/fa';
 
 export default function Order() {
   const { id } = useParams();
   const navigate = useNavigate();
+  
+  // Cancel modal state variables
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelComment, setCancelComment] = useState('');
+  const [cancelStep, setCancelStep] = useState(1); // 1: confirm, 2: reason, 3: final warning
+
+  // Common reasons for cancellation
+  const cancelReasons = [
+    { id: 'changed_mind', text: 'Changed my mind', icon: <FaExchangeAlt /> },
+    { id: 'long_wait', text: 'Wait time is too long', icon: <FaClock /> },
+    { id: 'wrong_address', text: 'Incorrect delivery address', icon: <FaMapMarkerAlt /> },
+    { id: 'duplicate', text: 'Duplicate order', icon: <FaClipboardList /> },
+    { id: 'other', text: 'Other reason', icon: <FaRegCommentDots /> }
+  ];
 
   // Fetch order details from Redux
   const { 
@@ -42,6 +61,35 @@ export default function Order() {
 
   // Cancel order mutation
   const [cancelOrder, { isLoading: isCanceling }] = useCancelOrderMutation();
+
+  // Function to open cancel confirmation modal
+  const openCancelModal = () => {
+    setShowCancelModal(true);
+    setCancelStep(1);
+    setCancelReason('');
+    setCancelComment('');
+  };
+
+  // Handle cancel order
+  const handleCancelOrder = async () => {
+    try {
+      const cancelData = {
+        orderId: id,
+        reason: cancelReason,
+        comment: cancelComment
+      };
+      
+      await cancelOrder(cancelData).unwrap();
+      setShowCancelModal(false);
+      setCancelReason('');
+      setCancelComment('');
+      setCancelStep(1);
+      toast.success('Order cancelled successfully');
+      refetch();
+    } catch (err) {
+      toast.error(err?.data?.message || 'Failed to cancel order');
+    }
+  };
 
   // Format date
   const formatDate = (dateString) => {
@@ -149,18 +197,6 @@ export default function Order() {
       icon: <FaRegClock className="text-orange-500" />,
       class: 'text-orange-600 bg-orange-50'
     };
-  };
-
-  // Handle cancel order
-  const handleCancelOrder = async () => {
-    try {
-      await cancelOrder(id).unwrap();
-      setShowCancelModal(false);
-      toast.success('Order cancelled successfully');
-      refetch();
-    } catch (err) {
-      toast.error(err?.data?.message || 'Failed to cancel order');
-    }
   };
 
   if (isLoading) {
@@ -305,7 +341,7 @@ export default function Order() {
                   <div className="mt-6 flex flex-wrap gap-3">
                     {['pending', 'confirmed'].includes(order.status) && (
                       <button 
-                        onClick={() => setShowCancelModal(true)}
+                        onClick={openCancelModal}
                         className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-medium transition-colors flex items-center"
                         disabled={isCanceling}
                       >
@@ -619,38 +655,103 @@ export default function Order() {
       
       <Footer />
       
-      {/* Cancel Order Modal */}
-      <AnimatePresence>
+      {/* Enhanced Cancel Order Modal */}
+      <AnimatePresence mode="wait">
         {showCancelModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 pointer-events-auto flex items-center justify-center z-50 p-4">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ 
+                type: "spring", 
+                damping: 10,
+                exit: { duration: 0.1 } 
+              }}
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
             >
-              <h3 className="text-xl font-bold text-gray-800 flex items-center">
-                <FaTimesCircle className="text-red-500 mr-2" />
-                Cancel Order
-              </h3>
-              <p className="mt-4 text-gray-600">
-                Are you sure you want to cancel your order? This action cannot be undone.
-              </p>
+              {/* Modal Header */}
+              <div className="bg-red-50 p-6 border-b border-red-100">
+                <div className="flex items-center">
+                  <div className="bg-white shadow-sm rounded-full p-2 mr-4">
+                    <FaTimesCircle className="text-red-500 text-2xl" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Cancel Order</h3>
+                    <p className="text-red-600 text-sm mt-1">This action cannot be undone</p>
+                  </div>
+                </div>
+              </div>
               
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowCancelModal(false)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg font-medium transition-colors"
-                >
-                  Keep Order
-                </button>
-                <button
-                  onClick={handleCancelOrder}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center"
-                  disabled={isCanceling}
-                >
-                  {isCanceling ? 'Cancelling...' : 'Cancel Order'}
-                </button>
+              {/* Modal Body */}
+              <div className="p-6">
+                <div className="mb-5">
+                  <p className="text-gray-700 mb-4">
+                    Are you sure you want to cancel your order? Once canceled:
+                  </p>
+                  <ul className="space-y-2 text-sm text-gray-600">
+                    <li className="flex items-start">
+                      <FaTimesCircle className="text-red-500 mt-1 mr-2 flex-shrink-0" />
+                      <span>Your order will not be processed by the restaurant</span>
+                    </li>
+                    <li className="flex items-start">
+                      <FaTimesCircle className="text-red-500 mt-1 mr-2 flex-shrink-0" />
+                      <span>Any payment authorization will be released</span>
+                    </li>
+                    <li className="flex items-start">
+                      <FaInfoCircle className="text-blue-500 mt-1 mr-2 flex-shrink-0" />
+                      <span>You'll have to place a new order if you change your mind</span>
+                    </li>
+                  </ul>
+                </div>
+                
+                {/* Cancellation Reason */}
+                <div className="mb-5">
+                  <label className="block text-gray-700 text-sm font-medium mb-2">
+                    Please select a reason for cancellation:
+                  </label>
+                  <select 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    defaultValue=""
+                  >
+                    <option value="" disabled>Select a reason</option>
+                    <option value="changed_mind">Changed my mind</option>
+                    <option value="ordered_by_mistake">Ordered by mistake</option>
+                    <option value="delivery_too_long">Delivery time too long</option>
+                    <option value="payment_issues">Payment issues</option>
+                    <option value="other">Other reason</option>
+                  </select>
+                </div>
+                
+                {/* Buttons */}
+                <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 sm:justify-end mt-6">
+                  <button
+                    onClick={() => setShowCancelModal(false)}
+                    className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg font-medium transition-colors flex-1 sm:flex-none"
+                  >
+                    Keep My Order
+                  </button>
+                  <button
+                    onClick={handleCancelOrder}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center flex-1 sm:flex-none"
+                    disabled={isCanceling}
+                  >
+                    {isCanceling ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Cancelling...
+                      </>
+                    ) : (
+                      <>
+                        <FaTimesCircle className="mr-2" />
+                        Cancel Order
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
