@@ -1,20 +1,21 @@
-import React, { useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import React from "react";
 import { Link } from "react-router-dom";
 import { FaMoneyBillWave, FaCheckCircle } from "react-icons/fa";
-import { fetchDriverStats } from "../Redux/slices/driverSlice";
-
+import { useGetDriverStatsQuery } from "../Redux/slices/driverSlice";
 
 export default function DriverDashboard() {
-  const dispatch = useDispatch();
-  const { totalEarnings, completedOrders, loading, error } = useSelector((state) => state.driver);
+  const driver = localStorage.getItem('user') || 'currentDriver';
+  
+  // Use RTK Query hook instead of dispatch/selector pattern
+  const {
+    data: driverStats,
+    isLoading,
+    isError,
+    error
+  } = useGetDriverStatsQuery(driver._id);
 
-  useEffect(() => {
-    dispatch(fetchDriverStats());
-  }, [dispatch]);
-
-  if (loading) return <p className="text-center mt-6">Loading stats...</p>;
-  if (error) return <p className="text-center text-red-500 mt-6">{error}</p>;
+  if (isLoading) return <p className="text-center mt-6">Loading stats...</p>;
+  if (isError) return <p className="text-center text-red-500 mt-6">{error?.message || "Failed to load driver stats"}</p>;
 
   return (
     <div className="min-h-screen bg-yellow-200 p-6">
@@ -34,7 +35,7 @@ export default function DriverDashboard() {
         <h2 className="text-2xl font-bold text-yellow-600 flex items-center">
           <FaMoneyBillWave className="text-green-500 mr-2" /> Driver Earnings
         </h2>
-        <p className="text-gray-700 mt-2">Total Earned: ${driverStats.totalEarnings.toFixed(2)}</p>
+        <p className="text-gray-700 mt-2">Total Earned: ${driverStats?.totalEarnings?.toFixed(2) || '0.00'}</p>
       </div>
 
       {/* Completed Orders Section */}
@@ -42,7 +43,7 @@ export default function DriverDashboard() {
         <h2 className="text-2xl font-bold text-yellow-600 flex items-center">
           <FaCheckCircle className="text-blue-500 mr-2" /> Completed Orders
         </h2>
-        <p className="text-gray-700 mt-2">Total Completed: {driverStats.completedOrders}</p>
+        <p className="text-gray-700 mt-2">Total Completed: {driverStats?.completedOrders || 0}</p>
       </div>
     </div>
   );
