@@ -8,14 +8,16 @@ import { MdPayment } from "react-icons/md";
 
 export default function DeliveryDashboard() {
     const dispatch = useDispatch();
-    const { deliveries, loading, error } = useSelector((state) => state.delivery);
+    const { deliveries, status, error } = useSelector((state) => state.delivery);
 
     useEffect(() => {
-      dispatch(fetchDeliveries());
+      dispatch(fetchDeliveries()).then((res) => {
+        console.log("Fetched deliveries:", res); // ✅ Debug log
+      });
     }, [dispatch]);
 
-    if (loading) return <p className="text-center mt-6">Loading deliveries...</p>;
-    if (error) return <p className="text-center text-red-500 mt-6">{error}</p>;
+    if (status === "loading") return <p className="text-center mt-6">Loading deliveries...</p>;
+    if (status === "failed") return <p className="text-center text-red-500 mt-6">{error}</p>;
 
   return (
     <div className="min-h-screen bg-yellow-200 p-6">
@@ -34,10 +36,10 @@ export default function DeliveryDashboard() {
       <div className="mt-6 grid gap-6">
         {deliveries.map((order) => (
           <div
-            key={order.id}
+            key={order._id} 
             className="bg-white p-4 rounded-lg shadow-md transition transform hover:scale-105 hover:shadow-lg border border-yellow-400"
           >
-            <h2 className="text-lg font-bold text-yellow-600">🛍️ Order {order.id}</h2>
+            <h2 className="text-lg font-bold text-yellow-600">🛍️ Order {order.orderId}</h2>
             <p className="text-gray-700 flex items-center">
               <FaMapMarkerAlt className="text-red-500 mr-2" />
               {order.address}
@@ -54,7 +56,7 @@ export default function DeliveryDashboard() {
               ))}
             </ul>
             <div className="flex justify-between items-center mt-4">
-              <span className="font-bold text-gray-800">Total: ${order.total.toFixed(2)}</span>
+              <span className="font-bold text-gray-800">Total: ${order.total ? order.total.toFixed(2) : "0.00"} </span>
               <span
                 className={`px-3 py-1 text-white text-sm rounded-full ${
                   order.driverStatus === "Delivered" ? "bg-green-500" : "bg-yellow-500"

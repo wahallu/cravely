@@ -2,9 +2,16 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { FaMoneyBillWave, FaCheckCircle } from "react-icons/fa";
 import { useGetDriverStatsQuery } from "../Redux/slices/driverSlice";
-
+import { jwtDecode } from "jwt-decode";
 export default function DriverDashboard() {
   const driver = localStorage.getItem('user') || 'currentDriver';
+  let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IkQwMDEiLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NDUwNDk5MjMsImV4cCI6MTc0NTA3MTUyM30.wCHVa24BFI4Wfl5WWWJ2FGm7PzkkW-Lq9yKmrlsHQK0";
+    let decode = jwtDecode(token);
+    console.log(decode, "decode");
+        let id;
+        if (decode) {
+          id = decode.id;
+  }
   
   // Use RTK Query hook instead of dispatch/selector pattern
   const {
@@ -12,7 +19,7 @@ export default function DriverDashboard() {
     isLoading,
     isError,
     error
-  } = useGetDriverStatsQuery(driver._id);
+  } = useGetDriverStatsQuery(id);
 
   if (isLoading) return <p className="text-center mt-6">Loading stats...</p>;
   if (isError) return <p className="text-center text-red-500 mt-6">{error?.message || "Failed to load driver stats"}</p>;

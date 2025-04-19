@@ -1,18 +1,30 @@
 const Driver = require("../models/Driver");
+const Delivery = require("../models/Delivery");
 
 const getDriverStats = async (req, res) => {
   try {
-    const { id } = req.params; // Get ID from URL params
-    const driver = await Driver.findOne({ driverId: id });
+    const { id } = req.params;
 
+    const driver = await Driver.findOne({ driverId: id });
     if (!driver) return res.status(404).json({ message: "Driver not found" });
 
-    res.json(driver);
+    // Find completed deliveries for this driver
+    const deliveredOrders = await Delivery.find({ driver: driver.name, driverStatus: "Delivered" });
+
+
+    const completedOrders = deliveredOrders.length;
+    const totalEarnings = deliveredOrders.reduce((acc, order) => acc + (order.totalPrice || 0), 0);
+
+    res.json({
+      driverId: id,
+      name: driver.name,
+      completedOrders,
+      totalEarnings
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 const getAllDrivers = async (req, res) => {
   try {
     const drivers = await Driver.find();
