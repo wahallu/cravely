@@ -46,11 +46,30 @@ export const deliveryApi = createApi({
         'Delivery'
       ]
     }),
+
+    signupDriver: builder.mutation({
+      query: (data) => ({
+        url: '/drivers/signup',
+        method: 'POST',
+        body: data
+      })
+    }),
+    loginDriver: builder.mutation({
+      query: (credentials) => ({
+        url: '/drivers/login',
+        method: 'POST',
+        body: credentials
+      })
+    })
+
+
   }),
 });
 
 export const {
   useGetAllDeliveriesQuery,
   useCreateDeliveryMutation,
-  useUpdateDeliveryStatusMutation
+  useUpdateDeliveryStatusMutation,
+  useSignupDriverMutation,
+  useLoginDriverMutation
 } = deliveryApi;

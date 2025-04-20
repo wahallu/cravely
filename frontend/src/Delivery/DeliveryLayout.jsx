@@ -3,9 +3,24 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 
 const DeliveryLayout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    // Check if driver is authenticated by looking for token
+    const token = localStorage.getItem('driverToken');
+    setIsAuthenticated(!!token);
+  }, []);
 
   const isActive = (path) =>
     location.pathname === path ? "bg-white text-orange-500 font-semibold" : "text-white";
+
+  const handleLogout = () => {
+    localStorage.removeItem('driverToken');
+    localStorage.removeItem('driverInfo');
+    setIsAuthenticated(false);
+    navigate('/delivery/login');
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -14,27 +29,60 @@ const DeliveryLayout = () => {
         <h1 className="text-2xl font-bold">🚚 Delivery Management</h1>
       </header>
 
-      {/* Navigation */}
-      <nav className="bg-orange-300 p-3 flex gap-4">
-      <Link
-          to="/delivery"
-          className={`px-4 py-2 rounded ${isActive("/delivery")}`}
-        >
-          Deliveries
-        </Link>
-        <Link
-          to="/delivery/drivers"
-          className={`px-4 py-2 rounded ${isActive("/delivery/drivers")}`}
-        >
-          Driver Dashboard
-        </Link>
-        <Link
-          to="/delivery/all-drivers"
-          className={`px-4 py-2 rounded ${isActive("/delivery/all-drivers")}`}
-        >
-          All Drivers
-        </Link>
-      </nav>
+      {/* Auth Buttons */}
+      <div className="flex gap-4">
+            {!isAuthenticated ? (
+              <>
+                <Link
+                  to="/delivery/login"
+                  className="flex items-center px-4 py-2 bg-white text-orange-500 rounded-lg hover:bg-orange-50 transition-colors"
+                >
+                  <FaSignInAlt className="mr-2" />
+                  Sign In
+                </Link>
+                <Link
+                  to="/delivery/signup"
+                  className="flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                >
+                  <FaUserPlus className="mr-2" />
+                  Sign Up
+                </Link>
+              </>
+            ) : (
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                Logout
+              </button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Navigation - Only show if authenticated */}
+      {isAuthenticated && (
+        <nav className="bg-orange-300 p-3 flex gap-4">
+          <Link
+            to="/delivery"
+            className={`px-4 py-2 rounded ${isActive("/delivery")}`}
+          >
+            Deliveries
+          </Link>
+          <Link
+            to="/delivery/drivers"
+            className={`px-4 py-2 rounded ${isActive("/delivery/drivers")}`}
+          >
+            Driver Dashboard
+          </Link>
+          <Link
+            to="/delivery/all-drivers"
+            className={`px-4 py-2 rounded ${isActive("/delivery/all-drivers")}`}
+          >
+            All Drivers
+          </Link>
+        </nav>
+      )}
 
       {/* Main Content */}
       <main className="p-6">
