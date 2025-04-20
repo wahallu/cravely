@@ -1,0 +1,98 @@
+services:
+  
+
+  # Delivery Service
+  delivery:
+    build:
+      context: ./backend/Delivery
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - MONGODB_URI=mongodb+srv://navod:navod2002@mern.acr5oqy.mongodb.net/cravely_delivery
+      - JWT_SECRET=cravely
+      - ORDER_SERVICE_URL=http://order:5002/api/orders
+    restart: always
+    networks:
+      - cravely-network
+
+  # Order Service
+  order:
+    build:
+      context: ./backend/Order
+    ports:
+      - "5002:5002"
+    environment:
+      - PORT=5002
+      - MONGO_URI=mongodb+srv://nisal:1234@cluster0.p860x.mongodb.net/cravely_order?retryWrites=true&w=majority&appName=Cluster0
+      - JWT_SECRET=cravely
+      - STRIPE_SECRET_KEY=sk_test_51R7t0oG8piHs7v557PlNCgZG92aolQGsoXgSOVrs0Ha7hek5Ap16ot9elbWSGf1y69XdaD6FeHPtIMhbSGPzDrVb00ars1OOHb
+      - STRIPE_PUBLISHABLE_KEY=pk_test_51R7t0oG8piHs7v556meTuJcbOp532bALYa8SnZtwekL7XGVktZGSfxw3WbCLU7DPGqcz0nCNJoyDiAwqrF2YyWEO007q7lpsAa
+    restart: always
+    networks:
+      - cravely-network
+
+  # Restaurant Service
+  restaurant:
+    build:
+      context: ./backend/Restaurant
+    ports:
+      - "5003:5003"
+    environment:
+      - PORT=5003
+      - MONGODB_URI=mongodb+srv://navod:navod2002@mern.acr5oqy.mongodb.net/cravely_restaurant
+      - JWT_SECRET=cravely
+      - JWT_EXPIRE=30d
+    restart: always
+    networks:
+      - cravely-network
+
+  # User Service
+  user:
+    build:
+      context: ./backend/User
+    ports:
+      - "5004:5004"
+    environment:
+      - PORT=5004
+      - MONGODB_URI=mongodb+srv://navod:navod2002@mern.acr5oqy.mongodb.net/cravely_user
+      - JWT_SECRET=cravely
+    restart: always
+    networks:
+      - cravely-network
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:80"
+    environment:
+    - VITE_API_BASE_URL=http://localhost
+    - VITE_DELIVERY_URL=http://delivery:5001/api
+    - VITE_ORDER_URL=http://order:5002/api
+    - VITE_RESTAURANT_URL=http://restaurant:5003/api
+    - VITE_USER_URL=http://user:5004/api
+    restart: always
+    networks:
+      - cravely-network
+
+  # Alternative development configuration with hot reloading
+  # frontend-dev:
+  #   build: 
+  #     context: ./frontend
+  #     dockerfile: Dockerfile.dev
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules
+  #   environment:
+  #     - VITE_API_BASE_URL=http://localhost:5000/api
+  #   command: npm run dev
+  #   networks:
+  #     - cravely-network
+
+networks:
+  cravely-network:
+    driver: bridge
