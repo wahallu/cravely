@@ -10,11 +10,11 @@ const PORT = process.env.PORT || 5000;
 
 // Service URLs
 const serviceUrls = {
-  delivery: 'http://delivery:5001',
-  order: 'http://order:5002',
-  restaurant: 'http://restaurant:5003',
-  user: 'http://user:5004',
-  frontend: 'http://frontend:3000'
+  delivery: 'http://localhost:5001',
+  order: 'http://localhost:5002',
+  restaurant: 'http://localhost:5003',
+  user: 'http://localhost:5004',
+  frontend: 'http://localhost:3000'
 };
 
 // middleware
@@ -73,10 +73,10 @@ const proxyWithErrorHandling = (serviceUrl) => {
 };
 
 // routes with error handling
-app.use('/delivery', proxyWithErrorHandling(serviceUrls.delivery));
-app.use('/order', proxyWithErrorHandling(serviceUrls.order));
-app.use('/restaurant', proxyWithErrorHandling(serviceUrls.restaurant));
-app.use('/user', proxyWithErrorHandling(serviceUrls.user));
+app.use('/api/delivery', proxyWithErrorHandling(serviceUrls.delivery));
+app.use('/api/order', proxyWithErrorHandling(serviceUrls.order));
+app.use('/api/restaurant', proxyWithErrorHandling(serviceUrls.restaurant));
+app.use('/api/users', proxyWithErrorHandling(serviceUrls.user));
 
 // Error handling
 app.use((err, req, res, next) => {
