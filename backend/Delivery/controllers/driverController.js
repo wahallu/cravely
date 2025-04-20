@@ -1,5 +1,4 @@
 const Driver = require("../models/Driver");
-const Delivery = require("../models/Delivery");
 
 const getDriverStats = async (req, res) => {
   try {
@@ -13,14 +12,24 @@ const getDriverStats = async (req, res) => {
 
 
     const completedOrders = deliveredOrders.length;
-    const totalEarnings = deliveredOrders.reduce((acc, order) => acc + (order.totalPrice || 0), 0);
+    const totalEarnings = deliveredOrders.reduce((acc, order) => acc + (order.total || 0), 0);
+
+    driver.completedOrders = completedOrders;
+    driver.totalEarnings = totalEarnings;
+    await driver.save();
+
 
     res.json({
       driverId: id,
       name: driver.name,
+      phone: driver.phone,
+      licenseNumber: driver.licenseNumber,
+      vehicleType: driver.vehicleType,
+      status: driver.status,
       completedOrders,
       totalEarnings
     });
+    
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

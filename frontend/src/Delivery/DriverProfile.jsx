@@ -38,7 +38,7 @@ export default function DriverProfile() {
         <p className="text-xl font-semibold text-gray-700">Name: {driver.name}</p>
         <p className="text-md text-gray-600">ID: {driver.driverId}</p>
         <p className="text-md text-gray-600">📞 Phone: {driver.phone || 'N/A'}</p>
-        <p className="text-md text-gray-600">🪪 License No: {driver.licenseNumber || 'N/A'}</p>
+        <p className="text-md text-gray-600">License No: {driver.licenseNumber || 'N/A'}</p>
         <p className="text-md text-gray-600">🚗 Vehicle Type: {driver.vehicleType || 'N/A'}</p>
         <p className="text-md text-gray-600">
           Status: <span className="font-semibold">{driver.status || 'Unknown'}</span>

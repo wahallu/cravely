@@ -1,23 +1,17 @@
 import React, { useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { fetchDeliveries } from "../Redux/slices/deliverySlice";
+import { useGetAllDeliveriesQuery } from "../Redux/slices/deliverySlice";
 import { Link } from "react-router-dom";
 import { FaMapMarkerAlt } from "react-icons/fa";
 import { MdPayment } from "react-icons/md";
 
 
 export default function DeliveryDashboard() {
-    const dispatch = useDispatch();
-    const { deliveries, status, error } = useSelector((state) => state.delivery);
 
-    useEffect(() => {
-      dispatch(fetchDeliveries()).then((res) => {
-        console.log("Fetched deliveries:", res); // ✅ Debug log
-      });
-    }, [dispatch]);
+  const { data: deliveries, isSuccess } = useGetAllDeliveriesQuery();
 
-    if (status === "loading") return <p className="text-center mt-6">Loading deliveries...</p>;
-    if (status === "failed") return <p className="text-center text-red-500 mt-6">{error}</p>;
+  console.log("delivery: ", deliveries);
+
+  if (!isSuccess) return <p className="text-center mt-6">Loading deliveries...</p>;
 
   return (
     <div className="min-h-screen bg-yellow-200 p-6">
