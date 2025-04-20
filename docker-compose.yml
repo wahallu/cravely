@@ -1,26 +1,5 @@
 services:
-  # API Gateway Service
-  gateway:
-    build:
-      context: ./backend/Gateway
-    ports:
-      - "5000:5000"
-    environment:
-      - PORT=5000
-      - DELIVERY_SERVICE_URL=http://delivery:5001
-      - ORDER_SERVICE_URL=http://order:5002
-      - RESTAURANT_SERVICE_URL=http://restaurant:5003
-      - USER_SERVICE_URL=http://user:5004
-      - FRONTEND_SERVICE_URL=http://frontend:3000
-    depends_on:
-      - delivery
-      - order
-      - restaurant
-      - user
-      - frontend
-    restart: always
-    networks:
-      - cravely-network
+  
 
   # Delivery Service
   delivery:
@@ -89,7 +68,11 @@ services:
     ports:
       - "3000:80"
     environment:
-      - VITE_API_BASE_URL=http://gateway:5000/api
+    - VITE_API_BASE_URL=http://localhost
+    - VITE_DELIVERY_URL=http://delivery:5001/api
+    - VITE_ORDER_URL=http://order:5002/api
+    - VITE_RESTAURANT_URL=http://restaurant:5003/api
+    - VITE_USER_URL=http://user:5004/api
     restart: always
     networks:
       - cravely-network
