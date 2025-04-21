@@ -16,6 +16,7 @@ const {
 // Base driver routes
 router.get("/", getAllDrivers);
 router.get("/:driverId", getDriverByDriverId);
+router.get("/profile/:id", getDriverByDriverId); 
 router.post("/", protect, addDriver);
 router.put("/:driverId", protect, updateDriver);
 router.delete("/:driverId", protect, deleteDriver);

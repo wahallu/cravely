@@ -46,11 +46,36 @@ const getAllDrivers = async (req, res) => {
 
 const getDriverByDriverId = async (req, res) => {
   try {
-    const driver = await Driver.findOne({ driverId: req.params.driverId });
-    if (!driver) return res.status(404).json({ message: "Driver not found" });
-    res.json(driver);
+    const driver = await Driver.findById(req.params.id).select('-password');
+    
+    if (!driver) {
+      return res.status(404).json({
+        success: false,
+        message: "Driver not found"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      driver: {
+        id: driver._id,
+        driverId: driver.driverId,
+        name: driver.name,
+        email: driver.email,
+        phone: driver.phone,
+        licenseNumber: driver.licenseNumber,
+        vehicleType: driver.vehicleType,
+        status: driver.status,
+        totalEarnings: driver.totalEarnings,
+        completedOrders: driver.completedOrders
+      }
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Get driver error:', err);
+    res.status(500).json({
+      success: false,
+      message: err.message || "Error retrieving driver"
+    });
   }
 };
 

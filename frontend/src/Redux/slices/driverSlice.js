@@ -23,7 +23,19 @@ export const driverApi = createApi({
       providesTags: ['Driver']
     }),
     getDriverById: builder.query({
-      query: (id) => `/drivers/${id}`,
+      query: (id) => ({
+        url: `/drivers/profile/${id}`,
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }),
+      transformResponse: (response) => {
+        if (response.success) {
+          return response.driver;
+        }
+        throw new Error('Failed to fetch driver profile');
+      },
       providesTags: (result, error, id) => [{ type: 'Driver', id }]
     }),
     getDriverStats: builder.query({
