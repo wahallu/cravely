@@ -1,23 +1,18 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { jwtDecode } from 'jwt-decode';
-
+import { getToken } from '../../utils/auth'; 
 
 export const driverApi = createApi({
   reducerPath: 'driverApi',
   baseQuery: fetchBaseQuery({ 
     baseUrl: 'http://localhost:5001/api',
     prepareHeaders: (headers) => {
-      //const token = localStorage.getItem('token');
-      let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IkQwMDEiLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NDUxMjMxODUsImV4cCI6MTc0NTE0NDc4NX0.3Zwc5UEhH0eLFeqQ_cCxZprljmUBjGG1y9btVcectTU";
-      let decode = jwtDecode(token);
-      console.log(decode, "decode");
-      let id;
-      if (decode) {
-        id = decode.id;
-      }
+      const token = getToken(); 
+      
       if (token) {
+        console.log('Using token:', token.substring(0, 20) + '...');
         headers.set('Authorization', `Bearer ${token}`);
-      } 
+        headers.set('Content-Type', 'application/json');
+      }
       return headers;
     }
   }),
@@ -37,10 +32,16 @@ export const driverApi = createApi({
     }),
     addDriver: builder.mutation({
       query: (data) => ({
-        url: '/drivers',
+        url: '/drivers/register',
         method: 'POST',
         body: data
       }),
+      transformResponse: (response) => {
+        if (response.token) {
+          return response;
+        }
+        throw new Error('No token received from server');
+      },
       invalidatesTags: ['Driver']
     }),
     updateDriver: builder.mutation({
@@ -60,6 +61,36 @@ export const driverApi = createApi({
         method: 'DELETE'
       }),
       invalidatesTags: ['Driver']
+    }),
+    loginDriver: builder.mutation({
+      query: (credentials) => ({
+        url: '/drivers/login',
+        method: 'POST',
+        body: credentials,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }),
+      transformResponse: (response) => {
+        console.log('Login response:', response);
+        if (response.token) {
+          // Store token and driver info
+          localStorage.setItem('driverToken', response.token);
+          localStorage.setItem('driverInfo', JSON.stringify({
+            id: response.driver._id || response.driver.id,
+            email: response.driver.email,
+            role: 'driver'
+          }));
+        }
+        return response;
+      },
+      transformErrorResponse: (response) => {
+        console.error('Login error:', response);
+        return {
+          status: response.status,
+          message: response.data?.message || 'Authentication failed'
+        };
+      },
     })
   })
 });
@@ -70,5 +101,6 @@ export const {
   useGetDriverStatsQuery,
   useAddDriverMutation,
   useUpdateDriverMutation,
-  useDeleteDriverMutation
+  useDeleteDriverMutation,
+  useLoginDriverMutation
 } = driverApi;

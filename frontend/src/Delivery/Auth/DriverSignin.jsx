@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MdEmail, MdLock, MdVisibility, MdVisibilityOff } from 'react-icons/md';
 import { useLoginDriverMutation } from '../../Redux/slices/driverSlice';
+import { saveAuth } from '../../utils/auth';
 import toast from 'react-hot-toast';
 
 export default function DriverSignin() {
@@ -25,17 +26,45 @@ export default function DriverSignin() {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
+   
+  const validateForm = () => {
+    const newErrors = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    if (!formData.password || formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const response = await login(formData).unwrap();
-      toast.success('Login successful!');
-      localStorage.setItem('driverToken', response.token);
-      localStorage.setItem('driverInfo', JSON.stringify(response.driver));
-      navigate('/delivery/dashboard');
-    } catch (err) {
-      toast.error(err.data?.message || 'Login failed');
+    if (validateForm()) {
+      try {
+        const response = await login(formData).unwrap();
+        console.log('Login response:', response);
+        
+        if (response.token) {
+          saveAuth(response.token, {
+            ...response.driver,
+            role: 'driver'
+          });
+          
+          toast.success('Login successful!');
+          // Navigate to the delivery dashboard
+          navigate('/delivery'); 
+        } else {
+          throw new Error('Invalid response from server');
+        }
+      } catch (err) {
+        console.error('Login error:', err);
+        toast.error(err.data?.message || 'Login failed - Invalid credentials');
+      }
     }
   };
 
@@ -70,6 +99,7 @@ export default function DriverSignin() {
                   className="pl-10 block w-full border border-gray-300 rounded-lg p-2.5"
                   placeholder="you@example.com"
                 />
+                {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
               </div>
             </div>
 
@@ -100,6 +130,7 @@ export default function DriverSignin() {
                     <MdVisibility className="text-gray-400" />
                   )}
                 </button>
+                {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
               </div>
             </div>
           </div>

@@ -1,23 +1,59 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { jwtDecode } from 'jwt-decode';
+import { getToken, saveAuth } from '../../utils/auth';
 
 export const deliveryApi = createApi({
   reducerPath: 'deliveryApi',
   baseQuery: fetchBaseQuery({
     baseUrl: 'http://localhost:5001/api',
     prepareHeaders: (headers) => {
-      // You can switch this to localStorage if needed
-      const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IkQwMDEiLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NDUxMjMxODUsImV4cCI6MTc0NTE0NDc4NX0.3Zwc5UEhH0eLFeqQ_cCxZprljmUBjGG1y9btVcectTU";
+      const token = getToken();
+      
       if (token) {
-        const decoded = jwtDecode(token);
-        console.log(decoded, "decoded");
+        console.log('Using token:', token.substring(0, 20) + '...'); 
         headers.set('Authorization', `Bearer ${token}`);
+        headers.set('Content-Type', 'application/json');
+      } else {
+        console.log('No token found in auth utils');
       }
       return headers;
     },
   }),
-  tagTypes: ['Delivery'],
+  tagTypes: ['Delivery', 'Driver'],
   endpoints: (builder) => ({
+    loginDriver: builder.mutation({
+      query: (credentials) => ({
+        url: '/drivers/login',
+        method: 'POST',
+        body: credentials
+      }),
+      
+      async onQueryStarted(_, { queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          if (data?.token) {
+            // Store token and driver info with role
+            saveAuth(data.token, {
+              id: data.driver._id || data.driver.id,
+              email: data.driver.email,
+              name: data.driver.name,
+              role: 'driver'
+            });
+          }
+        } catch (err) {
+          console.error('Login error:', err);
+        }
+      }
+    }),
+
+    registerDriver: builder.mutation({
+      query: (driverData) => ({
+        url: '/drivers/register',
+        method: 'POST',
+        body: driverData
+      }),
+      invalidatesTags: ['Driver']
+    }),
+
     // Fetch all deliveries
     getAllDeliveries: builder.query({
       query: () => '/deliveries',
@@ -47,29 +83,13 @@ export const deliveryApi = createApi({
       ]
     }),
 
-    signupDriver: builder.mutation({
-      query: (data) => ({
-        url: '/drivers/signup',
-        method: 'POST',
-        body: data
-      })
-    }),
-    loginDriver: builder.mutation({
-      query: (credentials) => ({
-        url: '/drivers/login',
-        method: 'POST',
-        body: credentials
-      })
-    })
-
-
   }),
 });
 
 export const {
+  useLoginDriverMutation,
+  useRegisterDriverMutation,
   useGetAllDeliveriesQuery,
   useCreateDeliveryMutation,
   useUpdateDeliveryStatusMutation,
-  useSignupDriverMutation,
-  useLoginDriverMutation
 } = deliveryApi;

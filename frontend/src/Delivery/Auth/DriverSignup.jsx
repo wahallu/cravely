@@ -2,12 +2,12 @@ import React, { useState, useRef, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MdPerson, MdPhone, MdEmail, MdLock, MdVisibility, MdVisibilityOff, MdError, MdDirectionsBike } from 'react-icons/md';
 import { motion } from 'framer-motion';
-import { useSignupDriverMutation } from '../../Redux/slices/driverSlice';
+import { useAddDriverMutation } from '../../Redux/slices/driverSlice';
 import toast from 'react-hot-toast';
 
 export default function DriverSignup() {
   const navigate = useNavigate();
-  const [signup] = useSignupDriverMutation();
+  const [signup] = useAddDriverMutation();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -50,10 +50,21 @@ export default function DriverSignup() {
     e.preventDefault();
     if (validateForm()) {
       try {
-        await signup(formData).unwrap();
-        toast.success('Registration successful!');
-        navigate('/delivery/login');
+        const response = await signup(formData).unwrap();
+        console.log('Signup response:', response);
+        
+        if (response.token) {
+          saveAuth(response.token, {
+            ...response.driver,
+            role: 'driver'
+          });
+          toast.success('Registration successful!');
+          navigate('/delivery/login');
+        } else {
+          throw new Error('Registration failed - No token received');
+        }
       } catch (err) {
+        console.error('Signup error:', err);
         toast.error(err.data?.message || 'Registration failed');
       }
     }
