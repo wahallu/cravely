@@ -10,7 +10,7 @@ import { paymentApi } from "./slices/paymentSlice";
 import { shippingAddressApi } from "./slices/shippingAddressSlice";
 import { userApi } from "./slices/userSlice";
 import cartReducer from "./slices/cartSlice";
-import deliveryReducer from "./slices/deliverySlice";
+import { deliveryApi } from "./slices/deliverySlice";
 import { driverApi } from './slices/driverSlice';
 
 
@@ -26,8 +26,8 @@ export const store = configureStore({
     [paymentApi.reducerPath]: paymentApi.reducer,
     [userApi.reducerPath]: userApi.reducer,
     [driverApi.reducerPath]: driverApi.reducer,
+    [deliveryApi.reducerPath]: deliveryApi.reducer,
     cart: cartReducer,
-    delivery: deliveryReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -40,7 +40,8 @@ export const store = configureStore({
       .concat(shippingAddressApi.middleware)
       .concat(paymentApi.middleware)
       .concat(userApi.middleware)
-      .concat(driverApi.middleware),
+      .concat(driverApi.middleware)
+      .concat(deliveryApi.middleware),
 });
 
 setupListeners(store.dispatch);
