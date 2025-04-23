@@ -239,12 +239,12 @@ const MealsAndMenus = () => {
   };
 
   // Check for valid restaurant ID on load
-  useEffect(() => {
-    if (!id) {
-      console.warn("No restaurant ID found in URL parameters");
-      toast.error("Restaurant information is missing");
-    }
-  }, [id]);
+  // useEffect(() => {
+  //   if (!id) {
+  //     console.warn("No restaurant ID found in URL parameters");
+  //     toast.error("Restaurant information is missing");
+  //   }
+  // }, [id]);
 
   return (
     <div className="min-h-screen relative bg-gray-50">
