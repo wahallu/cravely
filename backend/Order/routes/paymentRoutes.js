@@ -52,7 +52,14 @@ router.post('/create-intent', protect, async (req, res) => {
 // Save a payment method
 router.post('/save-card', protect, async (req, res) => {
   try {
-    const { paymentMethodId, cardholderName, last4 } = req.body;
+    // Destructure with fallbacks to handle different parameter naming
+    const { 
+      paymentMethodId, 
+      cardholderName = req.body.nameOnCard, // Accept either cardholderName or nameOnCard
+      last4
+    } = req.body;
+    
+    console.log("Received card save request:", { paymentMethodId, cardholderName, last4 });
     
     // Extract token from request
     const token = req.headers.authorization?.split(' ')[1];
@@ -143,7 +150,20 @@ router.post('/save-card', protect, async (req, res) => {
     });
   }
 });
-
+// In your backend payments routes file
+// GET direct database cards
+router.get('/db-cards', protect, async (req, res) => {
+  try {
+    const cards = await Card.find({ userId: req.user._id });
+    res.json(cards);
+  } catch (error) {
+    console.error('Error fetching cards from database:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error fetching cards'
+    });
+  }
+});
 // Get saved cards
 router.get('/saved-cards', protect, async (req, res) => {
   try {

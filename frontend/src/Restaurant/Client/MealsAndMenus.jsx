@@ -175,21 +175,6 @@ const MealsAndMenus = () => {
         return;
       }
 
-      // Ensure item has a unique ID for cart tracking
-      const itemForCart = {
-        ...item,
-        restaurantId, // Use the validated restaurantId
-        // Create a unique cart item ID if adding as new
-        cartItemId: addAsNew ? `${item._id || item.id}_${Date.now()}` : undefined
-      };
-
-      // Update local state first (for immediate UI feedback)
-      dispatch(addToCart({ 
-        item: itemForCart,
-        quantity: 1,
-        addAsNew
-      }));
-
       // Prepare the item data for the backend API
       const itemData = {
         id: item._id || item.id, // Backend expects 'id' field
@@ -202,34 +187,54 @@ const MealsAndMenus = () => {
 
       console.log("Sending item data to API:", itemData);
 
-      // Then make API call to persist to database
+      // Make API call first
       const result = await addToCartMutation(itemData).unwrap();
       
+      // Only if successful, update local cart
       if (result.success) {
+        // Ensure item has a unique ID for cart tracking
+        const itemForCart = {
+          ...item,
+          restaurantId,
+          cartItemId: addAsNew ? `${item._id || item.id}_${Date.now()}` : undefined
+        };
+
+        // Update local state AFTER server succeeds
+        dispatch(addToCart({ 
+          item: itemForCart,
+          quantity: 1,
+          addAsNew
+        }));
+        
         toast.success(`${item.name} added to cart!`);
       } else {
-        // Handle potential server error with success: false
-        console.warn("API returned success:false", result);
-        toast.success(`${item.name} added to cart locally`);
+        toast.error(result.message || `Could not add ${item.name} to cart`);
       }
     } catch (error) {
       console.error("Add to cart error:", error);
       
-      // Add detailed logging for troubleshooting
-      console.log("Error details:", {
-        message: error.message,
-        data: error.data,
-        errorObj: error
-      });
-      
-      if (error.status === 401) {
-        toast.error("Your session has expired. Please log in again.");
-        navigate('/login');
-        return;
+      if (error.status === 400 && error.data?.message?.includes("another restaurant")) {
+        // Handle the multiple restaurant error specifically
+        toast.error(
+          "You can only order from one restaurant at a time. Please clear your cart first or finish your current order.",
+          {
+            duration: 6000,
+            action: {
+              label: "Clear Cart",
+              onClick: () => {
+                dispatch(clearCart());
+                // Try adding this item again after clearing cart
+                setTimeout(() => handleAddToCart(item, addAsNew), 300);
+              }
+            }
+          }
+        );
+        return; // Don't update local state
+      } else {
+        // Other network/server errors
+        toast.error(`Server error: ${error.data?.message || "Could not add to cart"}`);
+        return; // Don't update local state
       }
-      
-      // Show error but keep item in local cart
-      toast.error(`Server error adding to cart. Item added locally.`);
     }
   };
 
