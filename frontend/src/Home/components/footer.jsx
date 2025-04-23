@@ -92,6 +92,21 @@ export default function Footer() {
                   <span className="text-gray-400">support@cravely.com</span>
                 </div>
               </div>
+
+              {/* Driver Login Section */}
+              <div className="mt-6 pt-6 border-t border-gray-800">
+                <h4 className="text-sm font-semibold mb-3 flex items-center">
+                  <FaMapMarkerAlt className="text-orange-400 mr-2" />
+                  Drivers Portal
+                </h4>
+                <Link 
+                  to="/driver/login" 
+                  className="inline-flex items-center bg-gray-800 hover:bg-gray-700 text-white text-sm px-4 py-2 rounded transition-colors duration-200"
+                >
+                  Driver Login
+                  <MdKeyboardArrowRight className="ml-1" />
+                </Link>
+              </div>
             </div>
 
             {/* Company Links */}
