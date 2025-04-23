@@ -100,7 +100,7 @@ export default function Footer() {
                   Drivers Portal
                 </h4>
                 <Link 
-                  to="/driver/login" 
+                  to="/delivery/login" 
                   className="inline-flex items-center bg-gray-800 hover:bg-gray-700 text-white text-sm px-4 py-2 rounded transition-colors duration-200"
                 >
                   Driver Login
