@@ -1,27 +1,29 @@
 const express = require("express");
 const router = express.Router();
 const { protect } = require("../middleware/auth");
-const { 
-  getDriverStats,
-  getAllDrivers, 
+const {
+  getAllDrivers,
   getDriverByDriverId,
-  addDriver,
+  getDriverStats,
+  addDriver, 
   updateDriver,
-  deleteDriver
+  deleteDriver,
+  registerDriver, 
+  loginDriver, 
+  getDriverProfile
 } = require("../controllers/driverController");
 
-// Get routes
-router.get("/stats/:id", protect, getDriverStats);
-router.get("/", getAllDrivers); 
+// Base driver routes
+router.get("/", getAllDrivers);
 router.get("/:driverId", getDriverByDriverId);
-
-// Create route
+router.get("/profile/:id", getDriverByDriverId); 
 router.post("/", protect, addDriver);
-
-// Update route
 router.put("/:driverId", protect, updateDriver);
-
-// Delete route
 router.delete("/:driverId", protect, deleteDriver);
+
+// Authentication and profile routes
+router.post('/register', registerDriver);
+router.post('/login', loginDriver);
+router.get('/profile', protect, getDriverProfile);
 
 module.exports = router;
