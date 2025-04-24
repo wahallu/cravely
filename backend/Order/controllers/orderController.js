@@ -445,7 +445,7 @@ const getDriverOrders = async (req, res) => {
  */
 const updateOrderStatus = async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, estimatedDelivery } = req.body;
     
     // Find the order
     const order = await Order.findOne({ orderId: req.params.id });
@@ -460,7 +460,7 @@ const updateOrderStatus = async (req, res) => {
     // Check if restaurant is trying to update the status
     if (req.user.role === 'restaurant') {
       // Verify the order belongs to this restaurant
-      if (order.restaurantId.toString() !== req.user.restaurantId.toString()) {
+      if (order.restaurantId.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to update this order'
@@ -489,8 +489,11 @@ const updateOrderStatus = async (req, res) => {
       }
     }
     
-    // Update the status
+    // Update the status and estimated delivery if provided
     order.status = status;
+    if (estimatedDelivery) {
+      order.estimatedDeliveryTime = estimatedDelivery;
+    }
     order.updatedAt = Date.now();
     
     await order.save();
@@ -504,7 +507,7 @@ const updateOrderStatus = async (req, res) => {
         customer: order.customer,
         orderId: order.orderId,
         restaurant,
-        estimatedDelivery: order.estimatedDelivery
+        estimatedDelivery: order.estimatedDeliveryTime
       });
     } else if (status === 'delivered') {
       await NotificationService.sendOrderDeliveredNotification({

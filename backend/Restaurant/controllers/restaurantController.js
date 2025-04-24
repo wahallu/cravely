@@ -106,7 +106,7 @@ exports.loginRestaurant = async (req, res, next) => {
     const token = jwt.sign(
       {
         id: restaurant._id,
-        role: restaurant.role, // Make sure 'role' is included
+        role: restaurant.role,
       },
       process.env.JWT_SECRET,
       {

@@ -31,10 +31,13 @@ export const restaurantOrderApi = createApi({
 
     // Update order status
     updateOrderStatus: builder.mutation({
-      query: ({ orderId, status, ...rest }) => ({
+      query: ({ orderId, status, estimatedDelivery }) => ({
         url: `/orders/${orderId}/status`,
         method: "PUT",
-        body: { status }, // Only send status in the body to avoid backend errors
+        body: { 
+          status, 
+          estimatedDelivery  // Include this for delivery notifications
+        },
       }),
       invalidatesTags: ["RestaurantOrder"],
     }),

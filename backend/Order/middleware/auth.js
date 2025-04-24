@@ -24,8 +24,8 @@ const protect = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    console.log('Token verification successful');
-    console.log('Decoded payload:', JSON.stringify(decoded, null, 2));
+    // console.log('Token verification successful');
+    // console.log('Decoded payload:', JSON.stringify(decoded, null, 2));
     
     // Set the user ID and role directly from the decoded token
     // Ensure we're using the actual user ID and role from the token
@@ -35,7 +35,7 @@ const protect = async (req, res, next) => {
       name: decoded.name || decoded.fullName || null // Store name for driver assignment
     };
     
-    console.log('Authenticated user ID:', req.user._id);
+    // console.log('Authenticated user ID:', req.user._id);
     
     next();
   } catch (error) {

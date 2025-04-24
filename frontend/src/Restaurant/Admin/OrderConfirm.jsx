@@ -19,7 +19,7 @@ import {
   FaEnvelope,
   FaReceipt,
 } from "react-icons/fa";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { useGetRestaurantProfileQuery } from "../../Redux/slices/restaurantSlice";
 import {
   useGetRestaurantOrdersQuery,
@@ -102,10 +102,12 @@ const OrderConfirm = () => {
     try {
       setIsUpdating(true);
 
+      console.log("update start")
+
       // Use the RTK Query mutation with the correct request format
       const result = await updateOrderStatus({
-        orderId, // The order ID to update
-        status: newStatus, // The new status (e.g., 'confirmed', 'preparing', etc.)
+        orderId,
+        status: newStatus,
         // Include any additional data needed for notifications
         estimatedDelivery: estimatedTime,
         restaurantName: restaurantName,
