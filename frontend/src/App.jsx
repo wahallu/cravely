@@ -26,7 +26,8 @@ import MyOrders from './Order/MyOrders';
 import AdminLayout from "./User/Admin/layout";
 import AdminDashboard from "./User/Admin/dashboard";
 import AdminRestaurant from "./User/Admin/restaurant";
-import AdminDrivers from "./User/Admin/drivers";
+import AllDrivers from "./User/Admin/AllDrivers";
+import DriverProfile from "./User/Admin/DriverProfile";
 
 import UserLayout from "./User/Customer/layout";
 import UserDashboard from "./User/Customer/dashboard";
@@ -39,8 +40,6 @@ import PaymentMethods from "./User/Customer/paymentMethods";
 import DeliveryLayout from "./Delivery/DeliveryLayout";
 import DeliveryDashboard from "./Delivery/DeliveryDashboard";
 import DriverDashboard from "./Delivery/DriverDashboard";
-import DriverProfile from "./Delivery/DriverProfile";
-import AllDrivers from "./Delivery/AllDrivers";
 import DriverSignup from "./Delivery/Auth/DriverSignup";
 import DriverSignin from "./Delivery/Auth/DriverSignin";
 
@@ -50,7 +49,6 @@ export default function App() {
   return (
     <BrowserRouter>
       <NotificationProvider>
-
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<AboutUs />} />
@@ -88,34 +86,19 @@ export default function App() {
           }>
             <Route path="" element={<AdminDashboard />} />
             <Route path="restaurants" element={<AdminRestaurant />} />
-            <Route path="drivers" element={<AdminDrivers />} />
+            <Route path="drivers" element={<AllDrivers />} />
+            <Route path="drivers/:id" element={<DriverProfile />} />
           </Route>
 
-          {/* Customer Routes */}
-          <Route path="/user" element={
-            <UserProtectedRoutes>
-              <UserLayout />
-            </UserProtectedRoutes>
-          }>
-            <Route path="" element={<UserDashboard />} />
-            <Route path="favorites" element={<Favourite />} />
-            <Route path="offers" element={<Offers />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="payments" element={<PaymentMethods />} />
-          </Route>
-
+          {/* Delivery Routes */}
           <Route path="/delivery" element={<DeliveryLayout />}>
             <Route path="" element={<DeliveryDashboard />} />
             <Route path="drivers" element={<DriverDashboard />} />
-            <Route path="all-drivers" element={<AllDrivers />} />
-            <Route path="drivers/:id" element={<DriverProfile />} />
             <Route path="signup" element={<DriverSignup />} />
             <Route path="login" element={<DriverSignin />} />
           </Route>
-
         </Routes>
       </NotificationProvider>
-
     </BrowserRouter>
   );
 }
