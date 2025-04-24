@@ -3,23 +3,33 @@ import axios from "axios";
 
 const BASE_URL = "http://localhost:5001/api/deliveries"; 
 
-// Thunks
+// Helper function to get auth headers
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return {
+    headers: {
+      'Authorization': token ? `Bearer ${token}` : ''
+    }
+  };
+};
+
+// Updated thunks with auth headers
 export const fetchDeliveries = createAsyncThunk("delivery/fetchAll", async () => {
-  const response = await axios.get(BASE_URL);
+  const response = await axios.get(BASE_URL, getAuthHeaders());
   return response.data;
 });
 
 export const createDelivery = createAsyncThunk("delivery/create", async (newDelivery) => {
-  const response = await axios.post(BASE_URL, newDelivery);
+  const response = await axios.post(BASE_URL, newDelivery, getAuthHeaders());
   return response.data;
 });
 
 export const updateDeliveryStatus = createAsyncThunk("delivery/updateStatus", async ({ id, status }) => {
-  const response = await axios.put(`${BASE_URL}/${id}`, { driverStatus: status });
+  const response = await axios.put(`${BASE_URL}/${id}`, { driverStatus: status }, getAuthHeaders());
   return response.data;
 });
 
-// Slice
+// Rest of the slice remains the same
 const deliverySlice = createSlice({
   name: "delivery",
   initialState: {

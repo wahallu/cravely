@@ -2,6 +2,7 @@ const Order = require('../models/Order');
 const PaymentService = require('../services/paymentService');
 const RestaurantService = require('../services/restaurantService');
 const NotificationService = require('../services/notificationService');
+const DeliveryService = require('../services/deliveryService');
 const mongoose = require('mongoose');
 
 /**
@@ -378,23 +379,20 @@ const assignDriver = async (req, res) => {
       });
     }
     
-    // Assign driver to order
+    // Assign driver to order in Order service
     order.driverId = driverId;
     order.driverName = driverName;
     order.driverAssignedAt = Date.now();
     
     await order.save();
     
-    // Update driver status to "On Delivery" if using the Driver model
+    // Update driver status in Delivery service
     try {
-      // This assumes your Driver model is accessible or you have a service to update driver status
-      await Driver.findOneAndUpdate(
-        { driverId },
-        { status: 'On Delivery' }
-      );
+      await DeliveryService.updateDriverStatus(driverId, 'On Delivery');
+      console.log(`Driver ${driverId} status updated to On Delivery`);
     } catch (driverError) {
       // Log error but don't fail the assignment if driver status update fails
-      console.error('Error updating driver status:', driverError);
+      console.error('Error updating driver status in Delivery service:', driverError);
     }
     
     res.status(200).json({
@@ -580,6 +578,81 @@ const cancelOrder = async (req, res) => {
   }
 };
 
+/**
+ * Mark order as delivered by driver
+ * @route PUT /api/orders/:id/delivered
+ * @access Private (Drivers only)
+ */
+const completeDelivery = async (req, res) => {
+  try {
+    const order = await Order.findOne({ orderId: req.params.id });
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+    
+    // Ensure only the assigned driver can mark it as delivered
+    if (order.driverId !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the assigned driver can mark an order as delivered'
+      });
+    }
+    
+    // Update order status
+    order.status = 'delivered';
+    order.updatedAt = Date.now();
+    
+    await order.save();
+    
+    // Update driver status back to Available in Delivery service
+    try {
+      await DeliveryService.updateDriverStatus(order.driverId, 'Available');
+      
+      // Update driver earnings through the dedicated method
+      if (order.total) {
+        const deliveryEarnings = calculateDeliveryEarnings(order.total);
+        await DeliveryService.updateDriverStats(order.driverId, deliveryEarnings);
+      }
+    } catch (driverError) {
+      console.error('Error updating driver after delivery:', driverError);
+    }
+    
+    // Send delivery notification
+    await NotificationService.sendOrderDeliveredNotification({
+      customer: order.customer,
+      orderId: order.orderId,
+      restaurant: await RestaurantService.getRestaurantById(order.restaurantId)
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: 'Order marked as delivered successfully',
+      order
+    });
+  } catch (error) {
+    console.error('Error completing delivery:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Helper function to calculate driver earnings from order total
+ */
+const calculateDeliveryEarnings = (orderTotal) => {
+  // Example calculation: base fee + percentage of order
+  const baseFee = 2.50;
+  const percentage = 0.05; // 5%
+  return baseFee + (orderTotal * percentage);
+};
+
 module.exports = {
   // Existing exports
   createOrder,
@@ -588,8 +661,9 @@ module.exports = {
   getRestaurantOrders,
   updateOrderStatus,
   cancelOrder,
-  // New exports
   getAvailableOrders,
   assignDriver,
-  getDriverOrders
+  getDriverOrders,
+  // New export
+  completeDelivery
 };
