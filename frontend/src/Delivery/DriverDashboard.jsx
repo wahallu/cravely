@@ -1,18 +1,39 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { FaMoneyBillWave, FaCheckCircle } from "react-icons/fa";
+import { FaMoneyBillWave, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 import { useGetDriverStatsQuery } from "../Redux/slices/driverSlice";
 
 export default function DriverDashboard() {
-  const driver = localStorage.getItem('user') || 'currentDriver';
+  // Parse user data properly from localStorage
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  const driverId = userInfo.id; // Use the correct property from userInfo
   
-  // Use RTK Query hook instead of dispatch/selector pattern
+  // Use driverId in the query
   const {
     data: driverStats,
     isLoading,
     isError,
     error
-  } = useGetDriverStatsQuery(driver._id);
+  } = useGetDriverStatsQuery(driverId);
+
+  // Handle missing driver ID
+  if (!driverId) {
+    return (
+      <div className="min-h-screen bg-yellow-200 p-6">
+        <div className="bg-white p-6 rounded-lg shadow-md text-center">
+          <FaExclamationTriangle className="mx-auto text-4xl text-yellow-500 mb-4" />
+          <h2 className="text-xl font-bold mb-3">Authentication Error</h2>
+          <p className="text-gray-600 mb-4">Please login as a driver to view your dashboard.</p>
+          <Link
+            to="/delivery/login"
+            className="inline-block bg-orange-500 text-white px-6 py-2 rounded hover:bg-orange-600 transition"
+          >
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) return <p className="text-center mt-6">Loading stats...</p>;
   if (isError) return <p className="text-center text-red-500 mt-6">{error?.message || "Failed to load driver stats"}</p>;

@@ -14,10 +14,39 @@ const getAuthHeaders = () => {
 };
 
 // Updated thunks with auth headers
-export const fetchDeliveries = createAsyncThunk("delivery/fetchAll", async () => {
-  const response = await axios.get(BASE_URL, getAuthHeaders());
-  return response.data;
-});
+export const fetchDeliveries = createAsyncThunk(
+  'delivery/fetchDeliveries',
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return rejectWithValue('Authentication required. Please login.');
+      }
+
+      // Get all orders
+      const response = await axios.get(
+        'http://localhost:5002/api/orders', 
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      console.log("All orders fetched successfully:", response.data);
+      
+      // The filtering will be done in the component instead
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching deliveries:", error.response?.data || error.message);
+      return rejectWithValue(
+        error.response?.data?.message || 
+        error.message || 
+        'Failed to fetch deliveries'
+      );
+    }
+  }
+);
 
 export const createDelivery = createAsyncThunk("delivery/create", async (newDelivery) => {
   const response = await axios.post(BASE_URL, newDelivery, getAuthHeaders());
