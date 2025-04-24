@@ -50,6 +50,11 @@ const restaurantSchema = new mongoose.Schema({
     enum: ["pending", "active", "suspended"],
     default: "pending",
   },
+  role: {
+    type: String,
+    enum: ["restaurant", "admin"],
+    default: "restaurant",
+  },
   rating: {
     type: Number,
     default: 0,
@@ -88,9 +93,16 @@ restaurantSchema.methods.matchPassword = async function (enteredPassword) {
 
 // Method to generate JWT token
 restaurantSchema.methods.getSignedToken = function () {
-  return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE,
-  });
+  return jwt.sign(
+    {
+      id: this._id,
+      role: this.role,
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_EXPIRE,
+    }
+  );
 };
 
 const Restaurant = mongoose.model("Restaurant", restaurantSchema);

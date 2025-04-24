@@ -43,6 +43,7 @@ import DriverProfile from "./Delivery/DriverProfile";
 import AllDrivers from "./Delivery/AllDrivers";
 import DriverSignup from "./Delivery/Auth/DriverSignup";
 import DriverSignin from "./Delivery/Auth/DriverSignin";
+import OrderConfirm from "./Restaurant/Admin/OrderConfirm";
 
 
 
@@ -71,6 +72,7 @@ export default function App() {
           <Route path="/restaurant" element={<Layout />}>
             <Route path="dashboard" element={<RestaurantDashboard />} />
             <Route path="menu" element={<MenuManagement />} />
+            <Route path="order" element={<OrderConfirm />} />
           </Route>
 
           {/* Restaurant Client */}
