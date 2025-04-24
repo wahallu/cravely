@@ -14,6 +14,10 @@ import {
   FaCreditCard,
   FaSpinner,
   FaSearch,
+  FaArrowLeft,
+  FaTimes,
+  FaEnvelope,
+  FaReceipt,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useGetRestaurantProfileQuery } from "../../Redux/slices/restaurantSlice";
@@ -89,14 +93,22 @@ const OrderConfirm = () => {
     }
   }, [error]);
 
-  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+  const handleUpdateOrderStatus = async (
+    orderId,
+    newStatus,
+    restaurantName,
+    estimatedTime
+  ) => {
     try {
       setIsUpdating(true);
 
-      // Use the RTK Query mutation
+      // Use the RTK Query mutation with the correct request format
       const result = await updateOrderStatus({
-        orderId,
-        status: newStatus,
+        orderId, // The order ID to update
+        status: newStatus, // The new status (e.g., 'confirmed', 'preparing', etc.)
+        // Include any additional data needed for notifications
+        estimatedDelivery: estimatedTime,
+        restaurantName: restaurantName,
       }).unwrap();
 
       // Close modal if open
@@ -116,6 +128,7 @@ const OrderConfirm = () => {
       // Refetch orders to get the latest data
       refetch();
     } catch (error) {
+      console.error("Status update error:", error);
       toast.error("Failed to update order status. Please try again.");
     } finally {
       setIsUpdating(false);
@@ -363,8 +376,313 @@ const OrderConfirm = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
             >
-              {/* Keep the existing modal content */}
-              {/* ... */}
+              {/* Modal Header */}
+              <div className="bg-gray-50 p-6 border-b border-gray-200">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center">
+                    <FaReceipt className="text-orange-500 text-xl mr-3" />
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-800">
+                        Order Details
+                      </h2>
+                      <p className="text-gray-600">
+                        ID: {activeOrder.orderId || activeOrder._id}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors text-xl"
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6">
+                {/* Order Status Section */}
+                <div className="mb-6 pb-6 border-b border-gray-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center">
+                      <div className="bg-yellow-100 p-3 rounded-full mr-4 text-yellow-500">
+                        <FaRegClock />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-800 text-lg">
+                          Pending Confirmation
+                        </h3>
+                        <p className="text-gray-600 text-sm">
+                          {formatDate(activeOrder.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() =>
+                          handleUpdateOrderStatus(
+                            activeOrder.orderId,
+                            "confirmed"
+                          )
+                        }
+                        disabled={isUpdating}
+                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center"
+                      >
+                        {isUpdating ? (
+                          <FaSpinner className="animate-spin mr-2" />
+                        ) : (
+                          <FaCheckCircle className="mr-2" />
+                        )}
+                        Confirm Order
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleUpdateOrderStatus(
+                            activeOrder.orderId,
+                            "canceled"
+                          )
+                        }
+                        disabled={isUpdating}
+                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center"
+                      >
+                        {isUpdating ? (
+                          <FaSpinner className="animate-spin mr-2" />
+                        ) : (
+                          <FaTimesCircle className="mr-2" />
+                        )}
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Items Section */}
+                <div className="mb-6 pb-6 border-b border-gray-200">
+                  <h3 className="font-bold text-gray-800 text-lg mb-4 flex items-center">
+                    <FaShoppingBag className="mr-2 text-orange-500" />
+                    Order Items ({activeOrder.items?.length || 0})
+                  </h3>
+
+                  <div className="space-y-4">
+                    {activeOrder.items?.map((item, index) => (
+                      <div
+                        key={index}
+                        className="flex items-start justify-between p-3 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex items-start">
+                          <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center text-orange-500 mr-3 flex-shrink-0">
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="h-full w-full object-cover rounded-lg"
+                              />
+                            ) : (
+                              item.name?.charAt(0) || "I"
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-gray-800">
+                              {item.name}
+                            </h4>
+                            <p className="text-sm text-gray-500">
+                              Quantity: {item.quantity}
+                            </p>
+                            {item.note && (
+                              <p className="text-sm text-gray-500 mt-1">
+                                Note: {item.note}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-bold text-gray-800">
+                            ${(item.price * item.quantity).toFixed(2)}
+                          </span>
+                          <p className="text-sm text-gray-500">
+                            ${item.price.toFixed(2)} each
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Order Summary */}
+                  <div className="mt-6 pt-4 border-t border-gray-100">
+                    <div className="flex justify-between mb-2">
+                      <span className="text-gray-600">Subtotal</span>
+                      <span className="text-gray-800">
+                        $
+                        {activeOrder.subtotal?.toFixed(2) ||
+                          activeOrder.items
+                            ?.reduce(
+                              (sum, item) => sum + item.price * item.quantity,
+                              0
+                            )
+                            .toFixed(2) ||
+                          "0.00"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-gray-600">Tax</span>
+                      <span className="text-gray-800">
+                        ${activeOrder.tax?.toFixed(2) || "0.00"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-gray-600">Delivery Fee</span>
+                      <span className="text-gray-800">
+                        ${activeOrder.deliveryFee?.toFixed(2) || "0.00"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-gray-100">
+                      <span className="font-bold text-gray-800">Total</span>
+                      <span className="font-bold text-xl text-orange-600">
+                        ${activeOrder.total?.toFixed(2) || "0.00"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Customer Information */}
+                <div className="mb-6 pb-6 border-b border-gray-200">
+                  <h3 className="font-bold text-gray-800 text-lg mb-4 flex items-center">
+                    <FaUser className="mr-2 text-orange-500" />
+                    Customer Information
+                  </h3>
+
+                  <div className="space-y-4">
+                    <div className="flex items-start">
+                      <div className="bg-orange-100 p-2 rounded-full text-orange-500 mr-3 mt-1">
+                        <FaUser />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Name</p>
+                        <p className="font-medium text-gray-800">
+                          {activeOrder.customer?.fullName || "Customer"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {activeOrder.customer?.email && (
+                      <div className="flex items-start">
+                        <div className="bg-orange-100 p-2 rounded-full text-orange-500 mr-3 mt-1">
+                          <FaEnvelope />
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Email</p>
+                          <p className="font-medium text-gray-800">
+                            {activeOrder.customer.email}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeOrder.customer?.phone && (
+                      <div className="flex items-start">
+                        <div className="bg-orange-100 p-2 rounded-full text-orange-500 mr-3 mt-1">
+                          <FaPhone />
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Phone</p>
+                          <p className="font-medium text-gray-800">
+                            {activeOrder.customer.phone}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Delivery Information */}
+                <div>
+                  <h3 className="font-bold text-gray-800 text-lg mb-4 flex items-center">
+                    <FaMapMarkerAlt className="mr-2 text-orange-500" />
+                    Delivery Information
+                  </h3>
+
+                  <div className="space-y-4">
+                    <div className="flex items-start">
+                      <div className="bg-orange-100 p-2 rounded-full text-orange-500 mr-3 mt-1">
+                        <FaMapMarkerAlt />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">
+                          Delivery Address
+                        </p>
+                        <p className="font-medium text-gray-800">
+                          {activeOrder.customer?.address
+                            ? `${activeOrder.customer.address}${
+                                activeOrder.customer.city
+                                  ? `, ${activeOrder.customer.city}`
+                                  : ""
+                              }${
+                                activeOrder.customer.state
+                                  ? ` ${activeOrder.customer.state}`
+                                  : ""
+                              }${
+                                activeOrder.customer.zipCode
+                                  ? ` ${activeOrder.customer.zipCode}`
+                                  : ""
+                              }`
+                            : "No address provided"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {activeOrder.payment && (
+                      <div className="flex items-start">
+                        <div className="bg-orange-100 p-2 rounded-full text-orange-500 mr-3 mt-1">
+                          {getPaymentInfo(activeOrder.payment).icon}
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">
+                            Payment Method
+                          </p>
+                          <p className="font-medium text-gray-800">
+                            {getPaymentInfo(activeOrder.payment).text}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeOrder.notes && (
+                      <div className="bg-gray-50 p-4 rounded-lg mt-4">
+                        <p className="text-sm font-medium text-gray-700 mb-1">
+                          Order Notes:
+                        </p>
+                        <p className="text-gray-600">{activeOrder.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-6 bg-gray-50 border-t border-gray-200">
+                <div className="flex justify-between">
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium transition-colors"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() =>
+                      handleUpdateOrderStatus(activeOrder.orderId, "confirmed")
+                    }
+                    disabled={isUpdating}
+                    className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center"
+                  >
+                    {isUpdating ? (
+                      <FaSpinner className="animate-spin mr-2" />
+                    ) : (
+                      <FaCheckCircle className="mr-2" />
+                    )}
+                    Confirm Order
+                  </button>
+                </div>
+              </div>
             </motion.div>
           </div>
         )}
