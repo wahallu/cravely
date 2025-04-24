@@ -66,18 +66,6 @@ const OrderConfirm = () => {
     // Add restaurantData as a dependency to properly handle its loading state
   }, [restaurantId, restaurantData]);
 
-  // Add this after your existing useEffect
-  useEffect(() => {
-    // Only set up polling if we have a restaurantId
-    if (!restaurantId) return;
-    
-    // Poll for new orders every 30 seconds
-    const intervalId = setInterval(fetchPendingOrders, 30000);
-    
-    // Clean up interval on unmount
-    return () => clearInterval(intervalId);
-  }, [restaurantId]);
-
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
       setIsUpdating(true);
@@ -195,26 +183,7 @@ const OrderConfirm = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <FaSpinner className="animate-spin text-orange-500 text-4xl mr-3" />
-        <span className="text-gray-700 font-medium">Loading orders...</span>
-      </div>
-    );
-  }
-
-  if (!restaurantId && restaurantData !== undefined) {
-    return (
-      <div className="bg-gray-50 min-h-screen p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-xl shadow-md p-8 text-center">
-            <FaTimesCircle className="text-red-500 text-5xl mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-700">
-              Restaurant Profile Not Found
-            </h2>
-            <p className="text-gray-500 mt-2">
-              Please make sure you're logged in with a restaurant account.
-            </p>
-          </div>
-        </div>
+        <FaSpinner className="animate-spin text-orange-500 text-4xl" />
       </div>
     );
   }
