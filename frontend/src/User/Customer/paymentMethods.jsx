@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
@@ -14,7 +14,6 @@ import {
   FaStar,
 } from 'react-icons/fa';
 import {
-  useGetSavedCardsQuery,
   useSaveCardMutation,
   useDeleteCardMutation,
   useSetDefaultCardMutation,
@@ -204,7 +203,9 @@ function AddCardForm({ onSuccess, onCancel }) {
 
 // Main Payment Methods component
 export default function PaymentMethods() {
-  const { data: savedCards = [], isLoading: isLoadingCards, refetch } = useGetSavedCardsQuery();
+  // Replace RTK Query with direct fetch
+  const [savedCards, setSavedCards] = useState([]);
+  const [isLoadingCards, setIsLoadingCards] = useState(true);
   const [deleteCard] = useDeleteCardMutation();
   const [setDefaultCard] = useSetDefaultCardMutation();
   
@@ -213,6 +214,77 @@ export default function PaymentMethods() {
   const [cardToDelete, setCardToDelete] = useState(null);
   const [operationLoading, setOperationLoading] = useState(false);
 
+  // Function to fetch cards directly from the database
+  const fetchCards = useCallback(() => {
+    setIsLoadingCards(true);
+    
+    // Get token from localStorage for authorization
+    const token = localStorage.getItem('token');
+    
+    // Get base URL from environment or use default
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5002';
+    
+    // Prepare fetch options with proper headers
+    const fetchOptions = {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    };
+    
+    // Add authorization header if token exists
+    if (token) {
+      fetchOptions.headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    fetch(`${baseUrl}/api/payments/db-cards`, fetchOptions)
+      .then(res => {
+        // Check if response is OK
+        if (!res.ok) {
+          throw new Error(`HTTP error: ${res.status}`);
+        }
+        
+        // Check content type to ensure it's JSON
+        const contentType = res.headers.get('content-type');
+        if (contentType && !contentType.includes('application/json')) {
+          throw new Error('Response is not JSON');
+        }
+        
+        return res.json();
+      })
+      .then(data => {
+        // Transform the data to match the expected format
+        if (!data || !Array.isArray(data)) {
+          console.warn('Invalid data format received:', data);
+          setSavedCards([]);
+          return;
+        }
+        
+        const formattedCards = data.map(card => ({
+          id: card.paymentMethodId || card._id,
+          cardType: card.cardType || "card",
+          cardNumber: `•••• •••• •••• ${card.last4 || '****'}`,
+          expiryDate: card.expiryDate || "xx/xx",
+          nameOnCard: card.nameOnCard || card.cardholderName || "Card Holder",
+          isDefault: card.isDefault || false
+        }));
+        setSavedCards(formattedCards);
+      })
+      .catch(error => {
+        console.error('Error fetching cards:', error);
+        toast.error('Failed to load payment methods');
+        setSavedCards([]); // Set empty array on error
+      })
+      .finally(() => {
+        setIsLoadingCards(false);
+      });
+  }, []);
+
+  // Fetch cards when component mounts
+  useEffect(() => {
+    fetchCards();
+  }, [fetchCards]);
+
   const handleDeleteCard = async (cardId) => {
     setOperationLoading(true);
     try {
@@ -220,6 +292,8 @@ export default function PaymentMethods() {
       toast.success('Card deleted successfully');
       setDeleteConfirmation(false);
       setCardToDelete(null);
+      // Refetch cards after deletion
+      fetchCards();
     } catch (error) {
       console.error('Error deleting card:', error);
       toast.error('Failed to delete card. Please try again.');
@@ -233,6 +307,8 @@ export default function PaymentMethods() {
     try {
       await setDefaultCard(cardId).unwrap();
       toast.success('Default payment method updated');
+      // Refetch cards after updating default
+      fetchCards();
     } catch (error) {
       console.error('Error setting default card:', error);
       toast.error('Failed to set default card. Please try again.');
@@ -243,7 +319,8 @@ export default function PaymentMethods() {
 
   const handleAddCardSuccess = () => {
     setShowAddCardModal(false);
-    refetch();
+    // Refetch cards after adding a new one
+    fetchCards();
   };
 
   return (
