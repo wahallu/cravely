@@ -89,10 +89,10 @@ export const orderApi = createApi({
     }),
 
     updateOrderStatus: builder.mutation({
-      query: ({ orderId, status }) => ({
+      query: ({ orderId, status, driverId, driverName, estimatedDelivery }) => ({
         url: `/orders/${orderId}/status`,
         method: "PUT",
-        body: { status },
+        body: { status, driverId, driverName, estimatedDelivery },
       }),
       invalidatesTags: (result, error, { orderId }) => [
         { type: "Order", id: orderId },
@@ -133,6 +133,13 @@ export const orderApi = createApi({
       // Poll for new available orders every 30 seconds
       pollingInterval: 30000
     }),
+
+    getDriverOrders: builder.query({
+      query: () => "/orders/driver/my-orders",
+      transformResponse: (response) => response.orders || [],
+      providesTags: ["Order"],
+      pollingInterval: 30000  // Poll every 30 seconds for updates
+    }),
   }),
 });
 
@@ -148,4 +155,5 @@ export const {
   useGetUserPaymentMethodsQuery,
   useGetRestaurantOrdersQuery,
   useGetAvailableOrdersForDeliveryQuery,
+  useGetDriverOrdersQuery,
 } = orderApi;

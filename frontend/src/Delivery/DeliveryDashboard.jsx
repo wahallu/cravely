@@ -2,8 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaMapMarkerAlt, FaUtensils, FaMotorcycle } from "react-icons/fa";
 import { MdPayment, MdRestaurant } from "react-icons/md";
-import { useGetAllDeliveriesQuery } from "../Redux/slices/deliverySlice";
-import { useGetAvailableOrdersForDeliveryQuery, useUpdateOrderStatusMutation } from "../Redux/slices/orderSlice";
+import { useGetAvailableOrdersForDeliveryQuery, useUpdateOrderStatusMutation, useGetDriverOrdersQuery } from "../Redux/slices/orderSlice";
 import { getToken } from "../utils/auth";
 import toast from "react-hot-toast";
 
@@ -28,10 +27,12 @@ export default function DeliveryDashboard() {
     isError: isMyDeliveriesError,
     error: myDeliveriesError,
     refetch: refetchMyDeliveries
-  } = useGetAllDeliveriesQuery();
+  } = useGetDriverOrdersQuery();
 
   // Mutation to update order status
   const [updateOrderStatus, { isLoading: isUpdatingOrder }] = useUpdateOrderStatusMutation();
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   // Check authentication
   useEffect(() => {
@@ -112,8 +113,7 @@ export default function DeliveryDashboard() {
 
   // Filter active deliveries that I'm currently delivering
   const myActiveDeliveries = myDeliveries.filter(delivery => 
-    delivery.status === 'out_for_delivery' && 
-    (delivery.driverId === userInfo.id || delivery.driverId === userInfo._id)
+    delivery.status === 'out_for_delivery',
   );
 
   return (

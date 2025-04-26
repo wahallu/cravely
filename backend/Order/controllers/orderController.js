@@ -427,14 +427,34 @@ const assignDriver = async (req, res) => {
  */
 const getDriverOrders = async (req, res) => {
   try {
-    const { driverId } = req.params;
+    // If it's coming from /driver/my-orders route, use the authenticated user's ID
+    const driverId = req.params.driverId || req.user._id.toString();
     
+    console.log('Getting orders for driver:', driverId);
+    
+    // Find orders for this driver
     const orders = await Order.find({ driverId }).sort({ createdAt: -1 });
+    
+    console.log(`Found ${orders.length} orders for driver ${driverId}`);
+    
+    // Add restaurant info to each order
+    const ordersWithRestaurants = await Promise.all(orders.map(async (order) => {
+      try {
+        const restaurant = await RestaurantService.getRestaurantById(order.restaurantId);
+        return {
+          ...order._doc,
+          restaurant
+        };
+      } catch (err) {
+        console.error('Error getting restaurant info:', err);
+        return order._doc;
+      }
+    }));
     
     res.status(200).json({
       success: true,
       count: orders.length,
-      orders
+      orders: ordersWithRestaurants
     });
   } catch (error) {
     console.error('Error fetching driver orders:', error);
@@ -453,57 +473,27 @@ const getDriverOrders = async (req, res) => {
  */
 const updateOrderStatus = async (req, res) => {
   try {
-    const { status, estimatedDelivery } = req.body;
+    const { status, driverId, driverName, estimatedDelivery } = req.body;
     
     // Find the order
     const order = await Order.findOne({ orderId: req.params.id });
     
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
-    }
-    
-    // Check if restaurant is trying to update the status
-    if (req.user.role === 'restaurant') {
-      // Verify the order belongs to this restaurant
-      if (order.restaurantId.toString() !== req.user._id.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: 'Not authorized to update this order'
-        });
-      }
-      
-      // Validate allowed status transitions for restaurant
-      const allowedStatuses = ['confirmed', 'preparing', 'out_for_delivery'];
-      if (!allowedStatuses.includes(status)) {
-        return res.status(400).json({
-          success: false,
-          message: `Restaurants can only update status to: ${allowedStatuses.join(', ')}`
-        });
-      }
-      
-      // Additional validation: Check for logical status progression
-      const statusOrder = ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered'];
-      const currentIndex = statusOrder.indexOf(order.status);
-      const newIndex = statusOrder.indexOf(status);
-      
-      if (newIndex <= currentIndex) {
-        return res.status(400).json({
-          success: false, 
-          message: `Cannot change status from '${order.status}' to '${status}'`
-        });
-      }
-    }
-    
-    // Update the status and estimated delivery if provided
+    // Update the status
     order.status = status;
+    
+    // If driver information is provided for out_for_delivery status, update it
+    if (status === 'out_for_delivery' && driverId && driverName) {
+      order.driverId = driverId;
+      order.driverName = driverName;
+      order.driverAssignedAt = Date.now();
+    }
+    
+    // Update other fields
     if (estimatedDelivery) {
       order.estimatedDeliveryTime = estimatedDelivery;
     }
-    order.updatedAt = Date.now();
     
+    order.updatedAt = Date.now();
     await order.save();
     
     // Get restaurant details for notifications
