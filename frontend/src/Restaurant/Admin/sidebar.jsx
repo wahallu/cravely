@@ -51,52 +51,16 @@ export default function Sidebar({
     },
     {
       id: "menu",
-      icon: <MdRestaurant className="text-2xl" />,
+      icon: <MdRestaurantMenu className="text-2xl" />,
       label: "Menu Management",
       href: "/restaurant/menu",
     },
-    // {
-    //   id: 'menu',
-    //   icon: <MdRestaurantMenu className="text-2xl" />,
-    //   label: 'Explore Menu',
-    //   href: '/menu'
-    // },
-    // {
-    //   id: 'cart',
-    //   icon: <MdShoppingCart className="text-2xl" />,
-    //   label: 'My Cart',
-    //   href: '/cart'
-    // },
-    // {
-    //   id: 'orders',
-    //   icon: <MdDeliveryDining className="text-2xl" />,
-    //   label: 'My Orders',
-    //   href: '/orders'
-    // },
-    // {
-    //   id: 'favorites',
-    //   icon: <MdFavorite className="text-2xl" />,
-    //   label: 'Favorites',
-    //   href: '/favorites'
-    // },
-    // {
-    //   id: 'offers',
-    //   icon: <MdLocalOffer className="text-2xl" />,
-    //   label: 'Offers & Promos',
-    //   href: '/offers'
-    // },
-    // {
-    //   id: 'payments',
-    //   icon: <MdCreditCard className="text-2xl" />,
-    //   label: 'Payment Methods',
-    //   href: '/payments'
-    // },
-    // {
-    //   id: 'settings',
-    //   icon: <MdSettings className="text-2xl" />,
-    //   label: 'Settings',
-    //   href: '/settings'
-    // },
+    {
+      id: "order",
+      icon: <MdShoppingCart className="text-2xl" />,
+      label: "Order Management",
+      href: "/restaurant/order",
+    },
   ];
 
   return (

@@ -4,6 +4,7 @@ import { MdPerson, MdPhone, MdEmail, MdLock, MdVisibility, MdVisibilityOff, MdEr
 import { motion } from 'framer-motion';
 import { useAddDriverMutation } from '../../Redux/slices/driverSlice';
 import toast from 'react-hot-toast';
+import { saveAuth } from '../../utils/auth';
 
 export default function DriverSignup() {
   const navigate = useNavigate();
