@@ -47,6 +47,26 @@ services:
     networks:
       - cravely-network
 
+  # Notification Service
+  notification:
+    build:
+      context: ./backend/Notification
+    ports:
+      - "5007:5007"
+    environment:
+      - PORT=5007
+      - MONGODB_URI=mongodb+srv://nisal:1234@cluster0.p860x.mongodb.net/cravely_notify?retryWrites=true&w=majority&appName=Cluster0
+      - JWT_SECRET=cravely
+      - TWILIO_ACCOUNT_SID=AC6fe08165f2b31e424e7e393c50aef038
+      - TWILIO_AUTH_TOKEN=098cb38cac991b2f9d983cee06aa4bed
+      - TWILIO_PHONE_NUMBER=+14155238886
+      - ORDER_SERVICE_URL=http://localhost:5002/api/orders
+      - USER_SERVICE_URL=http://localhost:5001/api/users
+      - NOTIFICATION_SERVICE_URL=http://localhost:5007/api/notifications
+    restart: always
+    networks:
+      - cravely-network
+
   # User Service
   user:
     build:
@@ -60,7 +80,7 @@ services:
     restart: always
     networks:
       - cravely-network
-
+  
   # Frontend Service
   frontend:
     build:

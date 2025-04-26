@@ -1,56 +1,79 @@
-const axios = require('axios');
-const Delivery = require('../models/Delivery'); 
-require('dotenv').config();
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchDeliveries } from "../Redux/slices/deliverySlice";
+import { Link } from "react-router-dom";
+import { FaMapMarkerAlt } from "react-icons/fa";
+import { MdPayment } from "react-icons/md";
 
-// Base URL for the Order Service 
-const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://order-service:5002/api/orders';
+export default function DeliveryDashboard() {
+    const dispatch = useDispatch();
+    const { deliveries, loading, error } = useSelector((state) => state.delivery);
 
-/**
- * Get all delivery orders from the Order Service
- */
-const getAllDeliveries = async () => {
-  try {
-    const response = await axios.get(`${ORDER_SERVICE_URL}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching orders from Order Service:', error.message);
-    throw new Error('Could not fetch delivery orders');
-  }
-};
-
-/**
- * Update driver status of a specific order
- */
-const updateDriverStatus = async (orderId, newStatus) => {
-  try {
     
-    const response = await axios.put(`${ORDER_SERVICE_URL}/${orderId}/status`, {
-      status: newStatus,
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error updating driver status:', error.message);
-    throw new Error('Could not update driver status');
-  }
-};
+    useEffect(() => {
+        dispatch(fetchDeliveries());
+    }, [dispatch]); 
 
-/**
- * Get driver dashboard stats
- */
-const getDriverStats = async (driverId) => {
-  
-  const completedOrders = await Delivery.find({ driver: driverId, status: 'Delivered' });
+    if (loading) return <p className="text-center mt-6">Loading deliveries...</p>;
+    if (error) return <p className="text-center text-red-500 mt-6">{error}</p>;
 
-  const totalEarnings = completedOrders.reduce((sum, order) => sum + order.total, 0);
+    if (!deliveries || deliveries.length === 0) {
+        return <p className="text-center mt-6">No deliveries available.</p>;
+    }
 
-  return {
-    totalEarnings,
-    completedOrders: completedOrders.length,
-  };
-};
+    return (
+        <div className="min-h-screen bg-yellow-200 p-6">
+            {/* Header */}
+            <div className="flex justify-between items-center bg-yellow-400 shadow-md p-4 rounded-lg">
+                <h1 className="text-2xl font-bold text-black">📦 Delivery Dashboard</h1>
+                <Link
+                    to="/delivery/drivers"
+                    className="bg-orange-600 text-black px-4 py-2 rounded hover:bg-orange-700 transition"
+                >
+                    View Driver Dashboard
+                </Link>
+            </div>
 
-module.exports = {
-  getAllDeliveries,
-  updateDriverStatus,
-  getDriverStats,
-};
+            {/* Orders List */}
+            <div className="mt-6 grid gap-6">
+                {deliveries.map((order) => (
+                    <div
+                        key={order._id}
+                        className="bg-white p-4 rounded-lg shadow-md transition transform hover:scale-105 hover:shadow-lg border border-yellow-400"
+                    >
+                        <h2 className="text-lg font-bold text-yellow-600">🛍️ Order {order.orderId}</h2>
+                        <p className="text-gray-700 flex items-center">
+                            <FaMapMarkerAlt className="text-red-500 mr-2" />
+                            {order.address}
+                        </p>
+                        <p className="text-gray-700 flex items-center">
+                            <MdPayment className="text-blue-500 mr-2" />
+                            Payment: {order.paymentMethod}
+                        </p>
+                        <ul className="mt-2 space-y-1">
+                            {order.items.length > 0 ? (
+                                order.items.map((item, idx) => (
+                                    <li key={idx} className="text-gray-800">
+                                        🍽️ {item.name} - ${item.price.toFixed(2)}
+                                    </li>
+                                ))
+                            ) : (
+                                <li className="text-gray-500">No items in this order</li>
+                            )}
+                        </ul>
+                        <div className="flex justify-between items-center mt-4">
+                            <span className="font-bold text-gray-800">Total: ${order.total?.toFixed(2) || 0}</span>
+                            <span
+                                className={`px-3 py-1 text-white text-sm rounded-full ${
+                                    order.driverStatus === "Delivered" ? "bg-green-500" : "bg-yellow-500"
+                                }`}
+                            >
+                                🚚 {order.driverStatus}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}

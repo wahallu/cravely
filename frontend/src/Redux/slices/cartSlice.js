@@ -149,6 +149,22 @@ export const cartSlice = createSlice({
       // Clear cart in localStorage
       localStorage.removeItem('cart');
     },
+    setCartItems: (state, action) => {
+      state.items = action.payload;
+      
+      // Recalculate totals
+      state.totalItems = state.items.reduce(
+        (total, item) => total + item.quantity,
+        0
+      );
+      state.totalAmount = state.items.reduce(
+        (total, item) => total + item.price * item.quantity,
+        0
+      );
+      
+      // Save updated cart to localStorage
+      saveCartToStorage(state);
+    },
   },
 });
 
@@ -158,6 +174,7 @@ export const {
   updateQuantity,
   toggleFavorite,
   clearCart,
+  setCartItems, // Export the new action
 } = cartSlice.actions;
 
 export const selectCartItems = (state) => state.cart.items;

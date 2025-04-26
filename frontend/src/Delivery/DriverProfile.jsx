@@ -1,17 +1,16 @@
 import React from "react";
 import { useParams, Link } from "react-router-dom";
-import { useGetDriverStatsQuery } from "../Redux/slices/driverSlice";
+import { useGetDriverByIdQuery } from "../Redux/slices/driverSlice";
 
 export default function DriverProfile() {
   const { id } = useParams();
   
-  // Use RTK Query hook instead of dispatch/selector pattern
   const {
     data: driver,
     isLoading,
     isError,
     error
-  } = useGetDriverStatsQuery(id);
+  } = useGetDriverByIdQuery(id);
 
   // Handle loading state
   if (isLoading) return <p className="p-6">Loading profile...</p>;
@@ -38,14 +37,14 @@ export default function DriverProfile() {
         <p className="text-xl font-semibold text-gray-700">Name: {driver.name}</p>
         <p className="text-md text-gray-600">ID: {driver.driverId}</p>
         <p className="text-md text-gray-600">📞 Phone: {driver.phone || 'N/A'}</p>
-        <p className="text-md text-gray-600">🪪 License No: {driver.licenseNumber || 'N/A'}</p>
+        <p className="text-md text-gray-600">License No: {driver.licenseNumber || 'N/A'}</p>
         <p className="text-md text-gray-600">🚗 Vehicle Type: {driver.vehicleType || 'N/A'}</p>
         <p className="text-md text-gray-600">
           Status: <span className="font-semibold">{driver.status || 'Unknown'}</span>
         </p>
         <p className="text-md text-gray-600">Earnings: ${driver.totalEarnings?.toFixed(2) || '0.00'}</p>
         <p className="text-md text-gray-600">Completed Orders: {driver.completedOrders || 0}</p>
-        <Link
+        <Link 
           to="/delivery/all-drivers"
           className="mt-6 inline-block bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 transition"
         >

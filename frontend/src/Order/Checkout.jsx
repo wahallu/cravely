@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from "../Home/components/header";
 import Footer from "../Home/components/footer";
-import { toast } from 'react-hot-toast'; 
+import { toast } from 'react-hot-toast';
 // Import icons for enhanced visual appeal
 import { FaUser, FaEnvelope, FaPhone, FaHome, FaCity, FaMapMarkerAlt, FaMapPin, FaPlus, FaEdit } from 'react-icons/fa';
 import { FaCreditCard, FaPaypal, FaMoneyBillWave, FaCheck, FaShoppingCart, FaAddressCard, FaLock } from 'react-icons/fa';
@@ -16,12 +16,12 @@ import {
 } from '@stripe/react-stripe-js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector, useDispatch } from "react-redux";
-import { 
-  selectCartItems, 
+import {
+  selectCartItems,
   selectCartTotalAmount,
-  clearCart 
+  clearCart
 } from "../Redux/slices/cartSlice";
-import { 
+import {
   useGetUserAddressesQuery,
   useAddAddressMutation,
   useUpdateAddressMutation,
@@ -29,11 +29,15 @@ import {
   useSetDefaultAddressMutation
 } from "../Redux/slices/shippingAddressSlice";
 import { useCreateOrderMutation } from "../Redux/slices/orderSlice";
-import { 
+import {
   useCreatePaymentIntentMutation,
   useSaveCardMutation,
-  useGetSavedCardsQuery
+  useGetSavedCardsQuery,
+  useGetDbCardsQuery
 } from "../Redux/slices/paymentSlice";
+import {
+  useClearCartMutation
+} from "../Redux/slices/cartApiSlice";
 
 // Initialize Stripe with your publishable key
 // Replace with your actual publishable key
@@ -62,10 +66,10 @@ const cardElementOptions = {
 const calculateEstimatedDelivery = (restaurantId, customerLocation) => {
   // Get current time
   const now = new Date();
-  
+
   // Base preparation time (minutes) - can vary by restaurant type
   const basePreparationTime = 15;
-  
+
   // Get distance-based delivery time
   // In a real system, you would get this from a mapping/distance API
   // For now, let's simulate with restaurant-specific values
@@ -79,10 +83,10 @@ const calculateEstimatedDelivery = (restaurantId, customerLocation) => {
       // Add a default for any other restaurant
       "default": 18
     };
-    
+
     return restaurantDeliveryTimes[restaurantId] || restaurantDeliveryTimes.default;
   };
-  
+
   // Current traffic conditions factor (1.0 = normal, 1.2 = moderate traffic, 1.5 = heavy)
   const getTrafficFactor = () => {
     const hour = now.getHours();
@@ -92,38 +96,54 @@ const calculateEstimatedDelivery = (restaurantId, customerLocation) => {
     }
     return 1.0;
   };
-  
+
   // Weather factor (1.0 = clear, 1.2 = rain, 1.5 = severe)
   // In a real app, you'd get this from a weather API
   const weatherFactor = 1.0;
-  
+
   // Calculate delivery window
   const deliveryTime = getDeliveryTime(restaurantId);
   const trafficFactor = getTrafficFactor();
-  
+
   // Total minutes to delivery = preparation + (delivery * traffic * weather)
   const totalMinutes = basePreparationTime + (deliveryTime * trafficFactor * weatherFactor);
-  
+
   // Round to nearest 5 minutes for better user experience
   const roundedMinutes = Math.ceil(totalMinutes / 5) * 5;
-  
+
   // Create a delivery window (e.g., "25-35 minutes")
   const minDeliveryTime = roundedMinutes - 5;
   const maxDeliveryTime = roundedMinutes + 5;
-  
+
   // Calculate the estimated delivery time
   const estimatedDelivery = new Date(now.getTime() + roundedMinutes * 60000);
-  
+
   return {
     estimatedMinutes: roundedMinutes,
     deliveryWindow: `${minDeliveryTime}-${maxDeliveryTime} minutes`,
     estimatedTime: estimatedDelivery,
-    estimatedTimeString: estimatedDelivery.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
+    estimatedTimeString: estimatedDelivery.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   };
 };
 
 // CheckoutForm component with Stripe
-function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsSubmitting, onNonCardPayment, savedAddresses, setSavedAddresses, onPaymentSuccess, savedCards, createPaymentIntent, saveCard }) {
+function CheckoutForm({
+  formData,
+  setFormData,
+  cartSummary,
+  isSubmitting,
+  setIsSubmitting,
+  onNonCardPayment,
+  savedAddresses,
+  setSavedAddresses,
+  onPaymentSuccess,
+  savedCards,
+  isLoadingCards,
+  createPaymentIntent,
+  saveCard,
+  refetchCards,
+  clearBackendCart  // Add this prop to receive the clearBackendCart function
+}) {
   const stripe = useStripe();
   const elements = useElements();
   const dispatch = useDispatch(); // Add this line to get the dispatch function
@@ -190,15 +210,15 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
     ev.preventDefault();
     setIsSubmitting(true);
     setCardError(null);
-    
+
     // Validate form data (for both payment methods)
-    if (!formData.fullName || !formData.phone || !formData.address || !formData.city || 
-        !formData.state || !formData.zipCode) {
+    if (!formData.fullName || !formData.phone || !formData.address || !formData.city ||
+      !formData.state || !formData.zipCode) {
       setCardError("Please fill in all required address fields");
       setIsSubmitting(false);
       return;
     }
-    
+
     // Save the new address if checkbox is checked
     if (isAddingNewAddress && saveAddress && formData.address) {
       try {
@@ -211,7 +231,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
           zipCode: formData.zipCode,
           isDefault: savedAddresses.length === 0
         };
-        
+
         const result = await addAddress(addressData).unwrap();
         if (result.success) {
           console.log("Address saved successfully:", result.address);
@@ -221,7 +241,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
         // Continue with payment even if address saving fails
       }
     }
-    
+
     // Handle cash payment separately
     if (formData.paymentMethod !== 'creditCard') {
       try {
@@ -233,7 +253,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
           quantity: parseInt(item.quantity),
           image: item.imageUrl || null
         }));
-        
+
         const orderData = {
           items: formattedItems,
           customer: {
@@ -255,15 +275,30 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
           deliveryFee: parseFloat(cartSummary.delivery.toFixed(2)),
           total: parseFloat(cartSummary.total.toFixed(2))
         };
-        
+
         console.log("Creating cash order:", orderData);
-        
+
         const result = await createOrder(orderData).unwrap();
-        
+
         if (result.success) {
           console.log("Cash order creation succeeded:", result);
+
+          // Get the real order ID from the API response
+          const realOrderId = result.order.orderId || result.order._id;
+
+          // Clear both Redux store cart and backend cart
           dispatch(clearCart());
-          onPaymentSuccess();
+
+          try {
+            // Clear cart in the backend
+            await clearBackendCart().unwrap();
+            console.log("Backend cart cleared successfully");
+          } catch (clearCartError) {
+            console.error("Error clearing backend cart:", clearCartError);
+            // Continue with success flow even if backend cart clearing fails
+          }
+
+          onPaymentSuccess(realOrderId);
         } else {
           setCardError("Failed to create order: " + (result.message || "Unknown error"));
         }
@@ -275,13 +310,13 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
       }
       return;
     }
-    
+
     if (!stripe || !elements) {
       setCardError("Stripe has not loaded. Please refresh the page and try again.");
       setIsSubmitting(false);
       return;
     }
-    
+
     if (!formData.nameOnCard?.trim()) {
       setCardError("Please enter the name on your card.");
       return;
@@ -294,16 +329,16 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
 
     setProcessing(true);
     setIsSubmitting(true);
-    
+
     try {
       let paymentMethodId;
       
-      // If using a saved card
+      // If using a saved card - don't try to create a new payment method
       if (selectedCardId) {
         paymentMethodId = selectedCardId;
         console.log("Using saved card with ID:", paymentMethodId);
       } else {
-        // Create a new payment method
+        // Only create a payment method if we're not using a saved card
         const { error, paymentMethod } = await stripe.createPaymentMethod({
           type: 'card',
           card: elements.getElement(CardElement),
@@ -329,12 +364,12 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
         }
         
         paymentMethodId = paymentMethod.id;
-        console.log('Payment method created:', paymentMethodId);
+        console.log('New payment method created:', paymentMethodId);
       }
       
-      // 1. Create payment intent through your Gateway service using RTK Query
+      // 1. Create payment intent through your Gateway service
       const paymentIntentData = {
-        amount: Math.round(cartSummary.total * 100), // Amount in cents
+        amount: Math.round(cartSummary.total * 100),
         currency: 'usd',
         paymentMethodId: paymentMethodId,
         description: `Order from Cravely - ${formData.fullName}`,
@@ -343,13 +378,15 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
           customerEmail: formData.email,
           items: JSON.stringify(cartSummary.items.map(item => `${item.name} x${item.quantity}`))
         },
-        saveCard: saveCardDetails
+        saveCard: saveCardDetails,
+        // Flag to indicate we're using an existing saved card
+        useExistingPaymentMethod: selectedCardId ? true : false
       };
       
       console.log("Creating payment intent with data:", paymentIntentData);
       
       try {
-        // Use createPaymentIntent mutation instead of fetch
+        // Use createPaymentIntent mutation
         const intentResponse = await createPaymentIntent(paymentIntentData).unwrap();
         
         if (!intentResponse || !intentResponse.success) {
@@ -359,11 +396,16 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
         const { clientSecret, intentId } = intentResponse;
         
         // 2. Confirm the payment with Stripe
-        const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-          payment_method: paymentMethodId,
-          // For 3D Secure or other authentication methods
+        let confirmOptions = {
           return_url: window.location.origin + '/payment-return'
-        });
+        };
+        
+        // Add payment_method only if we have it
+        if (paymentMethodId) {
+          confirmOptions.payment_method = paymentMethodId;
+        }
+        
+        const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, confirmOptions);
         
         if (confirmError) {
           setCardError(confirmError.message);
@@ -374,27 +416,57 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
         
         if (paymentIntent.status === 'succeeded') {
           console.log('Payment succeeded:', paymentIntent);
-          
+
           // If the user requested to save the card
           if (saveCardDetails && !selectedCardId) {
             try {
+              console.log("Payment intent details:", paymentIntent);
+
+              // Get card details from the payment method that was created earlier
+              // or from the payment intent's payment method details
+              let cardData;
+
+              if (paymentIntent && paymentIntent.payment_method_details &&
+                paymentIntent.payment_method_details.card) {
+                // Get from payment intent if available
+                cardData = paymentIntent.payment_method_details.card;
+              } else if (paymentIntent && paymentIntent.charges &&
+                paymentIntent.charges.data &&
+                paymentIntent.charges.data[0] &&
+                paymentIntent.charges.data[0].payment_method_details &&
+                paymentIntent.charges.data[0].payment_method_details.card) {
+                // Sometimes card data is in the charges array
+                cardData = paymentIntent.charges.data[0].payment_method_details.card;
+              } else {
+                // Fallback to minimal data if we can't find detailed card info
+                cardData = {
+                  last4: "****", // Will be updated by backend from the payment method
+                  brand: "card",
+                  exp_month: null,
+                  exp_year: null
+                };
+                console.warn("Card details not found in payment intent, using minimal data");
+              }
+
+              // Adjust the parameter names to match what the backend expects
               await saveCard({
-                paymentMethodId: paymentMethod.id,
+                paymentMethodId: paymentMethodId, // This should be available from earlier in the function
+                cardholderName: formData.nameOnCard || formData.fullName,
+                last4: cardData.last4,
                 isDefault: formData.makeDefaultCard || false,
-                last4: paymentMethod.card.last4,
-                cardType: paymentMethod.card.brand,
-                expMonth: paymentMethod.card.exp_month,
-                expYear: paymentMethod.card.exp_year,
-                nameOnCard: formData.fullName
-              }).unwrap();
+                cardType: cardData.brand,
+                expMonth: cardData.exp_month,
+                expYear: cardData.exp_year
+              });
+
               console.log("Card saved successfully");
+              toast.success("Your card has been saved for future orders");
             } catch (saveCardError) {
               console.error("Error saving card:", saveCardError);
-              // Don't throw, just log and continue with order creation
-              console.log("Card save feature may not be available yet. Continuing with order creation.");
+              toast.error("Could not save your card: " + (saveCardError.data?.message || saveCardError.message || "Unknown error"));
             }
           }
-          
+
           // 3. Create the order with payment details
           try {
             const orderData = {
@@ -426,36 +498,66 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
               deliveryFee: parseFloat(cartSummary.delivery.toFixed(2)),
               total: parseFloat(cartSummary.total.toFixed(2))
             };
-            
+
             console.log("Creating order with payment data:", orderData);
-            
+
             try {
               const result = await createOrder(orderData).unwrap();
-              
+
+              const realOrderId = result.order.orderId || result.order._id;
+
               if (result.success) {
                 console.log("Order creation succeeded:", result);
-                
-                // Clear cart and proceed with success flow
+
+                // Clear Redux cart state
                 dispatch(clearCart());
-                onPaymentSuccess();
+
+                // Clear cart in the backend
+                try {
+                  await clearBackendCart().unwrap();
+                  console.log("Backend cart cleared successfully after credit card payment");
+                } catch (clearCartError) {
+                  console.error("Error clearing backend cart:", clearCartError);
+                  // Continue with success flow even if backend cart clearing fails
+                }
+
+                onPaymentSuccess(realOrderId);
               } else {
                 console.error("Order API returned success: false", result);
                 // Even if the order recording failed, payment was successful
                 // We should still clear the cart and let the user proceed
                 dispatch(clearCart());
-                onPaymentSuccess();
+                try {
+                  await clearBackendCart().unwrap();
+                } catch (clearCartError) {
+                  console.error("Error clearing backend cart:", clearCartError);
+                }
+
+                onPaymentSuccess(realOrderId);
               }
             } catch (orderApiError) {
               console.error("Order API error:", orderApiError);
               // If the payment was successful but order recording failed,
               // still proceed with the success flow from the user's perspective
               dispatch(clearCart());
+              try {
+                await clearBackendCart().unwrap();
+              } catch (clearCartError) {
+                console.error("Error clearing backend cart:", clearCartError);
+              }
+
               onPaymentSuccess();
             }
           } catch (orderError) {
             console.error("Order creation failed:", orderError);
             // Still complete the payment flow since payment succeeded
             dispatch(clearCart());
+            try {
+              await clearBackendCart().unwrap();
+            } catch (clearCartError) {
+              console.error("Error clearing backend cart:", clearCartError);
+            }
+
             onPaymentSuccess();
           }
         } else {
@@ -489,17 +591,17 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
   // Add handler for card element change
   const handleCardElementChange = (e) => {
     setCardComplete(e.complete);
-    
+
     if (e.error) {
       setCardError(e.error.message);
     } else {
       setCardError(null);
     }
-    
+
     // Update card number display if available
     if (e.value) {
       const updatedDetails = { ...cardDetails };
-      
+
       if (e.value.cardNumber) {
         // Format the last 4 digits visible, rest as dots
         const last4 = e.value.cardNumber.split(' ').pop();
@@ -507,11 +609,11 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
           updatedDetails.number = `•••• •••• •••• ${last4}`;
         }
       }
-      
+
       if (e.value.expiryDate) {
         updatedDetails.expiry = e.value.expiryDate;
       }
-      
+
       setCardDetails(updatedDetails);
     }
   };
@@ -524,13 +626,13 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
         ...formData,
         nameOnCard: selectedCard.nameOnCard,
       });
-      
+
       // Set card as complete when selecting a saved card
       setCardComplete(true);
-      
+
       // Remove any previous card errors
       setCardError(null);
-      
+
       console.log(`Selected card: ${selectedCard.cardType} ending in ${selectedCard.cardNumber.slice(-4)}`);
     }
   };
@@ -540,7 +642,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
       {/* Shipping Information */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6 transform transition-all hover:shadow-lg border-l-4 border-orange-500">
         <h2 className="text-xl font-semibold mb-6 text-gray-800 flex items-center">
-          <FaHome className="mr-2 text-orange-500" /> 
+          <FaHome className="mr-2 text-orange-500" />
           <span>Shipping Information</span>
         </h2>
 
@@ -555,11 +657,10 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
               {savedAddresses.map(address => (
                 <div
                   key={address.id}
-                  className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                    selectedAddressId === address.id
+                  className={`border rounded-lg p-4 cursor-pointer transition-all ${selectedAddressId === address.id
                       ? 'border-orange-500 bg-orange-50 shadow-md'
                       : 'border-gray-200 hover:border-orange-300'
-                  }`}
+                    }`}
                   onClick={() => handleAddressSelect(address.id)}
                 >
                   {address.isDefault && (
@@ -586,7 +687,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                   <p className="text-gray-600 text-sm">{address.phone}</p>
                 </div>
               ))}
-              
+
               {/* Single Add New Address button below addresses */}
               <button
                 type="button"
@@ -607,7 +708,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                 <h3 className="text-md font-medium text-gray-700 mb-2">New Address</h3>
               </div>
             )}
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Full Name */}
               <div className="transform transition-all hover:-translate-y-1">
@@ -624,7 +725,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                   placeholder="John Doe"
                 />
               </div>
-              
+
               {/* Email */}
               <div className="transform transition-all hover:-translate-y-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
@@ -640,7 +741,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                   placeholder="john@example.com"
                 />
               </div>
-              
+
               {/* Phone */}
               <div className="transform transition-all hover:-translate-y-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
@@ -656,7 +757,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                   placeholder="(123) 456-7890"
                 />
               </div>
-              
+
               {/* Address */}
               <div className="transform transition-all hover:-translate-y-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
@@ -672,7 +773,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                   placeholder="123 Main St"
                 />
               </div>
-              
+
               {/* City */}
               <div className="transform transition-all hover:-translate-y-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
@@ -688,7 +789,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                   placeholder="New York"
                 />
               </div>
-              
+
               {/* State */}
               <div className="transform transition-all hover:-translate-y-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
@@ -704,7 +805,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                   placeholder="NY"
                 />
               </div>
-              
+
               {/* ZIP Code */}
               <div className="transform transition-all hover:-translate-y-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
@@ -721,7 +822,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                 />
               </div>
             </div>
-            
+
             {/* Save Address Checkbox */}
             <div className="mt-4">
               <label className="inline-flex items-center cursor-pointer">
@@ -746,14 +847,14 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
       {/* Payment Information */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6 transform transition-all hover:shadow-lg border-l-4 border-orange-500">
         <h2 className="text-xl font-semibold mb-6 text-gray-800 flex items-center">
-          <FaCreditCard className="mr-2 text-orange-500" /> 
+          <FaCreditCard className="mr-2 text-orange-500" />
           <span>Payment Method</span>
         </h2>
         <div className="mb-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <div 
+            <div
               className={`border rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer transition-all ${formData.paymentMethod === 'creditCard' ? 'border-orange-500 bg-orange-50 shadow-md' : 'border-gray-200 hover:border-orange-300'}`}
-              onClick={() => setFormData({...formData, paymentMethod: 'creditCard'})}
+              onClick={() => setFormData({ ...formData, paymentMethod: 'creditCard' })}
             >
               <FaCreditCard className={`text-3xl mb-2 ${formData.paymentMethod === 'creditCard' ? 'text-orange-500' : 'text-gray-500'}`} />
               <label htmlFor="creditCard" className={`text-sm font-medium ${formData.paymentMethod === 'creditCard' ? 'text-orange-700' : 'text-gray-700'}`}>
@@ -769,10 +870,10 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                 className="sr-only"
               />
             </div>
-            
-            <div 
+
+            <div
               className={`border rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer transition-all ${formData.paymentMethod === 'cash' ? 'border-orange-500 bg-orange-50 shadow-md' : 'border-gray-200 hover:border-orange-300'}`}
-              onClick={() => setFormData({...formData, paymentMethod: 'cash'})}
+              onClick={() => setFormData({ ...formData, paymentMethod: 'cash' })}
             >
               <FaMoneyBillWave className={`text-3xl mb-2 ${formData.paymentMethod === 'cash' ? 'text-orange-500' : 'text-gray-500'}`} />
               <label htmlFor="cash" className={`text-sm font-medium ${formData.paymentMethod === 'cash' ? 'text-orange-700' : 'text-gray-700'}`}>
@@ -795,10 +896,20 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
               {/* Saved Cards Section */}
               {savedCards.length > 0 && (
                 <div className="mb-8">
-                  <h3 className="text-md font-medium text-gray-700 mb-4">Saved Cards</h3>
+                  <h3 className="text-md font-medium text-gray-700 mb-4">
+                    Saved Cards
+                    {isLoadingCards && (
+                      <span className="ml-2 inline-block">
+                        <svg className="animate-spin h-4 w-4 text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      </span>
+                    )}
+                  </h3>
                   <div className="flex overflow-x-auto space-x-4 pb-4 scrollbar-hide">
                     {savedCards.map(card => (
-                      <div 
+                      <div
                         key={card.id}
                         className={`cursor-pointer flex-shrink-0 transition-all duration-300 transform ${selectedCardId === card.id ? 'scale-105 ring-2 ring-orange-500' : 'scale-100 opacity-80 hover:opacity-100'}`}
                         onClick={() => handleCardSelect(card.id)}
@@ -811,10 +922,10 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                                 DEFAULT
                               </div>
                             )}
-                            
+
                             {/* Card shine effect */}
                             <div className="absolute top-0 left-0 w-full h-full bg-white opacity-5 rounded-full transform -translate-y-1/2 -translate-x-1/3 scale-150"></div>
-                            
+
                             {/* Card chip */}
                             <div className="flex items-center mb-8">
                               <div className="h-8 w-12 bg-yellow-300 bg-opacity-80 rounded-md mr-4 flex items-center justify-center">
@@ -824,7 +935,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                                   ))}
                                 </div>
                               </div>
-                              
+
                               {/* Card type logo */}
                               <div className="ml-auto">
                                 {card.cardType === 'visa' && <div className="text-white text-xl font-bold italic">VISA</div>}
@@ -832,12 +943,12 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                                 {card.cardType === 'amex' && <div className="text-white text-xl font-bold">AMEX</div>}
                               </div>
                             </div>
-                            
+
                             {/* Card number */}
                             <div className="text-white text-lg font-mono tracking-widest mb-4">
                               {card.cardNumber}
                             </div>
-                            
+
                             {/* Card holder name and expiry */}
                             <div className="flex items-end justify-between">
                               <div>
@@ -855,9 +966,9 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                         </div>
                       </div>
                     ))}
-                    
+
                     {/* Add new card option */}
-                    <div 
+                    <div
                       className="w-80 h-48 flex-shrink-0 cursor-pointer border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center hover:border-orange-300 transition-colors"
                       onClick={() => setSelectedCardId(null)}
                     >
@@ -877,10 +988,10 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                 <div className="mb-10">
                   <div className="bg-white border border-orange-100 rounded-lg p-6 shadow-md">
                     <h3 className="text-md font-medium text-gray-700 mb-4 flex items-center">
-                      <FaCreditCard className="mr-2 text-orange-500" /> 
+                      <FaCreditCard className="mr-2 text-orange-500" />
                       Selected Card Details
                     </h3>
-                    
+
                     {/* Get the selected card info */}
                     {(() => {
                       const selectedCard = savedCards.find(card => card.id === selectedCardId);
@@ -890,7 +1001,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                           <div className="w-72 h-36 flex-shrink-0">
                             <div className="bg-gradient-to-r from-orange-600 to-orange-400 rounded-xl shadow-md p-4 h-full w-full relative overflow-hidden">
                               <div className="absolute top-0 left-0 w-full h-full bg-white opacity-5 rounded-full transform -translate-y-1/2 -translate-x-1/3 scale-150"></div>
-                              
+
                               <div className="flex items-center mb-3">
                                 <div className="h-6 w-9 bg-yellow-300 bg-opacity-80 rounded-md mr-2 flex items-center justify-center">
                                   <div className="h-4 w-6 bg-yellow-200 bg-opacity-40 rounded-sm grid grid-cols-2 grid-rows-3 gap-px">
@@ -905,11 +1016,11 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                                   {selectedCard.cardType === 'amex' && <div className="text-white text-lg font-bold">AMEX</div>}
                                 </div>
                               </div>
-                              
+
                               <div className="text-white text-sm font-mono tracking-widest mb-2">
                                 {selectedCard.cardNumber}
                               </div>
-                              
+
                               <div className="flex items-end justify-between">
                                 <div>
                                   <p className="text-white text-opacity-50 text-xs uppercase mb-1">Card Holder</p>
@@ -924,7 +1035,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                               </div>
                             </div>
                           </div>
-                          
+
                           {/* Card Details */}
                           <div className="flex-grow space-y-3">
                             <div>
@@ -946,10 +1057,10 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                               <p className="font-medium">{selectedCard.nameOnCard}</p>
                             </div>
                           </div>
-                          
+
                           {/* Action buttons */}
                           <div className="flex flex-col gap-2 mt-4 sm:mt-0">
-                            <button 
+                            <button
                               type="button"
                               onClick={() => setSelectedCardId(null)}
                               className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded flex items-center justify-center transition-colors"
@@ -960,7 +1071,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                         </div>
                       );
                     })()}
-                    
+
                     <div className="mt-6 pt-5 border-t border-gray-100">
                       <button
                         type="submit"
@@ -977,7 +1088,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                           </>
                         ) : (
                           <>
-                            <FaLock className="mr-2" /> 
+                            <FaLock className="mr-2" />
                             Pay ${cartSummary.total.toFixed(2)} with This Card
                           </>
                         )}
@@ -996,7 +1107,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                     <div className="bg-gradient-to-r from-orange-600 to-orange-400 rounded-xl shadow-2xl p-6 h-56 w-full relative overflow-hidden">
                       {/* Card shine effect */}
                       <div className="absolute top-0 left-0 w-full h-full bg-white opacity-5 rounded-full transform -translate-y-1/2 -translate-x-1/3 scale-150"></div>
-                      
+
                       {/* Card chip */}
                       <div className="flex items-center mb-8">
                         <div className="h-10 w-14 bg-yellow-300 bg-opacity-80 rounded-md mr-4 flex items-center justify-center">
@@ -1012,7 +1123,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                           <span className="text-white text-opacity-80 text-xs font-medium">Secure Payment</span>
                         </div>
                       </div>
-                      
+
                       {/* Card number placeholder - Now displays dynamically based on input */}
                       <div className="text-white text-xl font-mono tracking-widest mb-4 flex items-center">
                         {cardDetails.number.split(' ').map((group, index) => (
@@ -1021,7 +1132,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                           </span>
                         ))}
                       </div>
-                      
+
                       {/* Card holder name */}
                       <div className="flex items-end justify-between">
                         <div>
@@ -1030,7 +1141,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                             {formData.nameOnCard || "Your Name"}
                           </p>
                         </div>
-                        
+
                         {/* Card brand logos */}
                         <div className="flex space-x-2">
                           <div className="text-2xl text-white opacity-90">
@@ -1040,7 +1151,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Form inputs */}
                   <div className="mt-8 bg-white p-6 rounded-lg shadow-lg border-t border-orange-50">
                     <div className="mb-6">
@@ -1059,16 +1170,16 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                         placeholder="Name as it appears on card"
                       />
                     </div>
-                    
+
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
                         <FaCreditCard className="mr-2 text-orange-500" /> Card Details
                       </label>
                       <div className="relative">
-                        <div 
+                        <div
                           className={`border border-gray-300 rounded-lg p-4 transition-all duration-300 focus-within:ring-4 focus-within:ring-orange-300 focus-within:border-orange-500 hover:border-gray-400 ${cardError ? 'border-red-500 bg-red-50' : ''}`}
                         >
-                          <CardElement 
+                          <CardElement
                             options={{
                               ...cardElementOptions,
                               style: {
@@ -1089,7 +1200,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                           />
                         </div>
                       </div>
-                      
+
                       {/* Save Card Details Option */}
                       <div className="mt-3">
                         <label className="inline-flex items-center cursor-pointer">
@@ -1110,7 +1221,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                           </p>
                         )}
                       </div>
-                      
+
                       {cardError && (
                         <div className="text-red-500 text-sm mt-2 flex items-center">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1120,8 +1231,8 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                         </div>
                       )}
                     </div>
-                    
-                    <button 
+
+                    <button
                       type="submit"
                       disabled={isSubmitting || !stripe}
                       className={`w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-md font-medium transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1 flex items-center justify-center ${isSubmitting ? 'opacity-75 cursor-not-allowed' : ''}`}
@@ -1136,12 +1247,12 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
                         </>
                       ) : (
                         <>
-                          <FaLock className="mr-2" /> 
+                          <FaLock className="mr-2" />
                           Pay ${cartSummary.total.toFixed(2)} Securely
                         </>
                       )}
                     </button>
-                    
+
                     <div className="mt-6 flex items-center justify-between text-sm text-gray-500">
                       <div className="flex items-center">
                         <FaLock className="mr-1" />
@@ -1165,7 +1276,7 @@ function CheckoutForm({ formData, setFormData, cartSummary, isSubmitting, setIsS
             </div>
           )}
         </div>
-        
+
         {/* Remove the Complete Purchase button at the end of the form */}
       </div>
     </form>
@@ -1188,20 +1299,74 @@ export default function Checkout() {
 
   // Replace your existing address fetching with:
   const { data: addresses, isLoading: isLoadingAddresses } = useGetUserAddressesQuery();
-  const { data: savedCards = [] } = useGetSavedCardsQuery();
+  // Add refetchOnMountOrArgChange to ensure cards are fresh each time
+  const { data: savedCards = [], isLoading: isLoadingCards, refetch: refetchCards } = useGetSavedCardsQuery(undefined, {
+    refetchOnMountOrArgChange: true
+  });
+  const { data: dbCards = [], isLoading: isLoadingDbCards } = useGetDbCardsQuery();
+
+  // Combine both sources of cards
+  // Around line 1296, replace or modify the allCards useMemo
+
+  const allCards = useMemo(() => {
+    // Start with saved cards (if any)
+    const cards = [...(savedCards || [])];
+
+    // Format and add DB cards
+    if (dbCards && dbCards.length > 0) {
+      const formattedDbCards = dbCards.map(card => ({
+        id: card.paymentMethodId || card._id,
+        cardType: card.cardType || "card",
+        cardNumber: `•••• •••• •••• ${card.last4 || '****'}`,
+        expiryDate: card.expiryDate || "xx/xx",
+        nameOnCard: card.nameOnCard || card.cardholderName || "Card Holder",
+        isDefault: card.isDefault || false
+      }));
+
+      // Add formatted DB cards to the array
+      formattedDbCards.forEach(dbCard => {
+        if (!cards.some(card => card.id === dbCard.id)) {
+          cards.push(dbCard);
+        }
+      });
+    }
+
+    console.log('Cards to display in checkout:', cards);
+    return cards;
+  }, [savedCards, dbCards]);
+
+  useEffect(() => {
+    console.log('DB Cards available:', dbCards?.length || 0);
+    console.log('All cards combined:', allCards);
+  }, [dbCards, allCards]);
+
   const [addAddress] = useAddAddressMutation();
   const [updateAddress] = useUpdateAddressMutation();
   const [deleteAddress] = useDeleteAddressMutation();
   const [setAddressAsDefault] = useSetDefaultAddressMutation();
   const [createPaymentIntent] = useCreatePaymentIntentMutation();
   const [saveCard] = useSaveCardMutation();
+  const [clearBackendCart] = useClearCartMutation(); // Add this line to use the clearCart mutation
+
+  // Add function to refetch cards after saving one
+  const handleSaveCardAndRefresh = async (cardData) => {
+    try {
+      await saveCard(cardData).unwrap();
+      toast.success("Your card has been saved for future orders");
+      // Refetch cards to update the list
+      refetchCards();
+    } catch (error) {
+      console.error("Error saving card:", error);
+      toast.error("Could not save your card: " + (error.data?.message || error.message || "Unknown error"));
+    }
+  };
 
   // For navigation
   const navigate = useNavigate();
-  
+
   // Payment success state
   const [paymentSuccessful, setPaymentSuccessful] = useState(false);
-  
+
   // Payment success animation state
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
@@ -1223,25 +1388,26 @@ export default function Checkout() {
 
   // State for animation
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Reference to trigger form submission from outside the form
   const formSubmitRef = useRef(null);
 
   // Handle payment success and redirect
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = (orderId) => {
     setShowSuccessAnimation(true);
 
     const deliveryInfo = calculateEstimatedDelivery(cartSummary.items[0]?.restaurantId, formData);
-    
-    // Clear the cart
+
+    // Clear the cart in Redux (backend cart is cleared in the checkout form component)
     dispatch(clearCart());
+
     setTimeout(() => {
       setPaymentSuccessful(true);
       setTimeout(() => {
-        navigate('/confirmation', { 
-          state: { 
+        navigate(`/confirmation/${orderId}`, {
+          state: {
             orderDetails: {
-              orderId: 'ORD-' + Date.now().toString().slice(-6),
+              orderId: orderId,
               items: cartSummary.items,
               total: cartSummary.total,
               customer: formData,
@@ -1250,7 +1416,7 @@ export default function Checkout() {
               estimatedDelivery: deliveryInfo.estimatedTime,
               deliveryWindow: deliveryInfo.deliveryWindow,
               estimatedDeliveryTime: deliveryInfo.estimatedTimeString
-            } 
+            }
           }
         });
       }, 1000);
@@ -1270,7 +1436,7 @@ export default function Checkout() {
         // Include image and other properties if needed by backend
         image: item.image || null
       }));
-      
+
       // Prepare order data with properly formatted values
       const orderData = {
         items: formattedItems,
@@ -1293,19 +1459,32 @@ export default function Checkout() {
         deliveryFee: parseFloat(cartSummary.delivery.toFixed(2)),
         total: parseFloat(cartSummary.total.toFixed(2))
       };
-      
+
       console.log("Submitting cash order to API:", JSON.stringify(orderData));
-      
+
       try {
         // Call the createOrder mutation and unwrap the result
         const result = await createOrder(orderData).unwrap();
-        
+
         if (result.success) {
           console.log("Order creation succeeded:", result);
-          
-          // Clear cart and proceed with success flow
+
+          // Get the real order ID from the API response
+          const realOrderId = result.order.orderId || result.order._id;
+
+          // Clear cart in Redux
           dispatch(clearCart());
-          handlePaymentSuccess();
+
+          // Clear cart in backend
+          try {
+            await clearBackendCart().unwrap();
+            console.log("Backend cart cleared successfully on non-card payment");
+          } catch (clearCartError) {
+            console.error("Error clearing backend cart:", clearCartError);
+            // Continue with success flow even if cart clearing fails
+          }
+
+          handlePaymentSuccess(realOrderId);
         } else {
           console.error("Order API returned success: false", result);
           toast.error("Failed to create order: " + (result.message || "Unknown error"));
@@ -1322,45 +1501,67 @@ export default function Checkout() {
     }
   };
 
+  // Transform raw card data to the expected format
+  const formattedCards = useMemo(() => {
+    if (!savedCards || savedCards.length === 0) return [];
+
+    return savedCards.map(card => {
+      // Check if card already has the expected format
+      if (card.id && card.cardNumber && card.nameOnCard) {
+        return card;
+      }
+
+      // Transform to expected format
+      return {
+        id: card.paymentMethodId || card._id,
+        cardType: card.cardType || "card",
+        cardNumber: card.cardNumber || `•••• •••• •••• ${card.last4 || '****'}`,
+        expiryDate: card.expiryDate || "xx/xx",
+        nameOnCard: card.nameOnCard || card.cardholderName || "Card Holder",
+        isDefault: card.isDefault || false
+      };
+    });
+  }, [savedCards]);
+
   return (
     <>
       <Header />
-      
+
       {/* Full-screen success animation overlay */}
       <AnimatePresence>
         {showSuccessAnimation && (
-          <motion.div 
+          <motion.div
             className="fixed inset-0 bg-white bg-opacity-90 z-50 flex items-center justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <motion.div 
+            <motion.div
               className="text-center"
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ 
-                type: "spring", 
-                stiffness: 200, 
+              transition={{
+                type: "spring",
+                stiffness: 200,
                 damping: 20,
                 delay: 0.2
               }}
             >
-              <motion.div 
+              <motion.div
                 className="mb-6 bg-green-500 rounded-full p-5 inline-block"
                 initial={{ rotate: 0 }}
-                animate={{ 
+                animate={{
                   rotate: [0, 360],
                   scale: [1, 1.2, 1]
                 }}
-                transition={{ 
+                transition={{
                   duration: 1,
                   ease: "easeInOut"
                 }}
               >
                 <FaCheck className="text-white text-5xl" />
               </motion.div>
-              <motion.h2 
+              <motion.h2
                 className="text-3xl font-bold text-gray-800 mb-2"
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -1376,20 +1577,20 @@ export default function Checkout() {
               >
                 Redirecting you to confirmation...
               </motion.p>
-              
+
               {/* Animated progress bar */}
-              <motion.div 
+              <motion.div
                 className="h-1 bg-gray-200 rounded-full max-w-md mx-auto mt-6 overflow-hidden"
                 initial={{ width: "50%" }}
                 animate={{ width: "100%" }}
               >
-                <motion.div 
+                <motion.div
                   className="h-full bg-gradient-to-r from-green-400 to-green-500"
                   initial={{ width: "0%" }}
                   animate={{ width: "100%" }}
-                  transition={{ 
+                  transition={{
                     duration: 2,
-                    ease: "easeInOut" 
+                    ease: "easeInOut"
                   }}
                 />
               </motion.div>
@@ -1397,14 +1598,14 @@ export default function Checkout() {
           </motion.div>
         )}
       </AnimatePresence>
-      
+
       {/* Page transition for redirect */}
       <AnimatePresence>
         {!paymentSuccessful && (
           <motion.div
             initial={{ opacity: 1 }}
             animate={{ opacity: 1 }}
-            exit={{ 
+            exit={{
               opacity: 0,
               transition: { duration: 0.5 }
             }}
@@ -1446,20 +1647,23 @@ export default function Checkout() {
                     <span className="absolute bottom-0 left-0 w-1/2 h-1 bg-orange-500"></span>
                   </h1>
                   <Elements stripe={stripePromise}>
-                    <CheckoutForm 
-                      formData={formData} 
-                      setFormData={setFormData} 
+                    <CheckoutForm
+                      formData={formData}
+                      setFormData={setFormData}
                       cartSummary={cartSummary}
                       isSubmitting={isSubmitting}
                       setIsSubmitting={setIsSubmitting}
                       onNonCardPayment={formSubmitRef}
                       savedAddresses={addresses || []}
-                      setSavedAddresses={() => {}}
+                      setSavedAddresses={() => { }}
                       onPaymentSuccess={handlePaymentSuccess}
-                      savedCards={savedCards}
+                      savedCards={allCards}
+                      isLoadingCards={isLoadingCards}
                       createPaymentIntent={createPaymentIntent}
-                      saveCard={saveCard}
-                    /> 
+                      saveCard={handleSaveCardAndRefresh}
+                      refetchCards={refetchCards}
+                      clearBackendCart={clearBackendCart}  // Pass the clearBackendCart function to CheckoutForm
+                    />
                   </Elements>
                 </div>
                 {/* Right column: Order Summary */}
@@ -1468,7 +1672,7 @@ export default function Checkout() {
                     <h2 className="text-xl font-semibold mb-4 text-gray-800 flex items-center">
                       <FaShoppingCart className="mr-2 text-orange-500" /> Order Summary
                     </h2>
-                    
+
                     <div className="mb-6 max-h-64 overflow-y-auto">
                       {cartSummary.items.map(item => (
                         <div key={item.id} className="flex justify-between py-3 border-b border-gray-100 hover:bg-orange-50 transition-colors rounded px-2">
@@ -1505,8 +1709,8 @@ export default function Checkout() {
                         </div>
                       </div>
                     </div>
-                    
-                    <button 
+
+                    <button
                       onClick={() => {
                         if (formSubmitRef.current) {
                           formSubmitRef.current();
@@ -1527,7 +1731,7 @@ export default function Checkout() {
                         <>
                           {formData.paymentMethod === 'creditCard' ? (
                             <>
-                              <FaLock className="mr-2" /> 
+                              <FaLock className="mr-2" />
                               Pay ${cartSummary.total.toFixed(2)} Securely
                             </>
                           ) : (
@@ -1539,7 +1743,7 @@ export default function Checkout() {
                         </>
                       )}
                     </button>
-                    
+
                     <div className="mt-4 text-center">
                       <Link to="/cart" className="text-orange-500 hover:text-orange-700 text-sm font-medium flex items-center justify-center">
                         <FaShoppingCart className="mr-1" /> Return to Cart
@@ -1552,7 +1756,7 @@ export default function Checkout() {
           </motion.div>
         )}
       </AnimatePresence>
-      
+
       <Footer />
 
       {/* Add global CSS */}

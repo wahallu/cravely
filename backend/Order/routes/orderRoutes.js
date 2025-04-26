@@ -6,26 +6,30 @@ const {
   getUserOrders, 
   getRestaurantOrders, 
   updateOrderStatus, 
-  cancelOrder 
+  cancelOrder,
+  getAvailableOrders,
+  assignDriver,
+  getDriverOrders,
+  completeDelivery
 } = require('../controllers/orderController');
 const { protect, authorize } = require('../middleware/auth');
 
-// Create a new order
-router.post('/', protect, createOrder);
+// Define specific routes BEFORE parameterized routes
+// New routes for driver functionality
+router.get('/available-for-delivery', protect, authorize('delivery', 'driver'), getAvailableOrders);
+router.get('/user/me', protect, getUserOrders);
+router.get('/driver/my-orders', protect, authorize('driver', 'delivery'), getDriverOrders);
 
-// Get order by ID
+// Then define parameterized routes
+router.get('/restaurant/:id', protect, authorize('admin', 'restaurant'), getRestaurantOrders);
+router.get('/driver/:driverId', protect, authorize('delivery', 'driver'), getDriverOrders);
 router.get('/:id', protect, getOrderById);
 
-// Get all user orders
-router.get('/user/me', protect, getUserOrders);
-
-// Get all restaurant orders
-router.get('/restaurant/:id', protect, authorize('admin', 'restaurant'), getRestaurantOrders);
-
-// Update order status
-router.put('/:id/status', protect, authorize('admin', 'restaurant', 'delivery'), updateOrderStatus);
-
-// Cancel an order
+// Order action routes
+router.post('/', protect, createOrder);
+router.put('/:id/status', protect, authorize('admin', 'restaurant', 'delivery', 'driver'), updateOrderStatus);
+router.put('/:id/assign-driver', protect, authorize('delivery', 'driver'), assignDriver);
+router.put('/:id/delivered', protect, authorize('driver', 'delivery'), completeDelivery);
 router.put('/:id/cancel', protect, cancelOrder);
 
 module.exports = router;

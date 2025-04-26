@@ -2,52 +2,45 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
-const deliveryRoutes = require("./routes/deliveryRoutes");
 const driverRoutes = require("./routes/driverRoutes");
-const { protect } = require('./middleware/auth');
+const deliveryRoutes = require("./routes/deliveryRoutes");
 
+// Load env vars first
 dotenv.config();
-
-// Connect to MongoDB
-connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// middleware
+// Connect to Database
+(async () => {
+    try {
+        await connectDB();
+        console.log('Database connection established');
+    } catch (err) {
+        console.error('Database connection failed:', err.message);
+    }
+})();
+
+// Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// Health check endpoint - This is required for Gateway service detection
-app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'ok',
-    service: 'Delivery',
-    timestamp: new Date().toISOString()
-  });
-});
+// Routes
+app.use("/api/drivers", driverRoutes);
+app.use("/api/deliveries", deliveryRoutes);
 
-// Default route
-app.get('/', (req, res) => {
-  res.status(200).json({ message: 'Delivery service is running' });
-});
-
-app.use("/api/deliveries", protect, deliveryRoutes);
-app.use("/api/drivers", protect, driverRoutes);
-
-// Error handling middleware
+// Error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    success: false,
-    error: err.message || 'Server Error'
-  });
+    console.error(err.stack);
+    res.status(500).json({
+        success: false,
+        message: 'Server Error',
+        error: process.env.NODE_ENV === 'production' ? null : err.message
+    });
 });
 
-// run the app
 app.listen(PORT, () => {
-  console.log(`Delivery service is running on port ${PORT}`);
+    console.log(`Driver service running on port ${PORT}`);
 });
 
 module.exports = app;

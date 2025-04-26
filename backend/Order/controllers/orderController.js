@@ -1,5 +1,8 @@
 const Order = require('../models/Order');
 const PaymentService = require('../services/paymentService');
+const RestaurantService = require('../services/restaurantService');
+const NotificationService = require('../services/notificationService');
+const DeliveryService = require('../services/deliveryService');
 const mongoose = require('mongoose');
 
 /**
@@ -154,6 +157,13 @@ const createOrder = async (req, res) => {
       
       console.log('Order created successfully:', savedOrder._id);
       
+      // Send WhatsApp notification for payment completion
+      await NotificationService.sendPaymentNotification({
+        customer: orderData.customer,
+        orderId: savedOrder.orderId,
+        payment: orderData.payment
+      });
+
       // Return success response with saved order
       return res.status(201).json({
         success: true,
@@ -194,18 +204,19 @@ const getOrderById = async (req, res) => {
         message: 'Order not found'
       });
     }
-
-    // Security check - only allow user to access their own orders or admin
-    if (req.user.role !== 'admin' && order.userId !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this order'
-      });
-    }
-
+    
+    // Fetch restaurant details from Restaurant service
+    const restaurant = await RestaurantService.getRestaurantById(order.restaurantId);
+    
+    // Transform the response to include restaurant details
+    const transformedOrder = {
+      ...order._doc,
+      restaurant // Add restaurant field with data from Restaurant service
+    };
+    
     res.status(200).json({
       success: true,
-      order
+      order: transformedOrder
     });
   } catch (error) {
     console.error('Get order error:', error);
@@ -219,17 +230,30 @@ const getOrderById = async (req, res) => {
 
 /**
  * Get all orders for a user
- * @route GET /api/orders
+ * @route GET /api/orders/user/me
  * @access Private
  */
 const getUserOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ userId: req.user._id }).sort({ createdAt: -1 });
+    const userId = req.user._id;
+    
+    // Get orders without trying to populate restaurant
+    const orders = await Order.find({ userId }).sort({ createdAt: -1 });
+    
+    // For each order, fetch restaurant details from Restaurant service
+    const ordersWithRestaurants = await Promise.all(orders.map(async (order) => {
+      const restaurant = await RestaurantService.getRestaurantById(order.restaurantId);
+      
+      return {
+        ...order._doc,
+        restaurant // Add restaurant field with data from Restaurant service
+      };
+    }));
     
     res.status(200).json({
       success: true,
       count: orders.length,
-      orders
+      orders: ordersWithRestaurants
     });
   } catch (error) {
     console.error('Get user orders error:', error);
@@ -261,13 +285,179 @@ const getRestaurantOrders = async (req, res) => {
     
     const orders = await Order.find(filter).sort({ createdAt: -1 });
     
+    // Get restaurant details once for all orders
+    const restaurant = await RestaurantService.getRestaurantById(id);
+    
+    // Add restaurant info to each order
+    const transformedOrders = orders.map(order => ({
+      ...order._doc,
+      restaurant
+    }));
+    
     res.status(200).json({
       success: true,
       count: orders.length,
-      orders
+      orders: transformedOrders
     });
   } catch (error) {
     console.error('Get restaurant orders error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get all orders available for delivery
+ * @route GET /api/orders/available-for-delivery
+ * @access Private (Drivers only)
+ */
+const getAvailableOrders = async (req, res) => {
+  try {
+    // Find orders with status "preparing" that are ready for pickup
+    const orders = await Order.find({ 
+      status: 'preparing',
+      driverId: null
+    }).sort({ createdAt: -1 });
+    
+    // Add restaurant info to each order
+    const ordersWithRestaurants = await Promise.all(orders.map(async (order) => {
+      const restaurant = await RestaurantService.getRestaurantById(order.restaurantId);
+      
+      return {
+        ...order._doc,
+        restaurant
+      };
+    }));
+    
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      orders: ordersWithRestaurants
+    });
+  } catch (error) {
+    console.error('Error fetching available orders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Assign driver to an order
+ * @route PUT /api/orders/:id/assign-driver
+ * @access Private (Drivers only)
+ */
+const assignDriver = async (req, res) => {
+  try {
+    const { driverId, driverName } = req.body;
+    
+    if (!driverId || !driverName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Driver ID and name are required'
+      });
+    }
+    
+    // Find the order by orderId parameter
+    const order = await Order.findOne({ orderId: req.params.id });
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+    
+    // Check if order status is valid for assignment
+    if (order.status !== 'out_for_delivery') {
+      return res.status(400).json({
+        success: false,
+        message: `Order cannot be assigned because it is ${order.status}`
+      });
+    }
+    
+    // Check if order is already assigned to a driver
+    if (order.driverId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order is already assigned to a driver'
+      });
+    }
+    
+    // Assign driver to order in Order service
+    order.driverId = driverId;
+    order.driverName = driverName;
+    order.driverAssignedAt = Date.now();
+    
+    await order.save();
+    
+    // Update driver status in Delivery service
+    try {
+      await DeliveryService.updateDriverStatus(driverId, 'On Delivery');
+      console.log(`Driver ${driverId} status updated to On Delivery`);
+    } catch (driverError) {
+      // Log error but don't fail the assignment if driver status update fails
+      console.error('Error updating driver status in Delivery service:', driverError);
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Driver assigned to order successfully',
+      order
+    });
+  } catch (error) {
+    console.error('Error assigning driver:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get all orders assigned to a driver
+ * @route GET /api/orders/driver/:driverId
+ * @access Private (Drivers only)
+ */
+const getDriverOrders = async (req, res) => {
+  try {
+    // If it's coming from /driver/my-orders route, use the authenticated user's ID
+    const driverId = req.params.driverId || req.user._id.toString();
+    
+    console.log('Getting orders for driver:', driverId);
+    
+    // Find orders for this driver
+    const orders = await Order.find({ driverId }).sort({ createdAt: -1 });
+    
+    console.log(`Found ${orders.length} orders for driver ${driverId}`);
+    
+    // Add restaurant info to each order
+    const ordersWithRestaurants = await Promise.all(orders.map(async (order) => {
+      try {
+        const restaurant = await RestaurantService.getRestaurantById(order.restaurantId);
+        return {
+          ...order._doc,
+          restaurant
+        };
+      } catch (err) {
+        console.error('Error getting restaurant info:', err);
+        return order._doc;
+      }
+    }));
+    
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      orders: ordersWithRestaurants
+    });
+  } catch (error) {
+    console.error('Error fetching driver orders:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',
@@ -283,23 +473,47 @@ const getRestaurantOrders = async (req, res) => {
  */
 const updateOrderStatus = async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, driverId, driverName, estimatedDelivery } = req.body;
     
     // Find the order
     const order = await Order.findOne({ orderId: req.params.id });
     
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
-    }
-    
     // Update the status
     order.status = status;
-    order.updatedAt = Date.now();
     
+    // If driver information is provided for out_for_delivery status, update it
+    if (status === 'out_for_delivery' && driverId && driverName) {
+      order.driverId = driverId;
+      order.driverName = driverName;
+      order.driverAssignedAt = Date.now();
+    }
+    
+    // Update other fields
+    if (estimatedDelivery) {
+      order.estimatedDeliveryTime = estimatedDelivery;
+    }
+    
+    order.updatedAt = Date.now();
     await order.save();
+    
+    // Get restaurant details for notifications
+    const restaurant = await RestaurantService.getRestaurantById(order.restaurantId);
+    
+    // Send WhatsApp notifications based on the new status
+    if (status === 'confirmed') {
+      await NotificationService.sendOrderConfirmedNotification({
+        customer: order.customer,
+        orderId: order.orderId,
+        restaurant,
+        estimatedDelivery: order.estimatedDeliveryTime
+      });
+    } else if (status === 'delivered') {
+      await NotificationService.sendOrderDeliveredNotification({
+        customer: order.customer,
+        orderId: order.orderId,
+        restaurant
+      });
+    }
     
     res.status(200).json({
       success: true,
@@ -367,11 +581,92 @@ const cancelOrder = async (req, res) => {
   }
 };
 
+/**
+ * Mark order as delivered by driver
+ * @route PUT /api/orders/:id/delivered
+ * @access Private (Drivers only)
+ */
+const completeDelivery = async (req, res) => {
+  try {
+    const order = await Order.findOne({ orderId: req.params.id });
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+    
+    // Ensure only the assigned driver can mark it as delivered
+    if (order.driverId !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the assigned driver can mark an order as delivered'
+      });
+    }
+    
+    // Update order status
+    order.status = 'delivered';
+    order.updatedAt = Date.now();
+    
+    await order.save();
+    
+    // Update driver status back to Available in Delivery service
+    try {
+      await DeliveryService.updateDriverStatus(order.driverId, 'Available');
+      
+      // Update driver earnings through the dedicated method
+      if (order.total) {
+        const deliveryEarnings = calculateDeliveryEarnings(order.total);
+        await DeliveryService.updateDriverStats(order.driverId, deliveryEarnings);
+      }
+    } catch (driverError) {
+      console.error('Error updating driver after delivery:', driverError);
+    }
+    
+    // Send delivery notification
+    await NotificationService.sendOrderDeliveredNotification({
+      customer: order.customer,
+      orderId: order.orderId,
+      restaurant: await RestaurantService.getRestaurantById(order.restaurantId)
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: 'Order marked as delivered successfully',
+      order
+    });
+  } catch (error) {
+    console.error('Error completing delivery:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Helper function to calculate driver earnings from order total
+ */
+const calculateDeliveryEarnings = (orderTotal) => {
+  // Example calculation: base fee + percentage of order
+  const baseFee = 2.50;
+  const percentage = 0.05; // 5%
+  return baseFee + (orderTotal * percentage);
+};
+
 module.exports = {
+  // Existing exports
   createOrder,
   getOrderById,
   getUserOrders,
   getRestaurantOrders,
   updateOrderStatus,
-  cancelOrder
+  cancelOrder,
+  getAvailableOrders,
+  assignDriver,
+  getDriverOrders,
+  // New export
+  completeDelivery
 };

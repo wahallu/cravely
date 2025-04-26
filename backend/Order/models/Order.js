@@ -18,9 +18,18 @@ const OrderSchema = new mongoose.Schema({
     required: true
   },
   restaurantId: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Restaurant',
     required: true
   },
+  // Add driver information
+  driverId: {
+    type: String,
+    default: null
+  },
+  driverName: String,
+  driverAssignedAt: Date,
+  
   items: {
     type: [ItemSchema],
     required: [true, 'Order must have at least one item'],

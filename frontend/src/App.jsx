@@ -41,6 +41,9 @@ import DeliveryDashboard from "./Delivery/DeliveryDashboard";
 import DriverDashboard from "./Delivery/DriverDashboard";
 import DriverProfile from "./Delivery/DriverProfile";
 import AllDrivers from "./Delivery/AllDrivers";
+import DriverSignup from "./Delivery/Auth/DriverSignup";
+import DriverSignin from "./Delivery/Auth/DriverSignin";
+import OrderConfirm from "./Restaurant/Admin/OrderConfirm";
 
 
 
@@ -61,7 +64,7 @@ export default function App() {
           {/* Order */}
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
-          <Route path="/confirmation" element={<OrderConfirmation />} />
+          <Route path="/confirmation/:orderId?" element={<OrderConfirmation />} />
           <Route path="/orders" element={<MyOrders />} />
           <Route path="/orders/:id" element={<Order />} />
 
@@ -69,6 +72,7 @@ export default function App() {
           <Route path="/restaurant" element={<Layout />}>
             <Route path="dashboard" element={<RestaurantDashboard />} />
             <Route path="menu" element={<MenuManagement />} />
+            <Route path="order" element={<OrderConfirm />} />
           </Route>
 
           {/* Restaurant Client */}
@@ -107,6 +111,8 @@ export default function App() {
             <Route path="drivers" element={<DriverDashboard />} />
             <Route path="all-drivers" element={<AllDrivers />} />
             <Route path="drivers/:id" element={<DriverProfile />} />
+            <Route path="signup" element={<DriverSignup />} />
+            <Route path="login" element={<DriverSignin />} />
           </Route>
 
         </Routes>
