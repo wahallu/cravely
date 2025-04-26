@@ -15,7 +15,7 @@ export const getRestaurantToken = () => {
 export const getRestaurantInfo = () => {
   const restaurantInfo = localStorage.getItem('restaurantInfo');
   const parsedInfo = restaurantInfo ? JSON.parse(restaurantInfo) : null;
-  console.log("Current restaurant ID:", parsedInfo?.id);
+  // console.log("Current restaurant ID:", parsedInfo?.id);
   return parsedInfo;
 };
 

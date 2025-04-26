@@ -309,13 +309,143 @@ const getRestaurantOrders = async (req, res) => {
 };
 
 /**
+ * Get all orders available for delivery
+ * @route GET /api/orders/available-for-delivery
+ * @access Private (Drivers only)
+ */
+const getAvailableOrders = async (req, res) => {
+  try {
+    // Find orders with status "out_for_delivery" and no driver assigned
+    const orders = await Order.find({ 
+      status: 'out_for_delivery',
+      driverId: null
+    }).sort({ createdAt: -1 });
+    
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      orders
+    });
+  } catch (error) {
+    console.error('Error fetching available orders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Assign driver to an order
+ * @route PUT /api/orders/:id/assign-driver
+ * @access Private (Drivers only)
+ */
+const assignDriver = async (req, res) => {
+  try {
+    const { driverId, driverName } = req.body;
+    
+    if (!driverId || !driverName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Driver ID and name are required'
+      });
+    }
+    
+    // Find the order by orderId parameter
+    const order = await Order.findOne({ orderId: req.params.id });
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+    
+    // Check if order status is valid for assignment
+    if (order.status !== 'out_for_delivery') {
+      return res.status(400).json({
+        success: false,
+        message: `Order cannot be assigned because it is ${order.status}`
+      });
+    }
+    
+    // Check if order is already assigned to a driver
+    if (order.driverId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order is already assigned to a driver'
+      });
+    }
+    
+    // Assign driver to order
+    order.driverId = driverId;
+    order.driverName = driverName;
+    order.driverAssignedAt = Date.now();
+    
+    await order.save();
+    
+    // Update driver status to "On Delivery" if using the Driver model
+    try {
+      // This assumes your Driver model is accessible or you have a service to update driver status
+      await Driver.findOneAndUpdate(
+        { driverId },
+        { status: 'On Delivery' }
+      );
+    } catch (driverError) {
+      // Log error but don't fail the assignment if driver status update fails
+      console.error('Error updating driver status:', driverError);
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Driver assigned to order successfully',
+      order
+    });
+  } catch (error) {
+    console.error('Error assigning driver:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get all orders assigned to a driver
+ * @route GET /api/orders/driver/:driverId
+ * @access Private (Drivers only)
+ */
+const getDriverOrders = async (req, res) => {
+  try {
+    const { driverId } = req.params;
+    
+    const orders = await Order.find({ driverId }).sort({ createdAt: -1 });
+    
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      orders
+    });
+  } catch (error) {
+    console.error('Error fetching driver orders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+/**
  * Update order status
  * @route PUT /api/orders/:id/status
  * @access Private (Restaurant Owner/Admin/Delivery)
  */
 const updateOrderStatus = async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, estimatedDelivery } = req.body;
     
     // Find the order
     const order = await Order.findOne({ orderId: req.params.id });
@@ -327,8 +457,43 @@ const updateOrderStatus = async (req, res) => {
       });
     }
     
-    // Update the status
+    // Check if restaurant is trying to update the status
+    if (req.user.role === 'restaurant') {
+      // Verify the order belongs to this restaurant
+      if (order.restaurantId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to update this order'
+        });
+      }
+      
+      // Validate allowed status transitions for restaurant
+      const allowedStatuses = ['confirmed', 'preparing', 'out_for_delivery'];
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Restaurants can only update status to: ${allowedStatuses.join(', ')}`
+        });
+      }
+      
+      // Additional validation: Check for logical status progression
+      const statusOrder = ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered'];
+      const currentIndex = statusOrder.indexOf(order.status);
+      const newIndex = statusOrder.indexOf(status);
+      
+      if (newIndex <= currentIndex) {
+        return res.status(400).json({
+          success: false, 
+          message: `Cannot change status from '${order.status}' to '${status}'`
+        });
+      }
+    }
+    
+    // Update the status and estimated delivery if provided
     order.status = status;
+    if (estimatedDelivery) {
+      order.estimatedDeliveryTime = estimatedDelivery;
+    }
     order.updatedAt = Date.now();
     
     await order.save();
@@ -342,7 +507,7 @@ const updateOrderStatus = async (req, res) => {
         customer: order.customer,
         orderId: order.orderId,
         restaurant,
-        estimatedDelivery: order.estimatedDelivery
+        estimatedDelivery: order.estimatedDeliveryTime
       });
     } else if (status === 'delivered') {
       await NotificationService.sendOrderDeliveredNotification({
@@ -419,10 +584,15 @@ const cancelOrder = async (req, res) => {
 };
 
 module.exports = {
+  // Existing exports
   createOrder,
   getOrderById,
   getUserOrders,
   getRestaurantOrders,
   updateOrderStatus,
-  cancelOrder
+  cancelOrder,
+  // New exports
+  getAvailableOrders,
+  assignDriver,
+  getDriverOrders
 };

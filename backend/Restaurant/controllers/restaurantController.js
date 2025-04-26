@@ -1,4 +1,5 @@
 const Restaurant = require("../models/restaurant");
+const jwt = require("jsonwebtoken");
 
 // @desc    Register a new restaurant
 // @route   POST /api/restaurants/register
@@ -38,8 +39,17 @@ exports.registerRestaurant = async (req, res, next) => {
       description,
     });
 
-    // Generate JWT token
-    const token = restaurant.getSignedToken();
+    // Generate JWT token with role included
+    const token = jwt.sign(
+      {
+        id: restaurant._id,
+        role: restaurant.role, // Include role in the token
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: process.env.JWT_EXPIRE,
+      }
+    );
 
     res.status(201).json({
       success: true,
@@ -49,6 +59,7 @@ exports.registerRestaurant = async (req, res, next) => {
         name: restaurant.name,
         email: restaurant.email,
         status: restaurant.status,
+        role: restaurant.role,
       },
     });
   } catch (error) {
@@ -91,8 +102,17 @@ exports.loginRestaurant = async (req, res, next) => {
       });
     }
 
-    // Generate JWT token
-    const token = restaurant.getSignedToken();
+    // Generate JWT token with role included
+    const token = jwt.sign(
+      {
+        id: restaurant._id,
+        role: restaurant.role,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: process.env.JWT_EXPIRE,
+      }
+    );
 
     res.status(200).json({
       success: true,
@@ -102,6 +122,7 @@ exports.loginRestaurant = async (req, res, next) => {
         name: restaurant.name,
         email: restaurant.email,
         status: restaurant.status,
+        role: restaurant.role,
       },
     });
   } catch (error) {

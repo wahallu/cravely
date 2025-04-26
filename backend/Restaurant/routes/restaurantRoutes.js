@@ -7,6 +7,10 @@ const {
   getAllRestaurants,
   getRestaurantById,
 } = require("../controllers/restaurantController");
+const {
+  getRestaurantOrders,
+  updateOrderStatus,
+} = require("../controllers/restaurantOrderController");
 const { authenticate } = require("../middleware/authenticate");
 
 const router = express.Router();
@@ -25,5 +29,9 @@ router.put("/profile", authenticate, updateRestaurantProfile);
 router.get("/dashboard", authenticate, (req, res) => {
   res.json({ success: true, message: "Dashboard data" });
 });
+
+// Order-related routes
+router.get("/orders", authenticate, getRestaurantOrders);
+router.put("/orders/:id/status", authenticate, updateOrderStatus);
 
 module.exports = router;
