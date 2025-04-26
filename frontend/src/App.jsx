@@ -64,7 +64,7 @@ export default function App() {
           {/* Order */}
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
-          <Route path="/confirmation" element={<OrderConfirmation />} />
+          <Route path="/confirmation/:orderId?" element={<OrderConfirmation />} />
           <Route path="/orders" element={<MyOrders />} />
           <Route path="/orders/:id" element={<Order />} />
 

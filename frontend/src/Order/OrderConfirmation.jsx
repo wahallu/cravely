@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Header from '../Home/components/header';
 import Footer from '../Home/components/footer';
@@ -16,18 +16,54 @@ import {
   FaEnvelope,
   FaPhone,
   FaInfo,
-  FaClock
+  FaClock,
+  FaSpinner
 } from 'react-icons/fa';
+import { useGetOrderByIdQuery } from '../Redux/slices/orderSlice';
+import toast from 'react-hot-toast';
 
 export default function OrderConfirmation() {
   const location = useLocation();
+  const { orderId: urlOrderId } = useParams();
   const [orderDetails, setOrderDetails] = useState(null);
   const [loadingStage, setLoadingStage] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Retrieve the order details passed from checkout
+  // Get the orderId - either from URL params or location state
+  const orderId = urlOrderId || location.state?.orderDetails?.orderId;
+  
+  // Use RTK Query to fetch order data if we have an ID
+  const {
+    data: fetchedOrder,
+    isLoading: isOrderLoading,
+    isError: isOrderError,
+    error: orderError
+  } = useGetOrderByIdQuery(orderId, {
+    skip: !orderId || !!location.state?.orderDetails // Skip if no ID or if we already have data
+  });
+
+  // Retrieve the order details passed from checkout or from API
   useEffect(() => {
+    // If we have data from location state, use it immediately
     if (location.state?.orderDetails) {
       setOrderDetails(location.state.orderDetails);
+      setIsLoading(false);
+      
+      // Stagger loading animation stages
+      const timer1 = setTimeout(() => setLoadingStage(1), 400);
+      const timer2 = setTimeout(() => setLoadingStage(2), 800);
+      const timer3 = setTimeout(() => setLoadingStage(3), 1200);
+      
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        clearTimeout(timer3);
+      };
+    } 
+    // If we're fetching from API and have results
+    else if (fetchedOrder && !isOrderLoading) {
+      setOrderDetails(fetchedOrder);
+      setIsLoading(false);
       
       // Stagger loading animation stages
       const timer1 = setTimeout(() => setLoadingStage(1), 400);
@@ -40,10 +76,39 @@ export default function OrderConfirmation() {
         clearTimeout(timer3);
       };
     }
-  }, [location.state]);
+  }, [location.state, fetchedOrder, isOrderLoading]);
 
-  // If no order details (direct navigation), show a fallback
-  if (!orderDetails) {
+  // Show error if API fetch fails
+  useEffect(() => {
+    if (isOrderError && orderError) {
+      toast.error('Failed to load order details');
+      console.error('Order fetch error:', orderError);
+    }
+  }, [isOrderError, orderError]);
+
+  // Show loading state when fetching from API
+  if (isLoading || isOrderLoading) {
+    return (
+      <>
+        <Header />
+        <div className="container mx-auto px-4 py-16 text-center">
+          <div className="max-w-md mx-auto">
+            <div className="bg-white p-8 rounded-lg shadow-lg">
+              <FaSpinner className="animate-spin text-orange-500 text-4xl mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Loading Order Details</h2>
+              <p className="text-gray-600">
+                Please wait while we retrieve your order information...
+              </p>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  // If no order details (direct navigation without orderId), show a fallback
+  if (!orderDetails && !isOrderLoading) {
     return (
       <>
         <Header />
@@ -52,11 +117,17 @@ export default function OrderConfirmation() {
             <div className="bg-orange-100 p-8 rounded-lg shadow-lg">
               <h2 className="text-2xl font-bold text-gray-800 mb-4">No Order Details Found</h2>
               <p className="text-gray-600 mb-6">
-                It seems you've navigated here directly without completing a purchase.
+                It seems you've navigated here directly without providing a valid order ID.
               </p>
               <Link 
+                to="/orders" 
+                className="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors mr-4"
+              >
+                <FaReceipt className="mr-2" /> View My Orders
+              </Link>
+              <Link 
                 to="/" 
-                className="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                className="inline-flex items-center px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
               >
                 <FaArrowLeft className="mr-2" /> Return to Homepage
               </Link>
@@ -88,10 +159,11 @@ export default function OrderConfirmation() {
     }
   };
 
-  const { orderId, items, total, customer, subtotal, tax, deliveryFee, status, createdAt } = orderDetails;
+  const { items, total, customer, subtotal, tax, deliveryFee, status, createdAt } = orderDetails;
+  console.log('Order Details:', orderDetails);
   
   // Ensure order ID is properly displayed
-  const displayOrderId = orderId || orderDetails.id || 'N/A';
+  const displayOrderId = orderId || orderDetails.id || orderDetails._id || 'N/A';
   
   // Calculate the amounts if not provided
   const orderSubtotal = subtotal || items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -116,6 +188,44 @@ export default function OrderConfirmation() {
     hour: '2-digit',
     minute: '2-digit'
   });
+
+  // Get status indicator width based on order status
+  const getStatusIndicatorWidth = () => {
+    switch(status?.toLowerCase()) {
+      case 'pending':
+        return '15%';
+      case 'confirmed':
+        return '40%';
+      case 'preparing':
+        return '65%';
+      case 'out_for_delivery':
+        return '90%';
+      case 'delivered':
+        return '100%';
+      case 'canceled':
+        return '100%';
+      default:
+        return '15%';
+    }
+  };
+
+  // Get status text colors
+  const getStatusTextColor = (statusName) => {
+    if (!status) return 'text-gray-500';
+    
+    const currentStatus = status.toLowerCase();
+    const statusOrder = ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered'];
+    const statusIndex = statusOrder.indexOf(currentStatus);
+    const thisStatusIndex = statusOrder.indexOf(statusName.toLowerCase());
+    
+    if (currentStatus === 'canceled') {
+      return statusName.toLowerCase() === 'canceled' ? 'text-red-600 font-medium' : 'text-gray-400';
+    } else if (thisStatusIndex <= statusIndex) {
+      return 'text-orange-600 font-medium';
+    } else {
+      return 'text-gray-500';
+    }
+  };
 
   return (
     <>
@@ -184,18 +294,34 @@ export default function OrderConfirmation() {
           >
             {/* Success Card */}
             <motion.div 
-              className="bg-white rounded-xl shadow-lg overflow-hidden mb-8 border-t-4 border-green-500"
+              className={`bg-white rounded-xl shadow-lg overflow-hidden mb-8 border-t-4 ${
+                status === 'canceled' ? 'border-red-500' : 'border-green-500'
+              }`}
               variants={itemVariants}
             >
               <div className="p-6">
                 <div className="flex flex-col sm:flex-row items-center justify-between">
                   <div className="flex items-center mb-4 sm:mb-0">
-                    <div className="bg-orange-100 p-3 rounded-full">
-                      <FaCheck className="text-orange-500 text-2xl" />
+                    <div className={`${
+                      status === 'canceled' ? 'bg-red-100' : 'bg-orange-100'
+                    } p-3 rounded-full`}>
+                      {status === 'canceled' ? (
+                        <FaTimes className="text-red-500 text-2xl" />
+                      ) : (
+                        <FaCheck className="text-orange-500 text-2xl" />
+                      )}
                     </div>
                     <div className="ml-4">
-                      <h1 className="text-2xl font-bold text-gray-800 mb-2">Order Placed!</h1>
-                      <p className="text-gray-600">Status: {status || 'Awaiting restaurant confirmation'}</p>
+                      <h1 className="text-2xl font-bold text-gray-800 mb-2">
+                        {status === 'canceled' ? 'Order Canceled' : 'Order Placed!'}
+                      </h1>
+                      <p className="text-gray-600">
+                        Status: <span className={`font-medium ${
+                          status === 'canceled' ? 'text-red-600' : 'text-green-600'
+                        }`}>
+                          {status || 'Awaiting restaurant confirmation'}
+                        </span>
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -204,22 +330,24 @@ export default function OrderConfirmation() {
                   </div>
                 </div>
                 
-                <div className="mt-6">
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <motion.div 
-                      className="h-full bg-orange-500 rounded-full" 
-                      initial={{ width: 0 }}
-                      animate={{ width: "15%" }}
-                      transition={{ duration: 1, delay: 0.5 }}
-                    />
+                {status !== 'canceled' && (
+                  <div className="mt-6">
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <motion.div 
+                        className="h-full bg-orange-500 rounded-full" 
+                        initial={{ width: 0 }}
+                        animate={{ width: getStatusIndicatorWidth() }}
+                        transition={{ duration: 1, delay: 0.5 }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-2 text-sm">
+                      <span className={getStatusTextColor('pending')}>Order Placed</span>
+                      <span className={getStatusTextColor('confirmed')}>Confirmed</span>
+                      <span className={getStatusTextColor('preparing')}>Preparing</span>
+                      <span className={getStatusTextColor('out_for_delivery')}>On the Way</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between mt-2 text-sm">
-                    <span className="font-medium text-orange-600">Order Placed</span>
-                    <span className="text-orange-500">Awaiting Confirmation</span>
-                    <span className="text-gray-500">Preparing</span>
-                    <span className="text-gray-500">On the Way</span>
-                  </div>
-                </div>
+                )}
               </div>
             </motion.div>
 
@@ -238,7 +366,7 @@ export default function OrderConfirmation() {
                   <div className="space-y-4 mb-6">
                     {items.map((item, index) => (
                       <motion.div
-                        key={item.id}
+                        key={item.id || index}
                         className="flex justify-between items-center py-3 border-b border-gray-50"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -246,9 +374,9 @@ export default function OrderConfirmation() {
                       >
                         <div className="flex items-start">
                           <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center text-orange-500 mr-3">
-                            {item.image ? (
+                            {item.imageUrl || item.image ? (
                               <img 
-                                src={item.image} 
+                                src={item.imageUrl || item.image} 
                                 alt={item.name}
                                 className="h-full w-full object-cover rounded-full"
                               />
@@ -267,20 +395,97 @@ export default function OrderConfirmation() {
                   </div>
                   
                   {/* Restaurant confirmation notice */}
-                  <div className="bg-blue-50 border-l-4 border-blue-400 p-4 my-6">
-                    <div className="flex">
-                      <div className="flex-shrink-0">
-                        <FaInfo className="text-blue-400" />
-                      </div>
-                      <div className="ml-3">
-                        <p className="text-sm text-blue-700">
-                          Your payment has been processed successfully. Your order has been sent to the restaurant
-                          and is awaiting confirmation. You'll receive a notification once the restaurant confirms
-                          your order.
-                        </p>
+                  {status === 'pending' && (
+                    <div className="bg-blue-50 border-l-4 border-blue-400 p-4 my-6">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <FaInfo className="text-blue-400" />
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-blue-700">
+                            Your payment has been processed successfully. Your order has been sent to the restaurant
+                            and is awaiting confirmation. You'll receive a notification once the restaurant confirms
+                            your order.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
+                  
+                  {status === 'confirmed' && (
+                    <div className="bg-green-50 border-l-4 border-green-400 p-4 my-6">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <FaCheck className="text-green-400" />
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-green-700">
+                            Your order has been confirmed by the restaurant. They're preparing your food now!
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {status === 'preparing' && (
+                    <div className="bg-blue-50 border-l-4 border-blue-400 p-4 my-6">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <FaUtensils className="text-blue-400" />
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-blue-700">
+                            The restaurant is currently preparing your food. It will be ready for delivery soon!
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {status === 'out_for_delivery' && (
+                    <div className="bg-purple-50 border-l-4 border-purple-400 p-4 my-6">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <FaTruck className="text-purple-400" />
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-purple-700">
+                            Your order is on the way! Track your delivery in real-time on the order tracking page.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {status === 'delivered' && (
+                    <div className="bg-green-50 border-l-4 border-green-400 p-4 my-6">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <FaCheck className="text-green-400" />
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-green-700">
+                            Your order has been delivered successfully! We hope you enjoy your meal.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {status === 'canceled' && (
+                    <div className="bg-red-50 border-l-4 border-red-400 p-4 my-6">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <FaTimes className="text-red-400" />
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-red-700">
+                            This order has been canceled. If you have any questions, please contact customer service.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Order Summary */}
                   <div className="bg-gray-50 p-4 rounded-lg">
@@ -321,7 +526,10 @@ export default function OrderConfirmation() {
                       <div>
                         <p className="text-sm text-gray-500">Delivery Address</p>
                         <p className="font-medium text-gray-800">
-                          {customer.address}, {customer.city}, {customer.state} {customer.zipCode}
+                          {customer.address}
+                          {customer.city && `, ${customer.city}`}
+                          {customer.state && `, ${customer.state}`}
+                          {customer.zipCode && ` ${customer.zipCode}`}
                         </p>
                       </div>
                     </div>
@@ -334,9 +542,9 @@ export default function OrderConfirmation() {
                         <p className="text-sm text-gray-500">Estimated Delivery</p>
                         <p className="font-medium text-gray-800">
                           {formattedDeliveryDate}{' '}
-                          {orderDetails.deliveryWindow && (
+                          {(orderDetails.deliveryWindow || orderDetails.estimatedDeliveryTime) && (
                             <span className="text-orange-500">
-                              ({orderDetails.deliveryWindow}
+                              ({orderDetails.deliveryWindow || ''}
                               {orderDetails.estimatedDeliveryTime && ` by ${orderDetails.estimatedDeliveryTime}`})
                             </span>
                           )}
@@ -346,7 +554,7 @@ export default function OrderConfirmation() {
                     
                     <div className="flex items-start">
                       <div className="bg-orange-100 p-2 rounded-full text-orange-500 mr-3 mt-1">
-                        <FaCalendarAlt />
+                        <FaClock />
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Order Date</p>
@@ -371,12 +579,12 @@ export default function OrderConfirmation() {
                       <div>
                         <p className="text-sm text-gray-500">Name</p>
                         <p className="font-medium text-gray-800">
-                          {customer.fullName}
+                          {customer.fullName || customer.name || 'Customer'}
                         </p>
                       </div>
                     </div>
                     
-                    {customer.email && (
+                    {(customer.email || orderDetails.email) && (
                       <div className="flex items-start">
                         <div className="bg-orange-100 p-2 rounded-full text-orange-500 mr-3 mt-1">
                           <FaEnvelope />
@@ -384,7 +592,7 @@ export default function OrderConfirmation() {
                         <div>
                           <p className="text-sm text-gray-500">Email</p>
                           <p className="font-medium text-gray-800">
-                            {customer.email}
+                            {customer.email || orderDetails.email}
                           </p>
                         </div>
                       </div>
@@ -397,7 +605,7 @@ export default function OrderConfirmation() {
                       <div>
                         <p className="text-sm text-gray-500">Phone</p>
                         <p className="font-medium text-gray-800">
-                          {customer.phone}
+                          {customer.phone || orderDetails.phone || 'Not provided'}
                         </p>
                       </div>
                     </div>
@@ -419,6 +627,16 @@ export default function OrderConfirmation() {
                     Back to Home
                   </Link>
                 </div>
+                
+                {/* Live tracking button for orders that are out for delivery */}
+                {status === 'out_for_delivery' && (
+                  <Link 
+                    to={`/tracking/${displayOrderId}`} 
+                    className="bg-purple-500 hover:bg-purple-600 text-white py-3 px-4 rounded-lg text-center font-medium transition-all transform hover:-translate-y-1 flex items-center justify-center"
+                  >
+                    <FaTruck className="mr-2" /> Track Your Delivery
+                  </Link>
+                )}
               </motion.div>
             </div>
           </motion.div>

@@ -283,6 +283,9 @@ function CheckoutForm({
         if (result.success) {
           console.log("Cash order creation succeeded:", result);
 
+          // Get the real order ID from the API response
+          const realOrderId = result.order.orderId || result.order._id;
+
           // Clear both Redux store cart and backend cart
           dispatch(clearCart());
 
@@ -295,7 +298,7 @@ function CheckoutForm({
             // Continue with success flow even if backend cart clearing fails
           }
 
-          onPaymentSuccess();
+          onPaymentSuccess(realOrderId);
         } else {
           setCardError("Failed to create order: " + (result.message || "Unknown error"));
         }
@@ -501,6 +504,8 @@ function CheckoutForm({
             try {
               const result = await createOrder(orderData).unwrap();
 
+              const realOrderId = result.order.orderId || result.order._id;
+
               if (result.success) {
                 console.log("Order creation succeeded:", result);
 
@@ -516,7 +521,7 @@ function CheckoutForm({
                   // Continue with success flow even if backend cart clearing fails
                 }
 
-                onPaymentSuccess();
+                onPaymentSuccess(realOrderId);
               } else {
                 console.error("Order API returned success: false", result);
                 // Even if the order recording failed, payment was successful
@@ -528,7 +533,7 @@ function CheckoutForm({
                   console.error("Error clearing backend cart:", clearCartError);
                 }
 
-                onPaymentSuccess();
+                onPaymentSuccess(realOrderId);
               }
             } catch (orderApiError) {
               console.error("Order API error:", orderApiError);
@@ -1388,7 +1393,7 @@ export default function Checkout() {
   const formSubmitRef = useRef(null);
 
   // Handle payment success and redirect
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = (orderId) => {
     setShowSuccessAnimation(true);
 
     const deliveryInfo = calculateEstimatedDelivery(cartSummary.items[0]?.restaurantId, formData);
@@ -1399,10 +1404,10 @@ export default function Checkout() {
     setTimeout(() => {
       setPaymentSuccessful(true);
       setTimeout(() => {
-        navigate('/confirmation', {
+        navigate(`/confirmation/${orderId}`, {
           state: {
             orderDetails: {
-              orderId: 'ORD-' + Date.now().toString().slice(-6),
+              orderId: orderId,
               items: cartSummary.items,
               total: cartSummary.total,
               customer: formData,
@@ -1464,6 +1469,9 @@ export default function Checkout() {
         if (result.success) {
           console.log("Order creation succeeded:", result);
 
+          // Get the real order ID from the API response
+          const realOrderId = result.order.orderId || result.order._id;
+
           // Clear cart in Redux
           dispatch(clearCart());
 
@@ -1476,7 +1484,7 @@ export default function Checkout() {
             // Continue with success flow even if cart clearing fails
           }
 
-          handlePaymentSuccess();
+          handlePaymentSuccess(realOrderId);
         } else {
           console.error("Order API returned success: false", result);
           toast.error("Failed to create order: " + (result.message || "Unknown error"));
