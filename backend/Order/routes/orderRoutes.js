@@ -10,7 +10,8 @@ const {
   // Add new controller functions
   getAvailableOrders,
   assignDriver,
-  getDriverOrders
+  getDriverOrders,
+  completeDelivery // <- include completeDelivery here
 } = require('../controllers/orderController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -32,4 +33,8 @@ router.get(
   authorize('driver', 'delivery'),  
   getDriverOrders
 );
+
+// Add this route
+router.put('/:id/delivered', protect, authorize('driver', 'delivery'), completeDelivery);
+
 module.exports = router;
