@@ -7,34 +7,29 @@ const {
   getRestaurantOrders, 
   updateOrderStatus, 
   cancelOrder,
-  // Add new controller functions
   getAvailableOrders,
   assignDriver,
   getDriverOrders,
-  completeDelivery // <- include completeDelivery here
+  completeDelivery
 } = require('../controllers/orderController');
 const { protect, authorize } = require('../middleware/auth');
 
-// Existing routes
-router.post('/', protect, createOrder);
-router.get('/:id', protect, getOrderById);
-router.get('/user/me', protect, getUserOrders);
-router.get('/restaurant/:id', protect, authorize('admin', 'restaurant'), getRestaurantOrders);
-router.put('/:id/status', protect, authorize('admin', 'restaurant', 'delivery'), updateOrderStatus);
-router.put('/:id/cancel', protect, cancelOrder);
-
+// Define specific routes BEFORE parameterized routes
 // New routes for driver functionality
 router.get('/available-for-delivery', protect, authorize('delivery', 'driver'), getAvailableOrders);
-router.put('/:id/assign-driver', protect, authorize('delivery', 'driver'), assignDriver);
-router.get('/driver/:driverId', protect, authorize('delivery', 'driver'), getDriverOrders);
-router.get(
-  '/driver/my-orders', 
-  protect,
-  authorize('driver', 'delivery'),  
-  getDriverOrders
-);
+router.get('/user/me', protect, getUserOrders);
+router.get('/driver/my-orders', protect, authorize('driver', 'delivery'), getDriverOrders);
 
-// Add this route
+// Then define parameterized routes
+router.get('/restaurant/:id', protect, authorize('admin', 'restaurant'), getRestaurantOrders);
+router.get('/driver/:driverId', protect, authorize('delivery', 'driver'), getDriverOrders);
+router.get('/:id', protect, getOrderById);
+
+// Order action routes
+router.post('/', protect, createOrder);
+router.put('/:id/status', protect, authorize('admin', 'restaurant', 'delivery', 'driver'), updateOrderStatus);
+router.put('/:id/assign-driver', protect, authorize('delivery', 'driver'), assignDriver);
 router.put('/:id/delivered', protect, authorize('driver', 'delivery'), completeDelivery);
+router.put('/:id/cancel', protect, cancelOrder);
 
 module.exports = router;

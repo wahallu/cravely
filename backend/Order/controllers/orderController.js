@@ -316,16 +316,26 @@ const getRestaurantOrders = async (req, res) => {
  */
 const getAvailableOrders = async (req, res) => {
   try {
-    // Find orders with status "out_for_delivery" and no driver assigned
+    // Find orders with status "preparing" that are ready for pickup
     const orders = await Order.find({ 
-      status: 'out_for_delivery',
+      status: 'preparing',
       driverId: null
     }).sort({ createdAt: -1 });
+    
+    // Add restaurant info to each order
+    const ordersWithRestaurants = await Promise.all(orders.map(async (order) => {
+      const restaurant = await RestaurantService.getRestaurantById(order.restaurantId);
+      
+      return {
+        ...order._doc,
+        restaurant
+      };
+    }));
     
     res.status(200).json({
       success: true,
       count: orders.length,
-      orders
+      orders: ordersWithRestaurants
     });
   } catch (error) {
     console.error('Error fetching available orders:', error);

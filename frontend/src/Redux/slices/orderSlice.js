@@ -124,6 +124,15 @@ export const orderApi = createApi({
       transformResponse: (response) => response,
       providesTags: ["Order"],
     }),
+    
+    // Add the query for available orders for drivers to pick up
+    getAvailableOrdersForDelivery: builder.query({
+      query: () => "/orders/available-for-delivery",
+      transformResponse: (response) => response.orders || [],
+      providesTags: ["Order"],
+      // Poll for new available orders every 30 seconds
+      pollingInterval: 30000
+    }),
   }),
 });
 
@@ -137,6 +146,6 @@ export const {
   useConfirmPaymentMutation,
   useSavePaymentMethodMutation,
   useGetUserPaymentMethodsQuery,
-  // Export the new query hook
   useGetRestaurantOrdersQuery,
+  useGetAvailableOrdersForDeliveryQuery,
 } = orderApi;
