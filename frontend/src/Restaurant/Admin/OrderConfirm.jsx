@@ -33,7 +33,9 @@ const OrderConfirm = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [filteredOrders, setFilteredOrders] = useState([]);
+  const [confirmedOrders, setConfirmedOrders] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("pending"); // Add tab state for switching between pending and confirmed orders
 
   // Get authenticated restaurant information
   const restaurantInfo = getRestaurantInfo();
@@ -46,12 +48,12 @@ const OrderConfirm = () => {
     restaurantData?.data?._id ||
     restaurantData?._id;
 
-  // Fetch restaurant orders with a status filter for "pending"
+  // Fetch restaurant orders with a status filter for "pending" and "confirmed"
   const {
-    data: ordersData = { orders: [] },
-    isLoading,
-    error,
-    refetch,
+    data: pendingOrdersData = { orders: [] },
+    isLoading: isLoadingPending,
+    error: pendingError,
+    refetch: refetchPending,
   } = useGetRestaurantOrdersQuery(
     { restaurantId, status: "pending" },
     {
@@ -61,13 +63,28 @@ const OrderConfirm = () => {
     }
   );
 
+  // Fetch confirmed orders separately
+  const {
+    data: confirmedOrdersData = { orders: [] },
+    isLoading: isLoadingConfirmed,
+    error: confirmedError,
+    refetch: refetchConfirmed,
+  } = useGetRestaurantOrdersQuery(
+    { restaurantId, status: "confirmed" },
+    {
+      skip: !restaurantId,
+      pollingInterval: 30000,
+      refetchOnMountOrArgChange: true,
+    }
+  );
+
   // Update status mutation hook
   const [updateOrderStatus] = useUpdateOrderStatusMutation();
 
   // Filter orders based on search term
   useEffect(() => {
-    if (ordersData && ordersData.orders) {
-      let filtered = [...ordersData.orders];
+    if (pendingOrdersData && pendingOrdersData.orders) {
+      let filtered = [...pendingOrdersData.orders];
 
       // Apply search term filter
       if (searchTerm) {
@@ -83,15 +100,33 @@ const OrderConfirm = () => {
 
       setFilteredOrders(filtered);
     }
-  }, [ordersData, searchTerm]);
+
+    if (confirmedOrdersData && confirmedOrdersData.orders) {
+      let filtered = [...confirmedOrdersData.orders];
+      
+      // Apply search term filter
+      if (searchTerm) {
+        filtered = filtered.filter(
+          (order) =>
+            order.orderId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            order.customer?.fullName
+              ?.toLowerCase()
+              .includes(searchTerm.toLowerCase()) ||
+            order.customer?.phone?.includes(searchTerm)
+        );
+      }
+
+      setConfirmedOrders(filtered);
+    }
+  }, [pendingOrdersData, confirmedOrdersData, searchTerm]);
 
   // Handle errors in loading orders
   useEffect(() => {
-    if (error) {
-      toast.error("Failed to load pending orders. Please try again.");
-      console.error("Error fetching restaurant orders:", error);
+    if (pendingError || confirmedError) {
+      toast.error("Failed to load orders. Please try again.");
+      console.error("Error fetching restaurant orders:", pendingError || confirmedError);
     }
-  }, [error]);
+  }, [pendingError, confirmedError]);
 
   const handleUpdateOrderStatus = async (
     orderId,
@@ -102,15 +137,27 @@ const OrderConfirm = () => {
     try {
       setIsUpdating(true);
 
-      console.log("update start")
+      // Convert time estimate string to an actual Date object
+      let estimatedDeliveryDate = null;
+      if (estimatedTime) {
+        // Parse the minutes from the string format (e.g., "20-30 min")
+        const minutesMatch = estimatedTime.match(/(\d+)/);
+        const minutes = minutesMatch ? parseInt(minutesMatch[1]) : 30; // Default to 30 mins
+        
+        // Calculate estimated delivery time based on current time + minutes
+        estimatedDeliveryDate = new Date();
+        estimatedDeliveryDate.setMinutes(estimatedDeliveryDate.getMinutes() + minutes);
+      }
 
       // Use the RTK Query mutation with the correct request format
       const result = await updateOrderStatus({
         orderId,
         status: newStatus,
-        // Include any additional data needed for notifications
-        estimatedDelivery: estimatedTime,
+        // Send the Date object instead of the string
+        estimatedDelivery: estimatedDeliveryDate,
         restaurantName: restaurantName,
+        // Keep the original string for display purposes
+        estimatedTimeDisplay: estimatedTime
       }).unwrap();
 
       // Close modal if open
@@ -128,7 +175,8 @@ const OrderConfirm = () => {
       toast.success(statusMessages[newStatus] || "Order status updated!");
 
       // Refetch orders to get the latest data
-      refetch();
+      refetchPending();
+      refetchConfirmed();
     } catch (error) {
       console.error("Status update error:", error);
       toast.error("Failed to update order status. Please try again.");
@@ -218,7 +266,7 @@ const OrderConfirm = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoadingPending && isLoadingConfirmed) {
     return (
       <div className="flex items-center justify-center h-screen">
         <FaSpinner className="animate-spin text-orange-500 text-4xl" />
@@ -231,7 +279,7 @@ const OrderConfirm = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">
-            Pending Orders Management
+            Order Management
           </h1>
 
           {/* Search input */}
@@ -249,126 +297,297 @@ const OrderConfirm = () => {
           </div>
         </div>
 
-        {/* Orders count */}
-        <p className="text-gray-600 mb-4">
-          {filteredOrders.length} pending{" "}
-          {filteredOrders.length === 1 ? "order" : "orders"} found
-        </p>
-
-        {/* Orders Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredOrders.map((order) => (
-            <motion.div
-              key={order.orderId || order._id}
-              className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-              whileHover={{ y: -5 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="p-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="font-bold text-lg text-gray-800">
-                      {order.orderId}
-                    </h2>
-                    <p className="text-sm text-gray-500">
-                      {formatDate(order.createdAt)}
-                    </p>
-                  </div>
-                  <div className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-medium flex items-center">
-                    <FaRegClock className="text-yellow-500 mr-1" />
-                    <span>Pending Confirmation</span>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <div className="flex items-center text-sm text-gray-600 mb-2">
-                    <FaUser className="mr-2" />
-                    <span>{order.customer?.fullName || "Customer"}</span>
-                  </div>
-                  <div className="flex items-center text-sm text-gray-600 mb-2">
-                    <FaPhone className="mr-2" />
-                    <span>{order.customer?.phone || "No phone"}</span>
-                  </div>
-                  <div className="flex items-start text-sm text-gray-600">
-                    <FaMapMarkerAlt className="mr-2 mt-1 flex-shrink-0" />
-                    <span className="line-clamp-2">
-                      {order.customer?.address || "No address provided"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-gray-600">Items:</span>
-                    <span className="font-medium">
-                      {order.items?.length || 0}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-gray-600">Payment:</span>
-                    <span className="font-medium flex items-center">
-                      {getPaymentInfo(order.payment).icon}
-                      <span className="ml-1">
-                        {getPaymentInfo(order.payment).text}
-                      </span>
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-800 font-medium">Total:</span>
-                    <span className="text-orange-600 font-bold">
-                      ${(order.total || 0).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Order actions */}
-                <div className="mt-6 flex space-x-3">
-                  <button
-                    onClick={() => openOrderDetails(order)}
-                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 rounded-lg font-medium transition-colors"
-                  >
-                    View Details
-                  </button>
-                  <button
-                    onClick={() =>
-                      handleUpdateOrderStatus(order.orderId, "confirmed")
-                    }
-                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg font-medium transition-colors"
-                    disabled={isUpdating}
-                  >
-                    Confirm
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+        {/* Tab Navigation */}
+        <div className="flex mb-6 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab("pending")}
+            className={`py-3 px-6 font-medium text-sm transition-colors ${
+              activeTab === "pending"
+                ? "border-b-2 border-orange-500 text-orange-500"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
+          >
+            Pending Orders ({filteredOrders.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("confirmed")}
+            className={`py-3 px-6 font-medium text-sm transition-colors ${
+              activeTab === "confirmed"
+                ? "border-b-2 border-orange-500 text-orange-500"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
+          >
+            Confirmed Orders ({confirmedOrders.length})
+          </button>
         </div>
 
-        {/* Empty state */}
-        {filteredOrders.length === 0 && (
-          <div className="bg-white rounded-xl shadow-md p-8 text-center">
-            <FaShoppingBag className="text-gray-300 text-5xl mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-700">
-              No Pending Orders
-            </h2>
-            <p className="text-gray-500 mt-2">
-              {searchTerm
-                ? `No orders matching "${searchTerm}" found.`
-                : "There are no pending orders at the moment."}
+        {/* Pending Orders Section */}
+        {activeTab === "pending" && (
+          <>
+            {/* Orders count */}
+            <p className="text-gray-600 mb-4">
+              {filteredOrders.length} pending{" "}
+              {filteredOrders.length === 1 ? "order" : "orders"} found
             </p>
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm("")}
-                className="mt-4 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
-              >
-                Clear Search
-              </button>
+
+            {/* Orders Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredOrders.map((order) => (
+                <motion.div
+                  key={order.orderId || order._id}
+                  className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                  whileHover={{ y: -5 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="p-6">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h2 className="font-bold text-lg text-gray-800">
+                          {order.orderId}
+                        </h2>
+                        <p className="text-sm text-gray-500">
+                          {formatDate(order.createdAt)}
+                        </p>
+                      </div>
+                      <div className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-medium flex items-center">
+                        <FaRegClock className="text-yellow-500 mr-1" />
+                        <span>Pending Confirmation</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      {/* Order details... (existing code) */}
+                      <div className="flex items-center text-sm text-gray-600 mb-2">
+                        <FaUser className="mr-2" />
+                        <span>{order.customer?.fullName || "Customer"}</span>
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600 mb-2">
+                        <FaPhone className="mr-2" />
+                        <span>{order.customer?.phone || "No phone"}</span>
+                      </div>
+                      <div className="flex items-start text-sm text-gray-600">
+                        <FaMapMarkerAlt className="mr-2 mt-1 flex-shrink-0" />
+                        <span className="line-clamp-2">
+                          {order.customer?.address || "No address provided"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      {/* Order summary... (existing code) */}
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-gray-600">Items:</span>
+                        <span className="font-medium">
+                          {order.items?.length || 0}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-gray-600">Payment:</span>
+                        <span className="font-medium flex items-center">
+                          {getPaymentInfo(order.payment).icon}
+                          <span className="ml-1">
+                            {getPaymentInfo(order.payment).text}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-800 font-medium">Total:</span>
+                        <span className="text-orange-600 font-bold">
+                          ${(order.total || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Order actions */}
+                    <div className="mt-6 flex space-x-3">
+                      <button
+                        onClick={() => openOrderDetails(order)}
+                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 rounded-lg font-medium transition-colors"
+                      >
+                        View Details
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleUpdateOrderStatus(
+                            order.orderId,
+                            "confirmed",
+                            restaurantInfo?.name,
+                            "30-45 min"
+                          )
+                        }
+                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg font-medium transition-colors"
+                        disabled={isUpdating}
+                      >
+                        Confirm
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Empty state for pending orders */}
+            {filteredOrders.length === 0 && (
+              <div className="bg-white rounded-xl shadow-md p-8 text-center">
+                <FaShoppingBag className="text-gray-300 text-5xl mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-gray-700">
+                  No Pending Orders
+                </h2>
+                <p className="text-gray-500 mt-2">
+                  {searchTerm
+                    ? `No orders matching "${searchTerm}" found.`
+                    : "There are no pending orders at the moment."}
+                </p>
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="mt-4 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+                  >
+                    Clear Search
+                  </button>
+                )}
+              </div>
             )}
-          </div>
+          </>
+        )}
+
+        {/* Confirmed Orders Section */}
+        {activeTab === "confirmed" && (
+          <>
+            {/* Confirmed orders count */}
+            <p className="text-gray-600 mb-4">
+              {confirmedOrders.length} confirmed{" "}
+              {confirmedOrders.length === 1 ? "order" : "orders"} found
+            </p>
+
+            {/* Confirmed Orders Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {confirmedOrders.map((order) => (
+                <motion.div
+                  key={order.orderId || order._id}
+                  className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                  whileHover={{ y: -5 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="p-6">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h2 className="font-bold text-lg text-gray-800">
+                          {order.orderId}
+                        </h2>
+                        <p className="text-sm text-gray-500">
+                          {formatDate(order.createdAt)}
+                        </p>
+                      </div>
+                      <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium flex items-center">
+                        <FaCheckCircle className="text-blue-500 mr-1" />
+                        <span>Confirmed</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      {/* Order details */}
+                      <div className="flex items-center text-sm text-gray-600 mb-2">
+                        <FaUser className="mr-2" />
+                        <span>{order.customer?.fullName || "Customer"}</span>
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600 mb-2">
+                        <FaPhone className="mr-2" />
+                        <span>{order.customer?.phone || "No phone"}</span>
+                      </div>
+                      <div className="flex items-start text-sm text-gray-600">
+                        <FaMapMarkerAlt className="mr-2 mt-1 flex-shrink-0" />
+                        <span className="line-clamp-2">
+                          {order.customer?.address || "No address provided"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      {/* Order summary */}
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-gray-600">Items:</span>
+                        <span className="font-medium">
+                          {order.items?.length || 0}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-gray-600">Payment:</span>
+                        <span className="font-medium flex items-center">
+                          {getPaymentInfo(order.payment).icon}
+                          <span className="ml-1">
+                            {getPaymentInfo(order.payment).text}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-800 font-medium">Total:</span>
+                        <span className="text-orange-600 font-bold">
+                          ${(order.total || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Order actions - Now with preparing button */}
+                    <div className="mt-6 flex space-x-3">
+                      <button
+                        onClick={() => openOrderDetails(order)}
+                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 rounded-lg font-medium transition-colors"
+                      >
+                        View Details
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleUpdateOrderStatus(
+                            order.orderId,
+                            "preparing",
+                            restaurantInfo?.name,
+                            "20-30 min"
+                          )
+                        }
+                        className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center"
+                        disabled={isUpdating}
+                      >
+                        {isUpdating ? (
+                          <FaSpinner className="animate-spin mr-2" />
+                        ) : (
+                          <FaUtensils className="mr-2" />
+                        )}
+                        Start Preparing
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Empty state for confirmed orders */}
+            {confirmedOrders.length === 0 && (
+              <div className="bg-white rounded-xl shadow-md p-8 text-center">
+                <FaShoppingBag className="text-gray-300 text-5xl mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-gray-700">
+                  No Confirmed Orders
+                </h2>
+                <p className="text-gray-500 mt-2">
+                  {searchTerm
+                    ? `No orders matching "${searchTerm}" found.`
+                    : "There are no confirmed orders waiting to be prepared."}
+                </p>
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="mt-4 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+                  >
+                    Clear Search
+                  </button>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Order Details Modal */}
+      {/* Order Details Modal - update to handle both pending and confirmed orders */}
       <AnimatePresence>
         {isModalOpen && activeOrder && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -407,12 +626,14 @@ const OrderConfirm = () => {
                 <div className="mb-6 pb-6 border-b border-gray-200">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center">
-                      <div className="bg-yellow-100 p-3 rounded-full mr-4 text-yellow-500">
-                        <FaRegClock />
+                      <div className={`p-3 rounded-full mr-4 ${
+                        activeOrder.status === 'pending' ? 'bg-yellow-100 text-yellow-500' : 'bg-blue-100 text-blue-500'
+                      }`}>
+                        {activeOrder.status === 'pending' ? <FaRegClock /> : <FaCheckCircle />}
                       </div>
                       <div>
                         <h3 className="font-bold text-gray-800 text-lg">
-                          Pending Confirmation
+                          {formatStatus(activeOrder.status)}
                         </h3>
                         <p className="text-gray-600 text-sm">
                           {formatDate(activeOrder.createdAt)}
@@ -420,28 +641,56 @@ const OrderConfirm = () => {
                       </div>
                     </div>
                     <div className="flex space-x-2">
+                      {activeOrder.status === 'pending' && (
+                        <button
+                          onClick={() =>
+                            handleUpdateOrderStatus(
+                              activeOrder.orderId,
+                              "confirmed",
+                              restaurantInfo?.name,
+                              "30-45 min"
+                            )
+                          }
+                          disabled={isUpdating}
+                          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center"
+                        >
+                          {isUpdating ? (
+                            <FaSpinner className="animate-spin mr-2" />
+                          ) : (
+                            <FaCheckCircle className="mr-2" />
+                          )}
+                          Confirm Order
+                        </button>
+                      )}
+                      
+                      {activeOrder.status === 'confirmed' && (
+                        <button
+                          onClick={() =>
+                            handleUpdateOrderStatus(
+                              activeOrder.orderId,
+                              "preparing",
+                              restaurantInfo?.name,
+                              "20-30 min"
+                            )
+                          }
+                          disabled={isUpdating}
+                          className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center"
+                        >
+                          {isUpdating ? (
+                            <FaSpinner className="animate-spin mr-2" />
+                          ) : (
+                            <FaUtensils className="mr-2" />
+                          )}
+                          Start Preparing
+                        </button>
+                      )}
+                      
                       <button
                         onClick={() =>
                           handleUpdateOrderStatus(
                             activeOrder.orderId,
-                            "confirmed"
-                          )
-                        }
-                        disabled={isUpdating}
-                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center"
-                      >
-                        {isUpdating ? (
-                          <FaSpinner className="animate-spin mr-2" />
-                        ) : (
-                          <FaCheckCircle className="mr-2" />
-                        )}
-                        Confirm Order
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleUpdateOrderStatus(
-                            activeOrder.orderId,
-                            "canceled"
+                            "canceled",
+                            restaurantInfo?.name
                           )
                         }
                         disabled={isUpdating}
@@ -458,6 +707,7 @@ const OrderConfirm = () => {
                   </div>
                 </div>
 
+                {/* Remaining modal content stays the same... */}
                 {/* Order Items Section */}
                 <div className="mb-6 pb-6 border-b border-gray-200">
                   <h3 className="font-bold text-gray-800 text-lg mb-4 flex items-center">
@@ -514,7 +764,7 @@ const OrderConfirm = () => {
                     <div className="flex justify-between mb-2">
                       <span className="text-gray-600">Subtotal</span>
                       <span className="text-gray-800">
-                        $
+                        $$
                         {activeOrder.subtotal?.toFixed(2) ||
                           activeOrder.items
                             ?.reduce(
@@ -669,20 +919,50 @@ const OrderConfirm = () => {
                   >
                     Close
                   </button>
-                  <button
-                    onClick={() =>
-                      handleUpdateOrderStatus(activeOrder.orderId, "confirmed")
-                    }
-                    disabled={isUpdating}
-                    className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center"
-                  >
-                    {isUpdating ? (
-                      <FaSpinner className="animate-spin mr-2" />
-                    ) : (
-                      <FaCheckCircle className="mr-2" />
-                    )}
-                    Confirm Order
-                  </button>
+                  
+                  {activeOrder.status === 'pending' && (
+                    <button
+                      onClick={() =>
+                        handleUpdateOrderStatus(
+                          activeOrder.orderId, 
+                          "confirmed", 
+                          restaurantInfo?.name,
+                          "30-45 min"
+                        )
+                      }
+                      disabled={isUpdating}
+                      className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center"
+                    >
+                      {isUpdating ? (
+                        <FaSpinner className="animate-spin mr-2" />
+                      ) : (
+                        <FaCheckCircle className="mr-2" />
+                      )}
+                      Confirm Order
+                    </button>
+                  )}
+                  
+                  {activeOrder.status === 'confirmed' && (
+                    <button
+                      onClick={() =>
+                        handleUpdateOrderStatus(
+                          activeOrder.orderId, 
+                          "preparing", 
+                          restaurantInfo?.name,
+                          "20-30 min"
+                        )
+                      }
+                      disabled={isUpdating}
+                      className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg font-medium transition-colors flex items-center"
+                    >
+                      {isUpdating ? (
+                        <FaSpinner className="animate-spin mr-2" />
+                      ) : (
+                        <FaUtensils className="mr-2" />
+                      )}
+                      Start Preparing
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>
