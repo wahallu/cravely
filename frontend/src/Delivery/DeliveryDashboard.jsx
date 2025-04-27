@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FaMapMarkerAlt, FaUtensils, FaMotorcycle } from "react-icons/fa";
+import { FaMapMarkerAlt, FaUtensils, FaMotorcycle, FaCheckCircle } from "react-icons/fa";
 import { MdPayment, MdRestaurant } from "react-icons/md";
 import { useGetAvailableOrdersForDeliveryQuery, useUpdateOrderStatusMutation, useGetDriverOrdersQuery } from "../Redux/slices/orderSlice";
 import { getToken } from "../utils/auth";
@@ -87,6 +87,41 @@ export default function DeliveryDashboard() {
     }
   };
 
+  // Handle marking order as delivered
+  const handleDeliverOrder = async (order) => {
+    try {
+      // Make sure we have a valid order ID
+      const orderId = order.orderId || order._id;
+      
+      if (!orderId) {
+        toast.error("Invalid order ID");
+        return;
+      }
+      
+      // Update the order status to "delivered"
+      const result = await updateOrderStatus({
+        orderId: orderId,
+        status: "delivered",
+        // Keep the driver information
+        driverId: userInfo.id || userInfo._id,
+        driverName: userInfo.name || userInfo.fullName
+      }).unwrap();
+      
+      toast.success(`Order #${orderId} marked as delivered!`);
+      
+      // Refetch driver orders to update the UI
+      refetchMyDeliveries();
+      
+    } catch (error) {
+      console.error("Error marking order as delivered:", error);
+      if (error.data) {
+        console.error("API Error details:", error.data);
+      }
+      
+      toast.error(error?.data?.message || "Failed to mark order as delivered");
+    }
+  };
+
   // Loading states
   if (isLoadingOrders || isLoadingMyDeliveries) {
     return (
@@ -147,13 +182,31 @@ export default function DeliveryDashboard() {
                   <MdPayment className="text-blue-500 mr-2" />
                   Payment: {delivery.payment?.method || 'Not specified'}
                 </p>
-                <div className="mt-4 pt-4 border-t border-gray-100">
+                <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
                   <Link
                     to={`/orders/${delivery.orderId}`}
                     className="text-orange-500 hover:text-orange-600 font-medium"
                   >
                     View Order Details
                   </Link>
+                  
+                  <button
+                    onClick={() => handleDeliverOrder(delivery)}
+                    disabled={isUpdatingOrder}
+                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors flex items-center"
+                  >
+                    {isUpdatingOrder ? (
+                      <>
+                        <div className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent mr-2"></div>
+                        Delivering...
+                      </>
+                    ) : (
+                      <>
+                        <FaCheckCircle className="mr-2" />
+                        Mark as Delivered
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             ))
