@@ -137,7 +137,7 @@ const createOrder = async (req, res) => {
       tax: calculatedTax,
       deliveryFee: calculatedDeliveryFee,
       total: calculatedTotal,
-      status: 'pending'
+      status: 'pending' // Always start with pending status
     };
 
     console.log('Creating order with data:', JSON.stringify(orderData));
@@ -157,29 +157,6 @@ const createOrder = async (req, res) => {
       
       console.log('Order created successfully:', savedOrder._id);
 
-      // Try to auto-assign a driver
-      try {
-        const assignedDriver = await findBestDriverForOrder(savedOrder);
-        
-        if (assignedDriver) {
-          // Update order with assigned driver info
-          savedOrder.driverId = assignedDriver._id;
-          savedOrder.driverName = assignedDriver.name;
-          savedOrder.driverAssignedAt = Date.now();
-          savedOrder.status = 'confirmed';  // Or whatever status is appropriate in your flow
-          
-          await savedOrder.save();
-          
-          console.log(`Driver ${assignedDriver.name} auto-assigned to order ${savedOrder.orderId}`);
-          
-          // Update driver status
-          await DeliveryService.updateDriverStatus(assignedDriver._id, 'On Delivery');
-        }
-      } catch (assignError) {
-        // Don't fail the order creation if driver assignment fails
-        console.error('Error auto-assigning driver:', assignError);
-      }
-      
       // Send WhatsApp notification for payment completion
       await NotificationService.sendPaymentNotification({
         customer: orderData.customer,
@@ -187,7 +164,7 @@ const createOrder = async (req, res) => {
         payment: orderData.payment
       });
 
-      // Return response with order details and driver info if assigned
+      // Return response with order details
       return res.status(201).json({
         success: true,
         message: 'Order created successfully',
@@ -496,19 +473,45 @@ const getDriverOrders = async (req, res) => {
  */
 const updateOrderStatus = async (req, res) => {
   try {
-    const { status, driverId, driverName, estimatedDelivery } = req.body;
+    const { status, estimatedDelivery } = req.body;
     
     // Find the order
     const order = await Order.findOne({ orderId: req.params.id });
     
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+    
     // Update the status
     order.status = status;
     
-    // If driver information is provided for out_for_delivery status, update it
-    if (status === 'out_for_delivery' && driverId && driverName) {
-      order.driverId = driverId;
-      order.driverName = driverName;
-      order.driverAssignedAt = Date.now();
+    // When restaurant changes status to out_for_delivery, automatically assign a driver
+    if (status === 'out_for_delivery' && !order.driverId) {
+      console.log(`Auto-assigning driver for order ${order.orderId} with status ${status}`);
+      
+      try {
+        const assignedDriver = await findBestDriverForOrder(order);
+        
+        if (assignedDriver) {
+          // Update order with assigned driver info
+          order.driverId = assignedDriver._id;
+          order.driverName = assignedDriver.name;
+          order.driverAssignedAt = Date.now();
+          
+          console.log(`Driver ${assignedDriver.name} auto-assigned to order ${order.orderId}`);
+          
+          // Update driver status
+          await DeliveryService.updateDriverStatus(assignedDriver._id, 'On Delivery');
+        } else {
+          console.log(`No suitable driver found for order ${order.orderId}`);
+        }
+      } catch (assignError) {
+        console.error('Error auto-assigning driver:', assignError);
+        // Don't fail the status update if driver assignment fails
+      }
     }
     
     // Update other fields
