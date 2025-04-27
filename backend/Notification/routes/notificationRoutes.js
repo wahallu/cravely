@@ -15,5 +15,6 @@ router.get('/user/:userId', notificationController.getUserNotifications);
 router.post('/whatsapp/payment-completed', notificationController.sendPaymentNotification);
 router.post('/whatsapp/order-confirmed', notificationController.sendOrderConfirmedNotification);
 router.post('/whatsapp/order-delivered', notificationController.sendOrderDeliveredNotification);
+router.post('/whatsapp/driver-assignment', notificationController.sendDriverAssignmentNotification);
 
 module.exports = router;

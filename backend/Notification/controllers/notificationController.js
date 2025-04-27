@@ -265,6 +265,42 @@ const NotificationController = {
         error: error.message
       });
     }
+  },
+
+  /**
+   * Send WhatsApp notification to driver about new order assignment
+   */
+  sendDriverAssignmentNotification: async (req, res) => {
+    try {
+      const { driverName, driverPhone, orderId, restaurantName, customerAddress } = req.body;
+      
+      if (!driverName || !driverPhone || !orderId || !restaurantName || !customerAddress) {
+        return res.status(400).json({
+          success: false,
+          message: 'Missing required fields'
+        });
+      }
+      
+      const formattedPhone = whatsappService.formatPhoneNumber(driverPhone);
+      const { message } = whatsappService.notifications.orderAssignedToDriver(
+        driverName, orderId, restaurantName, customerAddress
+      );
+      
+      const result = await whatsappService.sendWhatsAppMessage(formattedPhone, message);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Driver assignment notification sent via WhatsApp',
+        messageId: result.sid
+      });
+    } catch (error) {
+      console.error('Error sending driver assignment notification:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send WhatsApp notification',
+        error: error.message
+      });
+    }
   }
 };
 

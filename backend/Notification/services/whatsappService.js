@@ -82,6 +82,11 @@ const notifications = {
   
   orderDelivered: (customerName, orderId, restaurantName) => ({
     message: `Hi ${customerName}! Your order #${orderId} from ${restaurantName} has been delivered. Enjoy your meal! 😋 Please rate your experience in the app.`
+  }),
+
+  // Add this to your existing notifications object
+  orderAssignedToDriver: (driverName, orderId, restaurantName, customerAddress) => ({
+    message: `Hello ${driverName}! A new order #${orderId} from ${restaurantName} has been assigned to you. Delivery address: ${customerAddress}. Please log in to your driver dashboard for details.`
   })
 };
 

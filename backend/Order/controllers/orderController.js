@@ -505,6 +505,17 @@ const updateOrderStatus = async (req, res) => {
           
           // Update driver status
           await DeliveryService.updateDriverStatus(assignedDriver._id, 'On Delivery');
+          
+          // Send notification to driver about assignment
+          const restaurant = await RestaurantService.getRestaurantById(order.restaurantId);
+          
+          // Notify the driver about the new assignment
+          await NotificationService.sendDriverAssignmentNotification({
+            driver: assignedDriver,
+            orderId: order.orderId,
+            restaurant,
+            customer: order.customer
+          });
         } else {
           console.log(`No suitable driver found for order ${order.orderId}`);
         }

@@ -11,11 +11,13 @@
   },
   "dependencies": {
     "20": "^3.1.9",
+    "@headlessui/react": "^2.2.2",
     "@reduxjs/toolkit": "^2.7.0",
     "@stripe/react-stripe-js": "^3.5.1",
     "@stripe/stripe-js": "^6.1.0",
     "@tailwindcss/vite": "^4.0.14",
     "axios": "^1.8.4",
+    "date-fns": "^4.1.0",
     "decode": "^0.3.0",
     "dotenv": "^16.5.0",
     "framer-motion": "^12.6.2",

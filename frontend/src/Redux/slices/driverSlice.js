@@ -23,18 +23,19 @@ export const driverApi = createApi({
       providesTags: ['Driver']
     }),
     getDriverById: builder.query({
-      query: (id) => ({
-        url: `/drivers/profile/${id}`,
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }),
-      transformResponse: (response) => {
-        if (response.success) {
-          return response.driver;
+      query: (id) => {
+        // If it looks like a MongoDB ID, use the profile/:id endpoint
+        if (id && (id.length === 24 || id.length === 12)) {
+          return {
+            url: `/drivers/profile/${id}`,
+            method: 'GET',
+          };
         }
-        throw new Error('Failed to fetch driver profile');
+        // Otherwise assume it's a driverId and use the direct endpoint
+        return {
+          url: `/drivers/${id}`,
+          method: 'GET',
+        };
       },
       providesTags: (result, error, id) => [{ type: 'Driver', id }]
     }),
@@ -75,6 +76,18 @@ export const driverApi = createApi({
         method: 'PUT',
         body: data
       }),
+      invalidatesTags: (result, error, { driverId }) => [
+        { type: 'Driver', id: driverId },
+        'Driver'
+      ]
+    }),
+    updateDriverStatus: builder.mutation({
+      query: ({ driverId, status }) => ({
+        url: `/drivers/${driverId}`,
+        method: 'PUT',
+        body: { status }
+      }),
+      // Invalidate both the specific driver and the general list of drivers
       invalidatesTags: (result, error, { driverId }) => [
         { type: 'Driver', id: driverId },
         'Driver'
@@ -127,6 +140,7 @@ export const {
   useGetDriversByCityQuery,
   useAddDriverMutation,
   useUpdateDriverMutation,
+  useUpdateDriverStatusMutation,
   useDeleteDriverMutation,
   useLoginDriverMutation
 } = driverApi;

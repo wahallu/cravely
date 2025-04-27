@@ -118,8 +118,41 @@ const sendOrderDeliveredNotification = async (orderData) => {
   }
 };
 
+/**
+ * Send a WhatsApp notification to driver about new order assignment
+ */
+const sendDriverAssignmentNotification = async (orderData) => {
+  try {
+    const { driver, orderId, restaurant, customer } = orderData;
+    
+    // Format customer address properly
+    const customerAddress = customer.address || 'Address not provided';
+    
+    // Prepare notification data
+    const notificationData = {
+      driverName: driver.name,
+      driverPhone: driver.phone,
+      orderId,
+      restaurantName: restaurant.name,
+      customerAddress
+    };
+    
+    // Send notification request
+    const response = await axios.post(
+      `${NOTIFICATION_SERVICE_URL}/whatsapp/driver-assignment`, 
+      notificationData
+    );
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error sending driver assignment notification:', error);
+    // Don't throw the error to avoid breaking the order flow
+  }
+};
+
 module.exports = {
   sendPaymentNotification,
   sendOrderConfirmedNotification,
-  sendOrderDeliveredNotification
+  sendOrderDeliveredNotification,
+  sendDriverAssignmentNotification
 };

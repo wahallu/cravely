@@ -50,13 +50,23 @@ export default function DriverSignin() {
         console.log('Login response:', response);
         
         if (response.token) {
+          // Make sure to extract all relevant IDs from the response 
           saveAuth(response.token, {
             ...response.driver,
+            id: response.driver.id || response.driver._id,
+            driverId: response.driver.driverId, // This is the custom ID (like DRV0001)
+            _id: response.driver._id || response.driver.id, // This is the MongoDB ObjectId
             role: 'driver'
           });
           
+          // Store all IDs in local storage for debugging
+          localStorage.setItem('driverDebugInfo', JSON.stringify({
+            id: response.driver.id || response.driver._id,
+            driverId: response.driver.driverId,
+            _id: response.driver._id || response.driver.id
+          }));
+          
           toast.success('Login successful!');
-          // Navigate to the delivery dashboard
           navigate('/delivery'); 
         } else {
           throw new Error('Invalid response from server');
