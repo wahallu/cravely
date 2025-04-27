@@ -11,6 +11,9 @@ import {
   MdStar
 } from 'react-icons/md'
 import { useGetAllRestaurantsQuery } from '../../Redux/slices/restaurantSlice'
+import { useGetAllUsersQuery } from '../../Redux/slices/userSlice'
+import { useGetAvailableOrdersForDeliveryQuery } from '../../Redux/slices/orderSlice'
+import { useGetAllDriversQuery } from '../../Redux/slices/driverSlice'
 import { Link } from 'react-router-dom'
 
 export default function Dashboard() {
@@ -33,7 +36,7 @@ export default function Dashboard() {
       percent: 0 
     },
     { 
-      title: 'Total Orders', 
+      title: 'Total Pending Orders', 
       value: '0', 
       icon: <MdShoppingBasket className="text-white" />, 
       bgColor: 'bg-gradient-to-r from-green-400 to-green-600', 
@@ -53,17 +56,34 @@ export default function Dashboard() {
   const [recentUsers, setRecentUsers] = useState([]);
   const [topRestaurants, setTopRestaurants] = useState([]);
   
-  // Fetch restaurants using RTK Query
+  // Fetch data using RTK Query
   const { 
     data: restaurantsData, 
     isLoading: isRestaurantsLoading,
     isError: isRestaurantsError
   } = useGetAllRestaurantsQuery();
+  
+  const {
+    data: usersData,
+    isLoading: isUsersLoading,
+    isError: isUsersError
+  } = useGetAllUsersQuery();
+  
+  const {
+    data: ordersData,
+    isLoading: isOrdersLoading,
+    isError: isOrdersError
+  } = useGetAvailableOrdersForDeliveryQuery();
+  
+  const {
+    data: driversData,
+    isLoading: isDriversLoading,
+    isError: isDriversError
+  } = useGetAllDriversQuery();
 
-  // Update stats and restaurant data when API data is fetched
+  // Update stats for restaurants
   useEffect(() => {
     if (restaurantsData) {
-      // Update restaurant count in stats
       const restaurants = restaurantsData.data || [];
       
       setStats(prevStats => {
@@ -72,6 +92,9 @@ export default function Dashboard() {
         newStats[1] = {
           ...newStats[1],
           value: restaurants.length.toString(),
+          // Calculate percentage change - assuming 5% growth as placeholder
+          // In a real app, you'd compare to previous period data
+          percent: 5
         };
         return newStats;
       });
@@ -93,40 +116,99 @@ export default function Dashboard() {
     }
   }, [restaurantsData]);
 
-  // Fetch users data
+  // Update stats for users
   useEffect(() => {
-    // Since you don't have a users API exposed in the provided code,
-    // we'll simulate a fetch with a timeout
-    const fetchUsers = async () => {
-      // This would be replaced with your actual API call
-      setTimeout(() => {
-        // Sample data - would be replaced with API data
-        const userData = [
-          { id: 'USR-3821', name: 'John Smith', email: 'john.smith@example.com', joinDate: '2023-05-15', status: 'Active', orders: 12 },
-          { id: 'USR-3822', name: 'Emma Johnson', email: 'emma.j@example.com', joinDate: '2023-05-18', status: 'Active', orders: 4 },
-          { id: 'USR-3823', name: 'Michael Brown', email: 'michael.b@example.com', joinDate: '2023-05-20', status: 'Inactive', orders: 0 },
-          { id: 'USR-3824', name: 'Sophia Davis', email: 'sophia.d@example.com', joinDate: '2023-05-22', status: 'Active', orders: 8 },
-        ];
-        
-        setRecentUsers(userData);
-        
-        // Update user count in stats
-        setStats(prevStats => {
-          const newStats = [...prevStats];
-          newStats[0] = {
-            ...newStats[0],
-            value: '24,521', // This would come from the API
-          };
-          return newStats;
-        });
-      }, 1000);
-    };
-    
-    fetchUsers();
-  }, []);
+    if (usersData) {
+      const users = Array.isArray(usersData) ? usersData : (usersData.users || []);
+      
+      // Take most recent users for the table display
+      const recentUsersList = [...users]
+        .sort((a, b) => new Date(b.createdAt || b.joinDate || 0) - new Date(a.createdAt || a.joinDate || 0))
+        .slice(0, 4)
+        .map(user => ({
+          id: user._id || user.id,
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'User',
+          email: user.email || 'N/A',
+          joinDate: user.createdAt || user.joinDate || new Date().toISOString(),
+          status: user.status || 'Active',
+          orders: user.orders || 0
+        }));
+      
+      setRecentUsers(recentUsersList);
+      
+      // Update user count in stats
+      setStats(prevStats => {
+        const newStats = [...prevStats];
+        newStats[0] = {
+          ...newStats[0],
+          value: users.length.toString(),
+          // Calculate percentage change - assuming 12% growth as placeholder
+          // In a real app, you'd compare to previous period data
+          percent: 12
+        };
+        return newStats;
+      });
+    }
+  }, [usersData]);
+
+  // Update stats for orders
+  useEffect(() => {
+    if (ordersData) {
+      const orders = Array.isArray(ordersData) 
+        ? ordersData 
+        : (ordersData.orders || ordersData.data || []);
+      
+      // Update orders count in stats
+      setStats(prevStats => {
+        const newStats = [...prevStats];
+        newStats[2] = {
+          ...newStats[2],
+          value: orders.length.toString(),
+          // Calculate percentage change - assuming 8% growth as placeholder
+          // In a real app, you'd compare to previous period data
+          percent: 8
+        };
+        return newStats;
+      });
+    }
+  }, [ordersData]);
+
+  // Update stats for drivers
+  useEffect(() => {
+    if (driversData) {
+      const drivers = Array.isArray(driversData) 
+        ? driversData 
+        : (driversData.drivers || driversData.data || []);
+      
+      // Count active drivers
+      const activeDrivers = drivers.filter(driver => 
+        driver.status === 'active' || driver.isActive === true
+      );
+      
+      // Update drivers count in stats
+      setStats(prevStats => {
+        const newStats = [...prevStats];
+        newStats[3] = {
+          ...newStats[3],
+          value: activeDrivers.length.toString(),
+          // Calculate percentage change - assuming -3% change as placeholder
+          // In a real app, you'd compare to previous period data
+          increase: false,
+          percent: 3
+        };
+        return newStats;
+      });
+    }
+  }, [driversData]);
+
+  // Check if any data is still loading
+  const isLoading = isRestaurantsLoading || isUsersLoading || isOrdersLoading || isDriversLoading;
+
+  // Check if any data fetch resulted in an error
+  const isError = isRestaurantsError || isUsersError || isOrdersError || isDriversError;
 
   // Render loading state
-  if (isRestaurantsLoading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-full p-6">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
@@ -135,7 +217,7 @@ export default function Dashboard() {
   }
 
   // Render error state
-  if (isRestaurantsError) {
+  if (isError) {
     return (
       <div className="flex justify-center items-center h-full p-6">
         <div className="text-center">
@@ -151,7 +233,6 @@ export default function Dashboard() {
     );
   }
 
-  // Rest of your component remains the same
   return (
     <div className="p-6 space-y-6">
       {/* Stats Overview */}
@@ -174,17 +255,6 @@ export default function Dashboard() {
                 <div className={`p-3 rounded-lg ${stat.bgColor}`}>
                   {stat.icon}
                 </div>
-              </div>
-              <div className="flex items-center mt-4">
-                {stat.increase ? (
-                  <MdArrowUpward className="text-green-500 mr-1" />
-                ) : (
-                  <MdArrowDownward className="text-red-500 mr-1" />
-                )}
-                <span className={`text-sm ${stat.increase ? 'text-green-500' : 'text-red-500'}`}>
-                  {stat.percent}% {stat.increase ? 'Increase' : 'Decrease'}
-                </span>
-                <span className="text-xs text-gray-500 ml-2">vs. last month</span>
               </div>
             </div>
           </motion.div>
@@ -254,6 +324,7 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
         >
+          {/* Restaurant content remains the same */}
           <div className="p-6 border-b border-gray-100">
             <h3 className="text-lg font-bold text-gray-800">Top Performing Restaurants</h3>
           </div>
