@@ -6,6 +6,8 @@ import {
   MdRestaurant,
   MdDeliveryDining,
   MdOutlineLogout,
+  MdVerified,
+  MdAttachMoney
 } from 'react-icons/md'
 
 export default function Sidebar({ 
@@ -30,6 +32,18 @@ export default function Sidebar({
       href: '/admin/restaurants' 
     },
     { 
+      id: 'verification', 
+      icon: <MdVerified className="text-2xl" />, 
+      label: 'Verification',
+      href: '/admin/verification' 
+    },
+    { 
+      id: 'transactions', 
+      icon: <MdAttachMoney className="text-2xl" />, 
+      label: 'Financials',
+      href: '/admin/transactions' 
+    },
+    { 
       id: 'drivers', 
       icon: <MdDeliveryDining className="text-2xl" />, 
       label: 'Drivers',
@@ -37,6 +51,7 @@ export default function Sidebar({
     },
   ];
 
+  // Rest of the component remains the same
   return (
     <>
       <div 
@@ -54,6 +69,7 @@ export default function Sidebar({
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
+        {/* Rest of your sidebar component */}
         <div className="flex flex-col h-full overflow-y-auto">
           {/* Logo */}
           <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white/90 backdrop-blur-md z-10">

@@ -76,6 +76,16 @@ export const restaurantApi = createApi({
       // Provide tags for cache invalidation
       providesTags: ["Restaurants"],
     }),
+    // Add a new endpoint to update restaurant status (for admin)
+    updateRestaurantStatus: builder.mutation({
+      query: ({ id, status }) => ({
+        url: `/restaurants/${id}/status`,
+        method: "PUT",
+        body: { status },
+      }),
+      // Invalidate the cache after updating to refresh the data
+      invalidatesTags: ["Restaurants"],
+    }),
   }),
 });
 
@@ -85,4 +95,5 @@ export const {
   useGetRestaurantProfileQuery,
   useUpdateRestaurantProfileMutation,
   useGetAllRestaurantsQuery,
+  useUpdateRestaurantStatusMutation,
 } = restaurantApi;

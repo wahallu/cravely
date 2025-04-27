@@ -6,6 +6,7 @@ const {
   updateRestaurantProfile,
   getAllRestaurants,
   getRestaurantById,
+  updateRestaurantStatus,
 } = require("../controllers/restaurantController");
 const {
   getRestaurantOrders,
@@ -33,5 +34,6 @@ router.get("/dashboard", authenticate, (req, res) => {
 // Order-related routes
 router.get("/orders", authenticate, getRestaurantOrders);
 router.put("/orders/:id/status", authenticate, updateOrderStatus);
+router.put("/:id/status", authenticate, updateRestaurantStatus);
 
 module.exports = router;
