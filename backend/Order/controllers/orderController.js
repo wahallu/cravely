@@ -137,7 +137,7 @@ const createOrder = async (req, res) => {
       tax: calculatedTax,
       deliveryFee: calculatedDeliveryFee,
       total: calculatedTotal,
-      status: 'pending'
+      status: 'pending' // Always start with pending status
     };
 
     console.log('Creating order with data:', JSON.stringify(orderData));
@@ -148,15 +148,15 @@ const createOrder = async (req, res) => {
       const savedOrder = await order.save();
       
       if (!savedOrder) {
-        console.error('Order was not saved properly');
+        console.error('Failed to save order to database');
         return res.status(500).json({
           success: false,
-          message: 'Failed to save order to database'
+          message: 'Error creating order in database'
         });
       }
       
       console.log('Order created successfully:', savedOrder._id);
-      
+
       // Send WhatsApp notification for payment completion
       await NotificationService.sendPaymentNotification({
         customer: orderData.customer,
@@ -164,17 +164,17 @@ const createOrder = async (req, res) => {
         payment: orderData.payment
       });
 
-      // Return success response with saved order
+      // Return response with order details
       return res.status(201).json({
         success: true,
-        order: savedOrder,
-        warnings: paymentResult.message ? [paymentResult.message] : []
+        message: 'Order created successfully',
+        order: savedOrder
       });
     } catch (dbError) {
-      console.error('Database error saving order:', dbError);
+      console.error('Database error creating order:', dbError);
       return res.status(500).json({
         success: false,
-        message: 'Database error when saving order',
+        message: 'Error creating order in database',
         error: dbError.message
       });
     }
@@ -473,19 +473,45 @@ const getDriverOrders = async (req, res) => {
  */
 const updateOrderStatus = async (req, res) => {
   try {
-    const { status, driverId, driverName, estimatedDelivery } = req.body;
+    const { status, estimatedDelivery } = req.body;
     
     // Find the order
     const order = await Order.findOne({ orderId: req.params.id });
     
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+    
     // Update the status
     order.status = status;
     
-    // If driver information is provided for out_for_delivery status, update it
-    if (status === 'out_for_delivery' && driverId && driverName) {
-      order.driverId = driverId;
-      order.driverName = driverName;
-      order.driverAssignedAt = Date.now();
+    // When restaurant changes status to out_for_delivery, automatically assign a driver
+    if (status === 'out_for_delivery' && !order.driverId) {
+      console.log(`Auto-assigning driver for order ${order.orderId} with status ${status}`);
+      
+      try {
+        const assignedDriver = await findBestDriverForOrder(order);
+        
+        if (assignedDriver) {
+          // Update order with assigned driver info
+          order.driverId = assignedDriver._id;
+          order.driverName = assignedDriver.name;
+          order.driverAssignedAt = Date.now();
+          
+          console.log(`Driver ${assignedDriver.name} auto-assigned to order ${order.orderId}`);
+          
+          // Update driver status
+          await DeliveryService.updateDriverStatus(assignedDriver._id, 'On Delivery');
+        } else {
+          console.log(`No suitable driver found for order ${order.orderId}`);
+        }
+      } catch (assignError) {
+        console.error('Error auto-assigning driver:', assignError);
+        // Don't fail the status update if driver assignment fails
+      }
     }
     
     // Update other fields
@@ -656,6 +682,79 @@ const calculateDeliveryEarnings = (orderTotal) => {
   return baseFee + (orderTotal * percentage);
 };
 
+/**
+ * Find the best driver for an order
+ * @param {Object} order - The order object
+ * @returns {Promise<Object>} - The selected driver
+ */
+const findBestDriverForOrder = async (order) => {
+  try {
+    // Extract city from order shipping address
+    const customerCity = extractCityFromAddress(order.customer);
+    
+    if (!customerCity) {
+      console.log('Unable to determine city from order address');
+      return null;
+    }
+    
+    console.log(`Looking for drivers available in city: ${customerCity}`);
+    
+    // Get drivers that deliver to this city
+    const drivers = await DeliveryService.getDriversForCity(customerCity);
+    
+    if (!drivers || drivers.length === 0) {
+      console.log(`No available drivers for city: ${customerCity}`);
+      return null;
+    }
+    
+    console.log(`Found ${drivers.length} potential drivers for ${customerCity}`);
+    
+    // Advanced driver matching algorithm:
+    // 1. Filter only Available drivers
+    const availableDrivers = drivers.filter(driver => driver.status === "Available");
+    
+    if (availableDrivers.length === 0) {
+      console.log('No drivers currently available in this city');
+      return null;
+    }
+    
+    // 2. Sort by rating first
+    const sortedDrivers = availableDrivers.sort((a, b) => {
+      // Sort by rating (higher first)
+      if (b.rating !== a.rating) return b.rating - a.rating;
+      
+      // If ratings are equal, prefer drivers with fewer completed orders (spread the work)
+      return a.completedOrders - b.completedOrders; 
+    });
+    
+    // Return the best matched driver
+    return sortedDrivers[0];
+  } catch (error) {
+    console.error('Error finding best driver:', error);
+    return null;
+  }
+};
+
+// Helper function to extract city from address
+const extractCityFromAddress = (customer) => {
+  // If there's an explicit city field, use it
+  if (customer.city) return customer.city;
+  
+  // Otherwise try to extract city from the address string
+  if (customer.address) {
+    // Split address by commas and try to find the city part
+    const addressParts = customer.address.split(',');
+    
+    if (addressParts.length >= 2) {
+      // The city is likely the second part in "street, city, state zip" format
+      // Trim whitespace and return it
+      return addressParts[1].trim();
+    }
+  }
+  
+  return null;
+};
+
 module.exports = {
   // Existing exports
   createOrder,
@@ -668,5 +767,6 @@ module.exports = {
   assignDriver,
   getDriverOrders,
   // New export
-  completeDelivery
+  completeDelivery,
+  findBestDriverForOrder
 };

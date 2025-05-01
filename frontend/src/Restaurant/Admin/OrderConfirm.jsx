@@ -34,6 +34,7 @@ const OrderConfirm = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [confirmedOrders, setConfirmedOrders] = useState([]);
+  const [preparingOrders, setPreparingOrders] = useState([]); // Add this state variable
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("pending"); // Add tab state for switching between pending and confirmed orders
 
@@ -71,6 +72,21 @@ const OrderConfirm = () => {
     refetch: refetchConfirmed,
   } = useGetRestaurantOrdersQuery(
     { restaurantId, status: "confirmed" },
+    {
+      skip: !restaurantId,
+      pollingInterval: 30000,
+      refetchOnMountOrArgChange: true,
+    }
+  );
+
+  // Fetch preparing orders separately
+  const {
+    data: preparingOrdersData = { orders: [] },
+    isLoading: isLoadingPreparing,
+    error: preparingError,
+    refetch: refetchPreparing,
+  } = useGetRestaurantOrdersQuery(
+    { restaurantId, status: "preparing" },
     {
       skip: !restaurantId,
       pollingInterval: 30000,
@@ -118,15 +134,33 @@ const OrderConfirm = () => {
 
       setConfirmedOrders(filtered);
     }
-  }, [pendingOrdersData, confirmedOrdersData, searchTerm]);
+
+    if (preparingOrdersData && preparingOrdersData.orders) {
+      let filtered = [...preparingOrdersData.orders];
+      
+      // Apply search term filter
+      if (searchTerm) {
+        filtered = filtered.filter(
+          (order) =>
+            order.orderId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            order.customer?.fullName
+              ?.toLowerCase()
+              .includes(searchTerm.toLowerCase()) ||
+            order.customer?.phone?.includes(searchTerm)
+        );
+      }
+
+      setPreparingOrders(filtered);
+    }
+  }, [pendingOrdersData, confirmedOrdersData, preparingOrdersData, searchTerm]);
 
   // Handle errors in loading orders
   useEffect(() => {
-    if (pendingError || confirmedError) {
+    if (pendingError || confirmedError || preparingError) {
       toast.error("Failed to load orders. Please try again.");
-      console.error("Error fetching restaurant orders:", pendingError || confirmedError);
+      console.error("Error fetching restaurant orders:", pendingError || confirmedError || preparingError);
     }
-  }, [pendingError, confirmedError]);
+  }, [pendingError, confirmedError, preparingError]);
 
   const handleUpdateOrderStatus = async (
     orderId,
@@ -177,6 +211,7 @@ const OrderConfirm = () => {
       // Refetch orders to get the latest data
       refetchPending();
       refetchConfirmed();
+      refetchPreparing();
     } catch (error) {
       console.error("Status update error:", error);
       toast.error("Failed to update order status. Please try again.");
@@ -266,7 +301,7 @@ const OrderConfirm = () => {
     }
   };
 
-  if (isLoadingPending && isLoadingConfirmed) {
+  if (isLoadingPending && isLoadingConfirmed && isLoadingPreparing) {
     return (
       <div className="flex items-center justify-center h-screen">
         <FaSpinner className="animate-spin text-orange-500 text-4xl" />
@@ -318,6 +353,16 @@ const OrderConfirm = () => {
             }`}
           >
             Confirmed Orders ({confirmedOrders.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("preparing")}
+            className={`py-3 px-6 font-medium text-sm transition-colors ${
+              activeTab === "preparing"
+                ? "border-b-2 border-orange-500 text-orange-500"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
+          >
+            Preparing Orders ({preparingOrders.length})
           </button>
         </div>
 
@@ -424,30 +469,30 @@ const OrderConfirm = () => {
                   </div>
                 </motion.div>
               ))}
-            </div>
 
-            {/* Empty state for pending orders */}
-            {filteredOrders.length === 0 && (
-              <div className="bg-white rounded-xl shadow-md p-8 text-center">
-                <FaShoppingBag className="text-gray-300 text-5xl mx-auto mb-4" />
-                <h2 className="text-xl font-semibold text-gray-700">
-                  No Pending Orders
-                </h2>
-                <p className="text-gray-500 mt-2">
-                  {searchTerm
-                    ? `No orders matching "${searchTerm}" found.`
-                    : "There are no pending orders at the moment."}
-                </p>
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm("")}
-                    className="mt-4 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
-                  >
-                    Clear Search
-                  </button>
-                )}
-              </div>
-            )}
+              {/* Empty state for pending orders */}
+              {filteredOrders.length === 0 && (
+                <div className="bg-white rounded-xl shadow-md p-8 text-center">
+                  <FaShoppingBag className="text-gray-300 text-5xl mx-auto mb-4" />
+                  <h2 className="text-xl font-semibold text-gray-700">
+                    No Pending Orders
+                  </h2>
+                  <p className="text-gray-500 mt-2">
+                    {searchTerm
+                      ? `No orders matching "${searchTerm}" found.`
+                      : "There are no pending orders at the moment."}
+                  </p>
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm("")}
+                      className="mt-4 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+                    >
+                      Clear Search
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </>
         )}
 
@@ -559,30 +604,165 @@ const OrderConfirm = () => {
                   </div>
                 </motion.div>
               ))}
-            </div>
 
-            {/* Empty state for confirmed orders */}
-            {confirmedOrders.length === 0 && (
-              <div className="bg-white rounded-xl shadow-md p-8 text-center">
-                <FaShoppingBag className="text-gray-300 text-5xl mx-auto mb-4" />
-                <h2 className="text-xl font-semibold text-gray-700">
-                  No Confirmed Orders
-                </h2>
-                <p className="text-gray-500 mt-2">
-                  {searchTerm
-                    ? `No orders matching "${searchTerm}" found.`
-                    : "There are no confirmed orders waiting to be prepared."}
-                </p>
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm("")}
-                    className="mt-4 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
-                  >
-                    Clear Search
-                  </button>
-                )}
-              </div>
-            )}
+              {/* Empty state for confirmed orders */}
+              {confirmedOrders.length === 0 && (
+                <div className="bg-white rounded-xl shadow-md p-8 text-center">
+                  <FaShoppingBag className="text-gray-300 text-5xl mx-auto mb-4" />
+                  <h2 className="text-xl font-semibold text-gray-700">
+                    No Confirmed Orders
+                  </h2>
+                  <p className="text-gray-500 mt-2">
+                    {searchTerm
+                      ? `No orders matching "${searchTerm}" found.`
+                      : "There are no confirmed orders waiting to be prepared."}
+                  </p>
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm("")}
+                      className="mt-4 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+                    >
+                      Clear Search
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Preparing Orders Section */}
+        {activeTab === "preparing" && (
+          <>
+            {/* Preparing orders count */}
+            <p className="text-gray-600 mb-4">
+              {preparingOrders.length} preparing{" "}
+              {preparingOrders.length === 1 ? "order" : "orders"} found
+            </p>
+
+            {/* Preparing Orders Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {preparingOrders.map((order) => (
+                <motion.div
+                  key={order.orderId || order._id}
+                  className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                  whileHover={{ y: -5 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="p-6">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h2 className="font-bold text-lg text-gray-800">
+                          {order.orderId}
+                        </h2>
+                        <p className="text-sm text-gray-500">
+                          {formatDate(order.createdAt)}
+                        </p>
+                      </div>
+                      <div className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm font-medium flex items-center">
+                        <FaUtensils className="text-indigo-500 mr-1" />
+                        <span>Preparing</span>
+                      </div>
+                    </div>
+
+                    {/* Order details - Same as other tabs */}
+                    <div className="mt-4">
+                      <div className="flex items-center text-sm text-gray-600 mb-2">
+                        <FaUser className="mr-2" />
+                        <span>{order.customer?.fullName || "Customer"}</span>
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600 mb-2">
+                        <FaPhone className="mr-2" />
+                        <span>{order.customer?.phone || "No phone"}</span>
+                      </div>
+                      <div className="flex items-start text-sm text-gray-600">
+                        <FaMapMarkerAlt className="mr-2 mt-1 flex-shrink-0" />
+                        <span className="line-clamp-2">
+                          {order.customer?.address || "No address provided"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Order summary - Same as other tabs */}
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-gray-600">Items:</span>
+                        <span className="font-medium">
+                          {order.items?.length || 0}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-gray-600">Payment:</span>
+                        <span className="font-medium flex items-center">
+                          {getPaymentInfo(order.payment).icon}
+                          <span className="ml-1">
+                            {getPaymentInfo(order.payment).text}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-800 font-medium">Total:</span>
+                        <span className="text-orange-600 font-bold">
+                          ${(order.total || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Order actions - Now with "Ready for Pickup" button */}
+                    <div className="mt-6 flex space-x-3">
+                      <button
+                        onClick={() => openOrderDetails(order)}
+                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 rounded-lg font-medium transition-colors"
+                      >
+                        View Details
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleUpdateOrderStatus(
+                            order.orderId,
+                            "out_for_delivery",
+                            restaurantInfo?.name,
+                            "10-15 min"
+                          )
+                        }
+                        className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center"
+                        disabled={isUpdating}
+                      >
+                        {isUpdating ? (
+                          <FaSpinner className="animate-spin mr-2" />
+                        ) : (
+                          <FaMotorcycle className="mr-2" />
+                        )}
+                        Ready for Pickup
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+
+              {/* Empty state for preparing orders */}
+              {preparingOrders.length === 0 && (
+                <div className="bg-white rounded-xl shadow-md p-8 text-center">
+                  <FaUtensils className="text-gray-300 text-5xl mx-auto mb-4" />
+                  <h2 className="text-xl font-semibold text-gray-700">
+                    No Orders Being Prepared
+                  </h2>
+                  <p className="text-gray-500 mt-2">
+                    {searchTerm
+                      ? `No orders matching "${searchTerm}" found.`
+                      : "There are no orders currently being prepared."}
+                  </p>
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm("")}
+                      className="mt-4 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+                    >
+                      Clear Search
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>
@@ -684,7 +864,29 @@ const OrderConfirm = () => {
                           Start Preparing
                         </button>
                       )}
-                      
+
+                      {activeOrder.status === 'preparing' && (
+                        <button
+                          onClick={() =>
+                            handleUpdateOrderStatus(
+                              activeOrder.orderId, 
+                              "out_for_delivery", 
+                              restaurantInfo?.name,
+                              "10-15 min"
+                            )
+                          }
+                          disabled={isUpdating}
+                          className="px-6 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors flex items-center"
+                        >
+                          {isUpdating ? (
+                            <FaSpinner className="animate-spin mr-2" />
+                          ) : (
+                            <FaMotorcycle className="mr-2" />
+                          )}
+                          Ready for Pickup
+                        </button>
+                      )}
+
                       <button
                         onClick={() =>
                           handleUpdateOrderStatus(
@@ -963,6 +1165,47 @@ const OrderConfirm = () => {
                       Start Preparing
                     </button>
                   )}
+
+                  {activeOrder.status === 'preparing' && (
+                    <button
+                      onClick={() =>
+                        handleUpdateOrderStatus(
+                          activeOrder.orderId, 
+                          "out_for_delivery", 
+                          restaurantInfo?.name,
+                          "10-15 min"
+                        )
+                      }
+                      disabled={isUpdating}
+                      className="px-6 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors flex items-center"
+                    >
+                      {isUpdating ? (
+                        <FaSpinner className="animate-spin mr-2" />
+                      ) : (
+                        <FaMotorcycle className="mr-2" />
+                      )}
+                      Ready for Pickup
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() =>
+                      handleUpdateOrderStatus(
+                        activeOrder.orderId,
+                        "canceled",
+                        restaurantInfo?.name
+                      )
+                    }
+                    disabled={isUpdating}
+                    className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center"
+                  >
+                    {isUpdating ? (
+                      <FaSpinner className="animate-spin mr-2" />
+                    ) : (
+                      <FaTimesCircle className="mr-2" />
+                    )}
+                    Cancel
+                  </button>
                 </div>
               </div>
             </motion.div>

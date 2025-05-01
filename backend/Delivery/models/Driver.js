@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 const driverSchema = new mongoose.Schema({
     driverId: { type: String, unique: true },
@@ -23,9 +24,50 @@ const driverSchema = new mongoose.Schema({
     },
     phone: { type: String },
     licenseNumber: { type: String },
-    vehicleType: { type: String },
+    vehicleType: { 
+        type: String,
+        enum: ["Motorcycle", "Car", "Bicycle"],
+        default: "Motorcycle"
+    },
+    deliveryCities: {
+        type: [String],
+        default: [],
+        validate: {
+            validator: function(cities) {
+                return cities.length > 0;
+            },
+            message: 'At least one delivery city must be selected'
+        }
+    },
+    profileImage: {
+        type: String,
+        default: '/default-driver.png'
+    },
+    rating: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 5
+    },
+    totalRatings: {
+        type: Number,
+        default: 0
+    },
     totalEarnings: { type: Number, default: 0 },
-    completedOrders: { type: Number, default: 0 }
+    completedOrders: { type: Number, default: 0 },
+    availableHours: {
+        start: { type: String, default: "09:00" },
+        end: { type: String, default: "18:00" }
+    },
+    isVerified: {
+        type: Boolean,
+        default: false
+    },
+    activeDelivery: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Delivery',
+        default: null
+    }
 }, { timestamps: true });
 
 // Generate driver ID
@@ -50,6 +92,25 @@ driverSchema.pre('save', async function(next) {
 // Compare password method
 driverSchema.methods.matchPassword = async function(enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
+};
+
+// Generate JWT token
+driverSchema.methods.generateAuthToken = function() {
+    return jwt.sign(
+        { id: this._id, role: 'driver' },
+        process.env.JWT_SECRET,
+        { expiresIn: '30d' }
+    );
+};
+
+// Calculate average rating
+driverSchema.methods.calculateRating = async function(newRating) {
+    if (newRating) {
+        this.totalRatings += 1;
+        this.rating = ((this.rating * (this.totalRatings - 1)) + newRating) / this.totalRatings;
+        await this.save();
+    }
+    return this.rating;
 };
 
 module.exports = mongoose.model("Driver", driverSchema);

@@ -42,6 +42,19 @@ export const driverApi = createApi({
       query: (id) => `/drivers/stats/${id}`,
       providesTags: (result, error, id) => [{ type: 'Driver', id }]
     }),
+    // New endpoint to get drivers by city
+    getDriversByCity: builder.query({
+      query: (city) => ({
+        url: `/drivers/city/${encodeURIComponent(city)}`,
+        method: 'GET'
+      }),
+      transformResponse: (response) => {
+        if (response.success) {
+          return response.drivers;
+        }
+        return [];
+      }
+    }),
     addDriver: builder.mutation({
       query: (data) => ({
         url: '/drivers/register',
@@ -111,6 +124,7 @@ export const {
   useGetAllDriversQuery,
   useGetDriverByIdQuery,
   useGetDriverStatsQuery,
+  useGetDriversByCityQuery,
   useAddDriverMutation,
   useUpdateDriverMutation,
   useDeleteDriverMutation,

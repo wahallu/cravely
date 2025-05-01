@@ -1,5 +1,6 @@
 const Driver = require("../models/Driver");
 const jwt = require("jsonwebtoken");
+const Delivery = require("../models/Delivery");
 
 const getDriverStats = async (req, res) => {
   try {
@@ -11,7 +12,6 @@ const getDriverStats = async (req, res) => {
     // Find completed deliveries for this driver
     const deliveredOrders = await Delivery.find({ driver: driver.name, driverStatus: "Delivered" });
 
-
     const completedOrders = deliveredOrders.length;
     const totalEarnings = deliveredOrders.reduce((acc, order) => acc + (order.total || 0), 0);
 
@@ -19,13 +19,13 @@ const getDriverStats = async (req, res) => {
     driver.totalEarnings = totalEarnings;
     await driver.save();
 
-
     res.json({
       driverId: id,
       name: driver.name,
       phone: driver.phone,
       licenseNumber: driver.licenseNumber,
       vehicleType: driver.vehicleType,
+      deliveryCities: driver.deliveryCities,
       status: driver.status,
       completedOrders,
       totalEarnings
@@ -35,6 +35,7 @@ const getDriverStats = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 const getAllDrivers = async (req, res) => {
   try {
     const drivers = await Driver.find();
@@ -46,7 +47,7 @@ const getAllDrivers = async (req, res) => {
 
 const getDriverByDriverId = async (req, res) => {
   try {
-    const driver = await Driver.findById(req.params.id).select('-password');
+    const driver = await Driver.findOne({ driverId: req.params.driverId }).select('-password');
     
     if (!driver) {
       return res.status(404).json({
@@ -65,6 +66,7 @@ const getDriverByDriverId = async (req, res) => {
         phone: driver.phone,
         licenseNumber: driver.licenseNumber,
         vehicleType: driver.vehicleType,
+        deliveryCities: driver.deliveryCities,
         status: driver.status,
         totalEarnings: driver.totalEarnings,
         completedOrders: driver.completedOrders
@@ -138,7 +140,7 @@ const deleteDriver = async (req, res) => {
 
 const registerDriver = async (req, res) => {
   try {
-    const { name, email, password, phone, licenseNumber, vehicleType } = req.body;
+    const { name, email, password, phone, licenseNumber, vehicleType, deliveryCities } = req.body;
 
     // Check if email already exists
     const existingDriver = await Driver.findOne({ email: email.toLowerCase() });
@@ -149,14 +151,15 @@ const registerDriver = async (req, res) => {
       });
     }
 
-    // Create driver
+    // Create driver with delivery cities
     const driver = await Driver.create({
       name,
       email: email.toLowerCase(),
       password,
       phone,
       licenseNumber,
-      vehicleType
+      vehicleType,
+      deliveryCities
     });
 
     // Generate token
@@ -173,7 +176,8 @@ const registerDriver = async (req, res) => {
         id: driver._id,
         name: driver.name,
         email: driver.email,
-        role: 'driver'
+        role: 'driver',
+        deliveryCities: driver.deliveryCities
       }
     });
 
@@ -232,7 +236,8 @@ const loginDriver = async (req, res) => {
         id: driver._id,
         name: driver.name,
         email: driver.email,
-        role: 'driver'
+        role: 'driver',
+        deliveryCities: driver.deliveryCities
       }
     });
 
@@ -268,6 +273,7 @@ const getDriverProfile = async (req, res) => {
         phone: driver.phone,
         licenseNumber: driver.licenseNumber,
         vehicleType: driver.vehicleType,
+        deliveryCities: driver.deliveryCities,
         status: driver.status,
         totalEarnings: driver.totalEarnings,
         completedOrders: driver.completedOrders
@@ -283,6 +289,41 @@ const getDriverProfile = async (req, res) => {
   }
 };
 
+// Ensure getDriversByCity is properly implemented
+const getDriversByCity = async (req, res) => {
+  try {
+    const { city } = req.params;
+    
+    if (!city) {
+      return res.status(400).json({
+        success: false,
+        message: 'City parameter is required'
+      });
+    }
+    
+    // Find all drivers who have this city in their deliveryCities array
+    const drivers = await Driver.find({
+      deliveryCities: { $in: [city] },
+      status: "Available" // Only get available drivers
+    }).select('-password');
+    
+    console.log(`Found ${drivers.length} drivers for city: ${city}`);
+    
+    res.status(200).json({
+      success: true,
+      count: drivers.length,
+      drivers
+    });
+  } catch (error) {
+    console.error('Error getting drivers by city:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving drivers',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllDrivers,
   getDriverByDriverId,
@@ -292,5 +333,6 @@ module.exports = {
   deleteDriver,
   registerDriver,
   loginDriver,
-  getDriverProfile
+  getDriverProfile,
+  getDriversByCity
 };
