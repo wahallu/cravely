@@ -98,6 +98,19 @@ export default function App() {
             <Route path="verification" element={<RestaurantVerification />} />
           </Route>
 
+          {/* Customer Routes */}
+          <Route path="/user" element={
+            <UserProtectedRoutes>
+              <UserLayout />
+            </UserProtectedRoutes>
+          }>
+            <Route path="" element={<UserDashboard />} />
+            <Route path="favorites" element={<Favourite />} />
+            <Route path="offers" element={<Offers />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="payments" element={<PaymentMethods />} />
+          </Route>
+
           {/* Delivery Routes */}
           <Route path="/delivery" element={<DeliveryLayout />}>
             <Route path="" element={<DeliveryDashboard />} />
