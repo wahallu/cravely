@@ -354,7 +354,7 @@ export default function Header() {
             </AnimatePresence>
 
             {/* Order Button with dynamic cart count */}
-            <Link to="/cart" className="bg-gray-100 text-gray-700 p-2 rounded-full hover:bg-gray-200 transition-colors relative">
+            <Link to="/cart" data-cy="cart-button" className="bg-gray-100 text-gray-700 p-2 rounded-full hover:bg-gray-200 transition-colors relative">
               <FaShoppingBag className="text-lg" />
               {cartItemCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
