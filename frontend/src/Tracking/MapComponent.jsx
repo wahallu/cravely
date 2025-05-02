@@ -140,6 +140,7 @@ export default function MapComponent({
               },
             ],
             travelMode: window.google.maps.TravelMode.DRIVING,
+            region: 'lk', // Set region to Sri Lanka
           };
 
           directionsService.route(request, (result, status) => {
@@ -155,8 +156,8 @@ export default function MapComponent({
               
               // Make sure we're not zoomed in too close
               const listener = window.google.maps.event.addListenerOnce(map, 'idle', function() {
-                if (map.getZoom() > 15) {
-                  map.setZoom(15);
+                if (map.getZoom() > 16) {  // Adjusted from 15 to 16
+                  map.setZoom(16);
                 }
               });
             } else {

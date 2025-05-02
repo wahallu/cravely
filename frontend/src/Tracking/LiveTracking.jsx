@@ -21,16 +21,34 @@ import Footer from "../Home/components/footer";
 import MapComponent from "./MapComponent";
 import { toast } from "react-hot-toast";
 
-// Driver path simulation - we'll use this to simulate driver movement
-// In a real app, this would come from your backend with real-time updates
+// Real locations from provided Google Maps links - matches those in MapComponent
+const LOCATIONS = {
+  // User location: https://maps.app.goo.gl/pZ5nKXkYiBECspnKA
+  USER: {
+    lat: 6.919046153191951,
+    lng: 79.97284612974553
+  },
+  // Driver location: https://maps.app.goo.gl/8sxPzBtJVbTomgq8A
+  DRIVER: {
+    lat: 6.911211309346461,
+    lng: 79.97210071637732
+  },
+  // Restaurant location: https://maps.app.goo.gl/uRvAx9zqsYx2CK8e8
+  RESTAURANT: {
+    lat: 6.906903629778984,
+    lng: 79.97375369604222
+  }
+};
+
+// Driver path simulation with real Sri Lanka coordinates in Malabe area
 const DRIVER_PATH_SIMULATION = [
-  { lat: 40.712776, lng: -74.005974 }, // Start at restaurant
-  { lat: 40.714776, lng: -74.003974 },
-  { lat: 40.718776, lng: -74.000974 },
-  { lat: 40.722776, lng: -73.996974 },
-  { lat: 40.726776, lng: -73.990974 },
-  { lat: 40.73061, lng: -73.985242 },
-  { lat: 40.73061, lng: -73.935242 }, // End at customer
+  LOCATIONS.RESTAURANT, // Start at restaurant
+  { lat: 6.908443, lng: 79.972536 }, // Intermediate point
+  { lat: 6.909985, lng: 79.972015 }, // Intermediate point
+  { lat: 6.911211309346461, lng: 79.97210071637732 }, // Driver location
+  { lat: 6.913426, lng: 79.972482 }, // Intermediate point 
+  { lat: 6.915838, lng: 79.972761 }, // Intermediate point
+  LOCATIONS.USER, // End at customer
 ];
 
 export default function LiveTracking() {
@@ -136,8 +154,8 @@ export default function LiveTracking() {
     if (order?.customer?.location) {
       setDestination(order.customer.location);
     } else if (order) {
-      // Fallback to mock location if real location isn't available
-      setDestination({ lat: 40.73061, lng: -73.935242 });
+      // Fallback to real location if API location isn't available
+      setDestination(LOCATIONS.USER);
     }
   }, [order]);
 
@@ -174,11 +192,10 @@ export default function LiveTracking() {
     }
   }, [order]);
 
-  // Simulate driver movement - in a real app, this would be websocket/polling for driver location
+  // Simulate driver movement using the real Sri Lanka coordinates
   useEffect(() => {
     if (!order || order.status !== "out_for_delivery") return;
 
-    // Start at a random point in the path for simulation
     let step = 1;
     const interval = setInterval(() => {
       if (step < DRIVER_PATH_SIMULATION.length) {
@@ -291,8 +308,8 @@ export default function LiveTracking() {
     );
   }
 
-  // Calculate restaurant location - use real data if available, otherwise mock
-  const restaurantLocation = order.restaurant?.location || { lat: 40.712776, lng: -74.005974 };
+  // Calculate restaurant location - use real data if available, otherwise use our predefined location
+  const restaurantLocation = order?.restaurant?.location || LOCATIONS.RESTAURANT;
 
   return (
     <>
