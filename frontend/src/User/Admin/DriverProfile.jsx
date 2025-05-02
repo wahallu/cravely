@@ -1,6 +1,6 @@
 import React from "react";
 import { useParams, Link } from "react-router-dom";
-import { useGetDriverByIdQuery } from "../Redux/slices/driverSlice";
+import { useGetDriverByIdQuery } from "../../Redux/slices/driverSlice";
 
 export default function DriverProfile() {
   const { id } = useParams();
@@ -45,7 +45,7 @@ export default function DriverProfile() {
         <p className="text-md text-gray-600">Earnings: ${driver.totalEarnings?.toFixed(2) || '0.00'}</p>
         <p className="text-md text-gray-600">Completed Orders: {driver.completedOrders || 0}</p>
         <Link 
-          to="/delivery/all-drivers"
+          to="/admin/drivers" 
           className="mt-6 inline-block bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 transition"
         >
           ← Back to All Drivers

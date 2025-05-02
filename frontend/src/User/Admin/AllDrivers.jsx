@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { useGetAllDriversQuery } from "../Redux/slices/driverSlice";
+import { useGetAllDriversQuery } from "../../Redux/slices/driverSlice";
 
 export default function AllDrivers() {
   const {
@@ -37,7 +37,7 @@ export default function AllDrivers() {
                 Status: {driver.status || "Unknown"}
               </p>
               <Link
-                to={`/delivery/drivers/${driver._id}`}
+                to={`/admin/drivers/${driver._id}`} 
                 className="mt-4 inline-block bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 transition"
               >
                 View Profile
