@@ -27,6 +27,8 @@ import AdminLayout from "./User/Admin/layout";
 import AdminDashboard from "./User/Admin/dashboard";
 import AdminRestaurant from "./User/Admin/restaurant";
 import AdminDrivers from "./User/Admin/drivers";
+import FinancialTransactions from "./User/Admin/FinancialTransactions";
+import RestaurantVerification from "./User/Admin/RestaurantVerification";
 
 import UserLayout from "./User/Customer/layout";
 import UserDashboard from "./User/Customer/dashboard";
@@ -93,6 +95,8 @@ export default function App() {
             <Route path="" element={<AdminDashboard />} />
             <Route path="restaurants" element={<AdminRestaurant />} />
             <Route path="drivers" element={<AdminDrivers />} />
+            <Route path="transactions" element={<FinancialTransactions />} />
+            <Route path="verification" element={<RestaurantVerification />} />
           </Route>
 
           {/* Customer Routes */}

@@ -208,3 +208,44 @@ exports.getRestaurantById = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Update restaurant status (for admin)
+// @route   PUT /api/restaurants/:id/status
+// @access  Private (Admin only)
+exports.updateRestaurantStatus = async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    
+    // Validate status
+    if (!['pending', 'active', 'suspended'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid status value"
+      });
+    }
+
+    // Update the restaurant status
+    const restaurant = await Restaurant.findByIdAndUpdate(
+      req.params.id,
+      { 
+        status,
+        updatedAt: Date.now() 
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        error: "Restaurant not found"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: restaurant
+    });
+  } catch (error) {
+    next(error);
+  }
+};
