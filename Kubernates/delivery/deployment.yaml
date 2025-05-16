@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: delivery-deployment
+  labels:
+    app: delivery
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: delivery
+  template:
+    metadata:
+      labels:
+        app: delivery
+    spec:
+      containers:
+      - name: delivery
+        image: cravely/delivery:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 5001
+        env:
+        - name: PORT
+          value: "5001"
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secrets
+              key: delivery-uri
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: jwt-secret
+              key: secret
+        - name: ORDER_SERVICE_URL
+          value: "http://order-service:5002/api/orders"
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
