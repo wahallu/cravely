@@ -17,7 +17,8 @@ import {
   FaPhone,
   FaInfo,
   FaClock,
-  FaSpinner
+  FaSpinner,
+  FaUtensils
 } from 'react-icons/fa';
 import { useGetOrderByIdQuery } from '../Redux/slices/orderSlice';
 import toast from 'react-hot-toast';
@@ -39,14 +40,15 @@ export default function OrderConfirmation() {
     isError: isOrderError,
     error: orderError
   } = useGetOrderByIdQuery(orderId, {
-    skip: !orderId || !!location.state?.orderDetails // Skip if no ID or if we already have data
+    skip: !orderId, // Only skip if no orderId exists
+    pollingInterval: 15000 // Poll for updates every 15 seconds
   });
 
   // Retrieve the order details passed from checkout or from API
   useEffect(() => {
-    // If we have data from location state, use it immediately
-    if (location.state?.orderDetails) {
-      setOrderDetails(location.state.orderDetails);
+    // If we have data from the API, use it (most up-to-date)
+    if (fetchedOrder && !isOrderLoading) {
+      setOrderDetails(fetchedOrder);
       setIsLoading(false);
       
       // Stagger loading animation stages
@@ -60,9 +62,9 @@ export default function OrderConfirmation() {
         clearTimeout(timer3);
       };
     } 
-    // If we're fetching from API and have results
-    else if (fetchedOrder && !isOrderLoading) {
-      setOrderDetails(fetchedOrder);
+    // Otherwise, if we have location state data, use that until API data arrives
+    else if (location.state?.orderDetails && isOrderLoading) {
+      setOrderDetails(location.state.orderDetails);
       setIsLoading(false);
       
       // Stagger loading animation stages
