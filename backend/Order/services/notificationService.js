@@ -1,25 +1,18 @@
 const axios = require('axios');
 require('dotenv').config();
 
-// URL for the notification service
-const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:5007/api/notifications';
+// Use injected env var, or Docker DNS fallback
+const NOTIFICATION_SERVICE_URL =
+  process.env.NOTIFICATION_SERVICE_URL
+  || 'http://notification:5007/api/notifications';
 
-/**
- * Client for interacting with the Notification service
- */
 class NotificationService {
-  /**
-   * Send order status notification
-   * @param {string} orderId - The order ID
-   * @param {string} userId - The user ID
-   * @returns {Promise<Object>} Notification result
-   */
   static async sendOrderStatusNotification(orderId, userId) {
     try {
-      const response = await axios.post(`${NOTIFICATION_SERVICE_URL}/order-status`, {
-        orderId,
-        userId
-      });
+      const response = await axios.post(
+        `${NOTIFICATION_SERVICE_URL}/order-status`,
+        { orderId, userId }
+      );
       return response.data;
     } catch (error) {
       console.error('Error sending order status notification:', error.message);
@@ -28,98 +21,74 @@ class NotificationService {
   }
 }
 
-/**
- * Send a WhatsApp notification for payment completed
- */
 const sendPaymentNotification = async (orderData) => {
   try {
     const { customer, orderId, payment } = orderData;
-    
-    // Prepare notification data
     const notificationData = {
       customerName: customer.fullName,
       customerPhone: customer.phone,
       orderId,
-      amount: (payment.amount).toFixed(2) // Convert cents to dollars
+      amount: payment.amount.toFixed(2),
     };
-    
-    // Send notification request to the notification service
-    const response = await axios.post(
-      `${NOTIFICATION_SERVICE_URL}/whatsapp/payment-completed`, 
+
+    return (await axios.post(
+      `${NOTIFICATION_SERVICE_URL}/whatsapp/payment-completed`,
       notificationData
-    );
-    
-    return response.data;
+    )).data;
   } catch (error) {
-    console.error('Error sending payment notification:', error);
-    // Don't throw the error to avoid breaking the order flow
+    console.error('Error sending payment notification:', error.message);
+    // swallow so order flow continues
   }
 };
 
-/**
- * Send a WhatsApp notification for order confirmed
- */
 const sendOrderConfirmedNotification = async (orderData) => {
   try {
     const { customer, orderId, restaurant, estimatedDelivery } = orderData;
-    
-    // Format estimated delivery time if available
     let estimatedTimeString = null;
     if (estimatedDelivery) {
-      const estimatedTime = new Date(estimatedDelivery);
-      estimatedTimeString = estimatedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const t = new Date(estimatedDelivery);
+      estimatedTimeString = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
-    
-    // Prepare notification data
+
     const notificationData = {
       customerName: customer.fullName,
       customerPhone: customer.phone,
       orderId,
       restaurantName: restaurant.name,
-      estimatedTime: estimatedTimeString
+      estimatedTime: estimatedTimeString,
     };
-    
-    // Send notification request
-    const response = await axios.post(
-      `${NOTIFICATION_SERVICE_URL}/whatsapp/order-confirmed`, 
+
+    return (await axios.post(
+      `${NOTIFICATION_SERVICE_URL}/whatsapp/order-confirmed`,
       notificationData
-    );
-    
-    return response.data;
+    )).data;
   } catch (error) {
-    console.error('Error sending order confirmed notification:', error);
+    console.error('Error sending order confirmed notification:', error.message);
   }
 };
 
-/**
- * Send a WhatsApp notification for order delivered
- */
 const sendOrderDeliveredNotification = async (orderData) => {
   try {
     const { customer, orderId, restaurant } = orderData;
-    
-    // Prepare notification data
     const notificationData = {
       customerName: customer.fullName,
       customerPhone: customer.phone,
       orderId,
-      restaurantName: restaurant.name
+      restaurantName: restaurant.name,
     };
-    
-    // Send notification request
-    const response = await axios.post(
-      `${NOTIFICATION_SERVICE_URL}/whatsapp/order-delivered`, 
+
+    return (await axios.post(
+      `${NOTIFICATION_SERVICE_URL}/whatsapp/order-delivered`,
       notificationData
-    );
-    
-    return response.data;
+    )).data;
   } catch (error) {
-    console.error('Error sending order delivered notification:', error);
+    console.error('Error sending order delivered notification:', error.message);
   }
 };
 
 module.exports = {
+  NotificationService,
   sendPaymentNotification,
   sendOrderConfirmedNotification,
-  sendOrderDeliveredNotification
+  sendOrderDeliveredNotification,
 };

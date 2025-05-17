@@ -1,54 +1,43 @@
 const axios = require('axios');
-const DELIVERY_SERVICE_URL = process.env.DELIVERY_SERVICE_URL || 'http://localhost:5001/api';
+require('dotenv').config();
 
-/**
- * Update driver status in the Delivery service
- * @param {string} driverId - The driver's ID
- * @param {string} status - The new status to set
- */
+// Use injected env var, or Docker DNS fallback
+const DELIVERY_SERVICE_URL =
+  process.env.DELIVERY_SERVICE_URL
+  || 'http://delivery:5001/api/drivers';
+
 const updateDriverStatus = async (driverId, status) => {
   try {
-    const response = await axios.put(`${DELIVERY_SERVICE_URL}/drivers/${driverId}`, {
-      status
-    });
-    return response.data;
+    return (await axios.put(
+      `${DELIVERY_SERVICE_URL}/${driverId}`,
+      { status }
+    )).data;
   } catch (error) {
-    console.error('Error updating driver status in Delivery service:', error);
+    console.error('Error updating driver status in Delivery service:', error.message);
     throw error;
   }
 };
 
-/**
- * Get available drivers for a city
- * @param {string} city - The city to find drivers for
- */
 const getDriversForCity = async (city) => {
   try {
-    const response = await axios.get(`${DELIVERY_SERVICE_URL}/drivers/city/${encodeURIComponent(city)}`);
-    if (response.data && response.data.success) {
-      return response.data.drivers || [];
-    }
-    return [];
+    const res = await axios.get(
+      `${DELIVERY_SERVICE_URL}/city/${encodeURIComponent(city)}`
+    );
+    return (res.data && res.data.success) ? res.data.drivers : [];
   } catch (error) {
-    console.error('Error getting drivers for city in Delivery service:', error);
+    console.error('Error getting drivers for city in Delivery service:', error.message);
     return [];
   }
 };
 
-/**
- * Update driver stats after successful delivery
- * @param {string} driverId - The driver's ID
- * @param {number} earnings - The amount earned from the delivery
- */
 const updateDriverStats = async (driverId, earnings) => {
   try {
-    // Directly use a PUT request instead of importing the function
-    const response = await axios.put(`${DELIVERY_SERVICE_URL}/drivers/${driverId}/stats`, {
-      earnings
-    });
-    return response.data;
+    return (await axios.put(
+      `${DELIVERY_SERVICE_URL}/${driverId}/stats`,
+      { earnings }
+    )).data;
   } catch (error) {
-    console.error('Error updating driver stats:', error);
+    console.error('Error updating driver stats:', error.message);
     throw error;
   }
 };
@@ -56,5 +45,5 @@ const updateDriverStats = async (driverId, earnings) => {
 module.exports = {
   updateDriverStatus,
   getDriversForCity,
-  updateDriverStats
+  updateDriverStats,
 };

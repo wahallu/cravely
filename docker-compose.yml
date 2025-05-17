@@ -1,6 +1,7 @@
-services:
-  
+# docker-compose.yml
+version: '3.8'
 
+services:
   # Delivery Service
   delivery:
     build:
@@ -26,8 +27,11 @@ services:
       - PORT=5002
       - MONGO_URI=mongodb+srv://nisal:1234@cluster0.p860x.mongodb.net/cravely_order?retryWrites=true&w=majority&appName=Cluster0
       - JWT_SECRET=cravely
-      - STRIPE_SECRET_KEY=sk_test_51R7t0oG8piHs7v557PlNCgZG92aolQGsoXgSOVrs0Ha7hek5Ap16ot9elbWSGf1y69XdaD6FeHPtIMhbSGPzDrVb00ars1OOHb
-      - STRIPE_PUBLISHABLE_KEY=pk_test_51R7t0oG8piHs7v556meTuJcbOp532bALYa8SnZtwekL7XGVktZGSfxw3WbCLU7DPGqcz0nCNJoyDiAwqrF2YyWEO007q7lpsAa
+      - STRIPE_SECRET_KEY=sk_test_…
+      - STRIPE_PUBLISHABLE_KEY=pk_test_…
+      - RESTAURANT_SERVICE_URL=http://restaurant:5003/api/restaurants
+      - NOTIFICATION_SERVICE_URL=http://notification:5007/api/notifications
+      - DELIVERY_SERVICE_URL=http://delivery:5001/api/drivers
     restart: always
     networks:
       - cravely-network
@@ -60,9 +64,9 @@ services:
       - TWILIO_ACCOUNT_SID=AC6fe08165f2b31e424e7e393c50aef038
       - TWILIO_AUTH_TOKEN=098cb38cac991b2f9d983cee06aa4bed
       - TWILIO_PHONE_NUMBER=+14155238886
-      - ORDER_SERVICE_URL=http://localhost:5002/api/orders
-      - USER_SERVICE_URL=http://localhost:5001/api/users
-      - NOTIFICATION_SERVICE_URL=http://localhost:5007/api/notifications
+      - ORDER_SERVICE_URL=http://order:5002/api/orders
+      - USER_SERVICE_URL=http://user:5004/api/users
+      - NOTIFICATION_SERVICE_URL=http://notification:5007/api/notifications
     restart: always
     networks:
       - cravely-network
@@ -80,38 +84,22 @@ services:
     restart: always
     networks:
       - cravely-network
-  
-  # Frontend Service
+
+  # Frontend Service (nginx)
   frontend:
     build:
       context: ./frontend
     ports:
       - "3000:80"
     environment:
-    - VITE_API_BASE_URL=http://localhost
-    - VITE_DELIVERY_URL=http://delivery:5001/api
-    - VITE_ORDER_URL=http://order:5002/api
-    - VITE_RESTAURANT_URL=http://restaurant:5003/api
-    - VITE_USER_URL=http://user:5004/api
+      - VITE_API_BASE_URL=/api
+      - VITE_DELIVERY_URL=/api/delivery
+      - VITE_ORDER_URL=/api/order
+      - VITE_RESTAURANT_URL=/api/restaurant
+      - VITE_USER_URL=/api/user
     restart: always
     networks:
       - cravely-network
-
-  # Alternative development configuration with hot reloading
-  # frontend-dev:
-  #   build: 
-  #     context: ./frontend
-  #     dockerfile: Dockerfile.dev
-  #   ports:
-  #     - "3000:3000"
-  #   volumes:
-  #     - ./frontend:/app
-  #     - /app/node_modules
-  #   environment:
-  #     - VITE_API_BASE_URL=http://localhost:5000/api
-  #   command: npm run dev
-  #   networks:
-  #     - cravely-network
 
 networks:
   cravely-network:
