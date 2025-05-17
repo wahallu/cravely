@@ -10,14 +10,13 @@ const {
   deleteDriver,
   registerDriver, 
   loginDriver, 
-  getDriverProfile,
-  getDriversByCity
+  getDriverProfile
 } = require("../controllers/driverController");
 
 // Base driver routes
 router.get("/", getAllDrivers);
 router.get("/:driverId", getDriverByDriverId);
-router.get("/profile/:id", getDriverByDriverId);
+router.get("/profile/:id", getDriverByDriverId); 
 router.post("/", protect, addDriver);
 router.put("/:driverId", protect, updateDriver);
 router.delete("/:driverId", protect, deleteDriver);
@@ -26,8 +25,5 @@ router.delete("/:driverId", protect, deleteDriver);
 router.post('/register', registerDriver);
 router.post('/login', loginDriver);
 router.get('/profile', protect, getDriverProfile);
-
-// Get drivers by city
-router.get('/city/:city', getDriversByCity);
 
 module.exports = router;

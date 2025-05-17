@@ -35,20 +35,9 @@ const addDriver = async (driverData) => {
   return await newDriver.save();
 };
 
-/**
- * Find available drivers for a specific city
- */
-const findDriversForCity = async (city) => {
-  return await Driver.find({
-    deliveryCities: { $in: [city] },
-    status: "Available"
-  }).select('-password');
-};
-
 module.exports = {
   getAllDrivers,
   getDriverById,
   updateDriverStats,
-  addDriver,
-  findDriversForCity
+  addDriver
 };

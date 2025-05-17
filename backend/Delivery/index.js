@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const driverRoutes = require("./routes/driverRoutes");
+const deliveryRoutes = require("./routes/deliveryRoutes");
 
 // Load env vars first
 dotenv.config();
@@ -26,6 +27,7 @@ app.use(express.json());
 
 // Routes
 app.use("/api/drivers", driverRoutes);
+app.use("/api/deliveries", deliveryRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {
