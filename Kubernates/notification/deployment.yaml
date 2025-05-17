@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-deployment
+  labels:
+    app: notification
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notification
+  template:
+    metadata:
+      labels:
+        app: notification
+    spec:
+      containers:
+      - name: notification
+        image: cravely/notification:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 5007
+        env:
+        - name: PORT
+          value: "5007"
+        - name: MONGO_URI
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secrets
+              key: notification-uri
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: jwt-secret
+              key: secret
+        - name: TWILIO_ACCOUNT_SID
+          valueFrom:
+            secretKeyRef:
+              name: twilio-secrets
+              key: account-sid
+        - name: TWILIO_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: twilio-secrets
+              key: auth-token
+        - name: TWILIO_PHONE_NUMBER
+          valueFrom:
+            secretKeyRef:
+              name: twilio-secrets
+              key: phone-number
+        - name: ORDER_SERVICE_URL
+          value: "http://order-service:5002/api/orders"
+        - name: USER_SERVICE_URL
+          value: "http://user-service:5004/api/users"
+        - name: NOTIFICATION_SERVICE_URL
+          value: "http://notification-service:5007/api/notifications"
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
