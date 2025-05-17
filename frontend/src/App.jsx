@@ -60,6 +60,7 @@ export default function App() {
           <Route path="/restaurant/register" element={<RestaurantRegister />} />
           <Route path="/restaurant/login" element={<RestaurantLogin />} />
           <Route path="/restaurant/livetracking" element={<LiveTracking />} />
+          <Route path="/tracking/:id" element={<LiveTracking />} />
 
           {/* Order */}
           <Route path="/cart" element={<Cart />} />
