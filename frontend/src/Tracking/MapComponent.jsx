@@ -8,10 +8,23 @@ const containerStyle = {
   position: "relative",
 };
 
-// Default Sri Lankan coordinates (Malabe area)
-const DEFAULT_SRI_LANKAN_LOCATION = {
-  lat: 6.9065,
-  lng: 79.9582,
+// Real locations from provided Google Maps links
+const LOCATIONS = {
+  // User location: https://maps.app.goo.gl/pZ5nKXkYiBECspnKA
+  USER: {
+    lat: 6.919046153191951,
+    lng: 79.97284612974553
+  },
+  // Driver location: https://maps.app.goo.gl/8sxPzBtJVbTomgq8A
+  DRIVER: {
+    lat: 6.911211309346461,
+    lng: 79.97210071637732
+  },
+  // Restaurant location: https://maps.app.goo.gl/uRvAx9zqsYx2CK8e8
+  RESTAURANT: {
+    lat: 6.906903629778984,
+    lng: 79.97375369604222
+  }
 };
 
 export default function MapComponent({
@@ -28,21 +41,10 @@ export default function MapComponent({
     destination: null,
   });
 
-  // Use Sri Lankan coordinates if props aren't provided
-  const effectiveDriverLocation = driverLocation || {
-    lat: 6.9151530265808105,
-    lng: 79.9719467163086,
-  };
-
-  const effectiveRestaurantLocation = restaurantLocation || {
-    lat: 6.9121530265808105,
-    lng: 79.9689467163086,
-  };
-
-  const effectiveDestination = destination || {
-    lat: 6.9181530265808105,
-    lng: 79.9749467163086,
-  };
+  // Use provided locations or fall back to our real locations
+  const effectiveDriverLocation = driverLocation || LOCATIONS.DRIVER;
+  const effectiveRestaurantLocation = restaurantLocation || LOCATIONS.RESTAURANT;
+  const effectiveDestination = destination || LOCATIONS.USER;
 
   useEffect(() => {
     // Create a script element to load Google Maps API
@@ -56,10 +58,14 @@ export default function MapComponent({
       if (!mapContainerRef.current) return;
 
       try {
-        // Create the map instance centered on Sri Lankan coordinates
+        // Calculate center point between all three locations
+        const centerLat = (effectiveDriverLocation.lat + effectiveRestaurantLocation.lat + effectiveDestination.lat) / 3;
+        const centerLng = (effectiveDriverLocation.lng + effectiveRestaurantLocation.lng + effectiveDestination.lng) / 3;
+        
+        // Create the map instance centered on calculated coordinates
         const map = new window.google.maps.Map(mapContainerRef.current, {
-          center: effectiveDriverLocation,
-          zoom: 14,
+          center: { lat: centerLat, lng: centerLng },
+          zoom: 15, // Lower zoom level to show more of the area
           mapId: "DEMO_MAP_ID",
           mapTypeControl: false,
           fullscreenControl: false,
@@ -134,6 +140,7 @@ export default function MapComponent({
               },
             ],
             travelMode: window.google.maps.TravelMode.DRIVING,
+            region: 'lk', // Set region to Sri Lanka
           };
 
           directionsService.route(request, (result, status) => {
@@ -146,10 +153,35 @@ export default function MapComponent({
               bounds.extend(effectiveDriverLocation);
               bounds.extend(effectiveDestination);
               map.fitBounds(bounds);
+              
+              // Make sure we're not zoomed in too close
+              const listener = window.google.maps.event.addListenerOnce(map, 'idle', function() {
+                if (map.getZoom() > 16) {  // Adjusted from 15 to 16
+                  map.setZoom(16);
+                }
+              });
             } else {
               console.error("Directions request failed: " + status);
-              // If directions fail, at least center on driver location
-              map.setCenter(effectiveDriverLocation);
+              // If directions fail, use the bounds approach
+              const bounds = new window.google.maps.LatLngBounds();
+              bounds.extend(effectiveRestaurantLocation);
+              bounds.extend(effectiveDriverLocation);
+              bounds.extend(effectiveDestination);
+              map.fitBounds(bounds);
+            }
+          });
+        } else {
+          // If we don't have all locations for directions, just fit bounds
+          const bounds = new window.google.maps.LatLngBounds();
+          if (effectiveRestaurantLocation) bounds.extend(effectiveRestaurantLocation);
+          if (effectiveDriverLocation) bounds.extend(effectiveDriverLocation);
+          if (effectiveDestination) bounds.extend(effectiveDestination);
+          map.fitBounds(bounds);
+          
+          // Ensure we're not zoomed in too close
+          const listener = window.google.maps.event.addListenerOnce(map, 'idle', function() {
+            if (map.getZoom() > 15) {
+              map.setZoom(15);
             }
           });
         }

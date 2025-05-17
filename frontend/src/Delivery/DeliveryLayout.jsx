@@ -90,12 +90,12 @@ const DeliveryLayout = () => {
           >
             Driver Dashboard
           </Link>
-          <Link
+          {/* <Link
             to="/delivery/all-drivers"
             className={`px-4 py-2 rounded ${isActive("/delivery/all-drivers")}`}
           >
             All Drivers
-          </Link>
+          </Link> */}
         </nav>
       )}
 

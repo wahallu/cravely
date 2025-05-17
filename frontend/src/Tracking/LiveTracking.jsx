@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react";
+import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useGetOrderByIdQuery } from "../../src/Redux/slices/orderSlice";
+import { useGetDriverByIdQuery } from "../../src/Redux/slices/driverSlice";
 import {
   FaMapMarkerAlt,
   FaPhoneAlt,
@@ -11,133 +13,249 @@ import {
   FaRoute,
   FaUtensils,
   FaHome,
+  FaArrowLeft
 } from "react-icons/fa";
 import { MdDeliveryDining } from "react-icons/md";
 import Header from "../Home/components/header";
 import Footer from "../Home/components/footer";
 import MapComponent from "./MapComponent";
+import { toast } from "react-hot-toast";
 
-// Mock data
-const MOCK_ORDER = {
-  id: "12345",
-  items: [
-    { name: "Margherita Pizza", quantity: 1, price: 12.99 },
-    { name: "Garlic Bread", quantity: 2, price: 4.99 },
-  ],
-  restaurant: {
-    name: "Pizza Palace",
-    address: "456 Oak St, Midtown",
-    location: { lat: 40.712776, lng: -74.005974 }, // New York coordinates
+// Real locations from provided Google Maps links - matches those in MapComponent
+const LOCATIONS = {
+  // User location: https://maps.app.goo.gl/pZ5nKXkYiBECspnKA
+  USER: {
+    lat: 6.919046153191951,
+    lng: 79.97284612974553
   },
-  customer: {
-    name: "Emma Johnson",
-    address: "789 Maple Ave, Uptown",
-    location: { lat: 40.73061, lng: -73.935242 }, // Nearby location
+  // Driver location: https://maps.app.goo.gl/8sxPzBtJVbTomgq8A
+  DRIVER: {
+    lat: 6.911211309346461,
+    lng: 79.97210071637732
   },
-  total: 22.97,
-  placedAt: new Date(Date.now() - 20 * 60000).toISOString(), // 20 mins ago
+  // Restaurant location: https://maps.app.goo.gl/uRvAx9zqsYx2CK8e8
+  RESTAURANT: {
+    lat: 6.906903629778984,
+    lng: 79.97375369604222
+  }
 };
-const MOCK_DRIVER = {
-  name: "John Smith",
-  photo: "/hero1.png",
-  phone: "+1 (555) 123-4567",
-  vehicle: "Motorcycle",
-  licensePlate: "MTC-123",
-  rating: 4.8,
-};
-const MOCK_DRIVER_PATH = [
-  { lat: 40.712776, lng: -74.005974 }, // Start at restaurant
-  { lat: 40.714776, lng: -74.003974 },
-  { lat: 40.718776, lng: -74.000974 },
-  { lat: 40.722776, lng: -73.996974 },
-  { lat: 40.726776, lng: -73.990974 },
-  { lat: 40.73061, lng: -73.985242 },
-  { lat: 40.73061, lng: -73.935242 }, // End at customer
-];
-const MOCK_STATUS_UPDATES = [
-  {
-    status: "preparing",
-    message: "Restaurant is preparing your order",
-    time: new Date(Date.now() - 15 * 60000).toISOString(), // 15 mins ago
-  },
-  {
-    status: "on_the_way",
-    message: "Driver has picked up your order and is on the way",
-    time: new Date(Date.now() - 10 * 60000).toISOString(), // 10 mins ago
-  },
+
+// Driver path simulation with real Sri Lanka coordinates in Malabe area
+const DRIVER_PATH_SIMULATION = [
+  LOCATIONS.RESTAURANT, // Start at restaurant
+  { lat: 6.908443, lng: 79.972536 }, // Intermediate point
+  { lat: 6.909985, lng: 79.972015 }, // Intermediate point
+  { lat: 6.911211309346461, lng: 79.97210071637732 }, // Driver location
+  { lat: 6.913426, lng: 79.972482 }, // Intermediate point 
+  { lat: 6.915838, lng: 79.972761 }, // Intermediate point
+  LOCATIONS.USER, // End at customer
 ];
 
 export default function LiveTracking() {
-  const { orderId } = useParams();
-  const [loading, setLoading] = useState(true);
-  const [order, setOrder] = useState(null);
-  const [driver, setDriver] = useState(null);
+  // Get order ID from URL parameter
+  const { id } = useParams();
   const [driverLocation, setDriverLocation] = useState(null);
   const [destination, setDestination] = useState(null);
-  const [eta, setEta] = useState(15); // Default 15 minutes
-  const [orderStatus, setOrderStatus] = useState("on_the_way"); // preparing, on_the_way, arrived
+  const [eta, setEta] = useState(15);
   const [statusUpdates, setStatusUpdates] = useState([]);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
 
-  useEffect(() => {
-    // Simulate loading with dummy data
-    const loadDummyData = () => {
-      setTimeout(() => {
-        // Load mock data
-        setOrder(MOCK_ORDER);
-        setDriver(MOCK_DRIVER);
-        setDestination(MOCK_ORDER.customer.location);
-        setDriverLocation(MOCK_DRIVER_PATH[1]); // Start at second point in the path
-        setStatusUpdates(MOCK_STATUS_UPDATES);
-        setLoading(false);
-      }, 1500); // Simulate 1.5s loading
-    };
-    loadDummyData();
+  // Add debugging information
+  console.log("URL Parameter id:", id);
+  
+  // Fetch order data using RTK Query
+  const {
+    data: orderData,
+    isLoading,
+    error
+  } = useGetOrderByIdQuery(id, {
+    refetchOnMountOrArgChange: true,
+    skip: !id
+  });
 
-    // Simulate driver location updates
-    let step = 1; // Start at second point in the path
+  // Extract order details
+  const order = orderData?.order || orderData;
+  const orderStatus = order?.status || "preparing";
+  const driverId = order?.driverId;
+
+  // Format driver ID correctly for API call
+  const formattedDriverId = useMemo(() => {
+    if (!driverId) return null;
+    
+    // If it starts with "DRV", use it directly
+    if (typeof driverId === 'string' && driverId.startsWith('DRV')) {
+      return driverId;
+    }
+    // Otherwise it might be a MongoDB ID
+    return driverId; 
+  }, [driverId]);
+
+  // Fetch driver details if we have a driverId
+  const {
+    data: driverData,
+    isLoading: isLoadingDriver
+  } = useGetDriverByIdQuery(formattedDriverId, {
+    skip: !formattedDriverId
+  });
+
+  // Add debugging for the API responses
+  useEffect(() => {
+    if (orderData) {
+      console.log("Order data received:", orderData);
+    }
+    if (error) {
+      console.error("Order fetch error:", error);
+    }
+    if (driverId) {
+      console.log("Driver ID from order:", driverId);
+    }
+    if (driverData) {
+      console.log("Driver data received:", driverData);
+    }
+  }, [orderData, error, driverId, driverData]);
+
+  // Enhanced driver info by combining order data with driver details
+  const driver = useMemo(() => {
+    if (order?.driverName) {
+      // Base driver info from order
+      const baseDriverInfo = {
+        name: order.driverName,
+        photo: order.driverPhoto || "/hero1.png",
+        phone: order.driverPhone || "Not available",
+        vehicle: order.driverVehicle || "Motorcycle",
+        licensePlate: order.driverLicensePlate || "N/A",
+        rating: order.driverRating || 4.8,
+      };
+      
+      // If we have additional driver details from the driver service
+      if (driverData) {
+        // Handle different response structures
+        const driverDetails = driverData.driver || driverData;
+        
+        return {
+          ...baseDriverInfo,
+          // Enhanced properties from driver service
+          photo: driverDetails.profileImage || baseDriverInfo.photo,
+          phone: driverDetails.phone || baseDriverInfo.phone,
+          vehicle: driverDetails.vehicleType || baseDriverInfo.vehicle,
+          licensePlate: driverDetails.licenseNumber || baseDriverInfo.licensePlate,
+          rating: driverDetails.rating || baseDriverInfo.rating,
+          deliveryCities: driverDetails.deliveryCities || [],
+          completedOrders: driverDetails.completedOrders
+        };
+      }
+      return baseDriverInfo;
+    }
+    return null;
+  }, [order, driverData]);
+
+  // Set customer destination when order data loads
+  useEffect(() => {
+    if (order?.customer?.location) {
+      setDestination(order.customer.location);
+    } else if (order) {
+      // Fallback to real location if API location isn't available
+      setDestination(LOCATIONS.USER);
+    }
+  }, [order]);
+
+  // Create status updates based on order data
+  useEffect(() => {
+    if (order) {
+      const updates = [];
+
+      if (order.status === "preparing" || ["out_for_delivery", "delivered"].includes(order.status)) {
+        updates.push({
+          status: "preparing",
+          message: "Restaurant is preparing your order",
+          time: order.createdAt || new Date(Date.now() - 15 * 60000).toISOString(),
+        });
+      }
+
+      if (["out_for_delivery", "delivered"].includes(order.status)) {
+        updates.push({
+          status: "on_the_way",
+          message: "Driver has picked up your order and is on the way",
+          time: order.driverAssignedAt || new Date(Date.now() - 10 * 60000).toISOString(),
+        });
+      }
+
+      if (order.status === "delivered") {
+        updates.push({
+          status: "arrived",
+          message: "Driver has delivered your order",
+          time: order.updatedAt || new Date().toISOString(),
+        });
+      }
+
+      setStatusUpdates(updates);
+    }
+  }, [order]);
+
+  // Simulate driver movement using the real Sri Lanka coordinates
+  useEffect(() => {
+    if (!order || order.status !== "out_for_delivery") return;
+
+    let step = 1;
     const interval = setInterval(() => {
-      if (step < MOCK_DRIVER_PATH.length) {
-        const location = MOCK_DRIVER_PATH[step];
-        const minutesLeft = Math.max(1, 15 - step * 3); // ETA decreases as driver moves
+      if (step < DRIVER_PATH_SIMULATION.length) {
+        const location = DRIVER_PATH_SIMULATION[step];
+        const minutesLeft = Math.max(1, 15 - step * 3);
         setDriverLocation(location);
         setEta(minutesLeft);
-        // Update order status at specific points
-        if (step === MOCK_DRIVER_PATH.length - 1) {
-          setOrderStatus("arrived");
-          setStatusUpdates((prev) => [
-            {
-              status: "arrived",
-              message: "Driver has arrived at your location",
-              time: new Date().toISOString(),
-            },
-            ...prev,
-          ]);
-        }
         step++;
       } else {
         clearInterval(interval);
       }
     }, 5000); // Update every 5 seconds
 
-    return () => clearInterval(interval);
-  }, [orderId]);
+    // Set initial driver location
+    setDriverLocation(DRIVER_PATH_SIMULATION[0]);
 
+    return () => clearInterval(interval);
+  }, [order]);
+
+  // Handle order cancellation
+  const handleCancelOrder = async () => {
+    try {
+      // In a real implementation, you would use a mutation like:
+      // await cancelOrder(order.orderId).unwrap();
+      toast.success("Order cancellation functionality will be implemented here");
+      setCancelModalOpen(false);
+    } catch (error) {
+      toast.error("Failed to cancel order");
+      console.error("Cancel order error:", error);
+    }
+  };
+
+  // Get appropriate icon for driver's vehicle
   const getVehicleIcon = () => {
     if (!driver) return <FaCarSide />;
-    switch (driver.vehicle) {
-      case "Car":
+    switch (driver.vehicle.toLowerCase()) {
+      case "car":
         return <FaCarSide className="text-blue-500" />;
-      case "Motorcycle":
+      case "motorcycle":
         return <FaMotorcycle className="text-orange-500" />;
-      case "Bicycle":
+      case "bicycle":
         return <FaBicycle className="text-green-500" />;
       default:
         return <FaCarSide className="text-gray-500" />;
     }
   };
 
-  if (loading) {
+  // Format timestamp for display
+  const formatTime = (timeString) => {
+    try {
+      return new Date(timeString).toLocaleTimeString([], { 
+        hour: '2-digit', minute: '2-digit'
+      });
+    } catch (e) {
+      return "Unknown time";
+    }
+  };
+
+  // Loading state
+  if (isLoading) {
     return (
       <>
         <Header />
@@ -152,11 +270,57 @@ export default function LiveTracking() {
     );
   }
 
+  // Error state
+  if (error) {
+    return (
+      <>
+        <Header />
+        <div className="flex flex-col items-center justify-center min-h-screen bg-white p-4">
+          <div className="bg-red-50 p-6 rounded-lg max-w-md w-full text-center">
+            <h2 className="text-xl font-bold text-red-600 mb-4">Error Loading Order</h2>
+            <p className="text-gray-700 mb-6">{error.data?.message || "Could not load tracking information. Please try again later."}</p>
+            <Link to="/orders" className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-colors">
+              Back to Orders
+            </Link>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  // If order not found - improve this check
+  if (!isLoading && !error && (!orderData)) {
+    return (
+      <>
+        <Header />
+        <div className="flex flex-col items-center justify-center min-h-screen bg-white p-4">
+          <div className="bg-yellow-50 p-6 rounded-lg max-w-md w-full text-center">
+            <h2 className="text-xl font-bold text-yellow-600 mb-4">Order Not Found</h2>
+            <p className="text-gray-700 mb-6">The order you're looking for (ID: {id}) could not be found.</p>
+            <Link to="/orders" className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-colors">
+              Back to Orders
+            </Link>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  // Calculate restaurant location - use real data if available, otherwise use our predefined location
+  const restaurantLocation = order?.restaurant?.location || LOCATIONS.RESTAURANT;
+
   return (
     <>
       <Header />
       <div className="bg-gradient-to-br from-orange-100 to-yellow-100 min-h-screen">
         <div className="container mx-auto px-4 py-8">
+          {/* Back button */}
+          <Link to="/orders" className="inline-flex items-center text-gray-600 hover:text-orange-500 mb-6">
+            <FaArrowLeft className="mr-2" /> Back to orders
+          </Link>
+        
           <div className="flex flex-col md:flex-row gap-6">
             {/* Left column: Map */}
             <div className="md:w-2/3">
@@ -164,74 +328,44 @@ export default function LiveTracking() {
                 {/* Map header */}
                 <div className="p-6 border-b border-gray-200">
                   <h1 className="text-2xl font-bold text-gray-800">
-                    Tracking Order #{orderId}
+                    Tracking Order #{order.orderId}
                   </h1>
                   <p className="text-sm text-gray-500 mt-2">
-                    Real-time location of your delivery
+                    {order.restaurant?.name || "Restaurant"} • {formatTime(order.createdAt)}
                   </p>
                 </div>
+                
                 {/* Map container */}
                 <div className="h-[70vh] relative">
-                  {driverLocation && destination && (
+                  {(driverLocation || destination) && (
                     <MapComponent
                       driverLocation={driverLocation}
                       destination={destination}
-                      restaurantLocation={order.restaurant.location}
+                      restaurantLocation={restaurantLocation}
                     />
                   )}
-                  {/* Zoom controls */}
-                  <div className="absolute bottom-4 right-4 flex flex-col gap-2">
-                    <button className="bg-white rounded-full p-2 shadow-md hover:bg-gray-100 transition-all">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-gray-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                        />
-                      </svg>
-                    </button>
-                    <button className="bg-white rounded-full p-2 shadow-md hover:bg-gray-100 transition-all">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-gray-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
-                    </button>
-                  </div>
                 </div>
-                {/* ETA bar */}
-                <div className="bg-gradient-to-r from-orange-500 to-yellow-500 text-white p-4 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <FaClock className="mr-2" />
-                    <span>Estimated arrival in {eta} minutes</span>
-                  </div>
+                
+                {/* Status bar */}
+                <div className="bg-gradient-to-r from-orange-500 to-yellow-500 text-white p-4 flex flex-wrap items-center justify-between">
+                  {orderStatus === "out_for_delivery" && (
+                    <div className="flex items-center">
+                      <FaClock className="mr-2" />
+                      <span>Estimated arrival in {eta} minutes</span>
+                    </div>
+                  )}
                   <div className="flex items-center">
                     <FaRoute className="mr-2" />
                     <span>
-                      Driver is{" "}
-                      {orderStatus === "preparing"
-                        ? "at restaurant"
-                        : "on the way"}
+                      Status: {" "}
+                      <span className="font-medium capitalize">
+                        {orderStatus.replace(/_/g, ' ')}
+                      </span>
                     </span>
                   </div>
                 </div>
               </div>
+              
               {/* Order status timeline */}
               <div className="mt-6 bg-white rounded-3xl shadow-2xl overflow-hidden">
                 <div className="p-6 border-b border-gray-200">
@@ -243,6 +377,7 @@ export default function LiveTracking() {
                   <div className="relative">
                     {/* Vertical line */}
                     <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                    
                     {/* Status items */}
                     {statusUpdates.map((update, index) => (
                       <motion.div
@@ -274,19 +409,37 @@ export default function LiveTracking() {
                             {update.message}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {new Date(update.time).toLocaleTimeString()}
+                            {formatTime(update.time)}
                           </p>
                         </div>
                       </motion.div>
                     ))}
+                    
+                    {/* Next expected status if not delivered */}
+                    {orderStatus !== "delivered" && (
+                      <div className="flex mb-6 last:mb-0 relative opacity-50">
+                        <div className="h-10 w-10 rounded-full flex items-center justify-center z-10 mr-4 bg-gray-100 text-gray-400">
+                          <FaHome />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-600">
+                            Order will be delivered
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Estimated
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
+            
             {/* Right column: Driver info and order details */}
             <div className="md:w-1/3">
-              {/* Driver info card */}
-              {driver && (
+              {/* Driver info card - only show if driver assigned */}
+              {driver && orderStatus === "out_for_delivery" && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -294,6 +447,9 @@ export default function LiveTracking() {
                 >
                   <div className="p-6 bg-gradient-to-r from-orange-500 to-yellow-500 text-white">
                     <h2 className="text-lg font-bold">Your Delivery Driver</h2>
+                    {isLoadingDriver && (
+                      <span className="inline-block ml-2 h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+                    )}
                   </div>
                   <div className="p-6">
                     <div className="flex items-center">
@@ -301,6 +457,7 @@ export default function LiveTracking() {
                         src={driver.photo}
                         alt={driver.name}
                         className="h-20 w-20 rounded-full object-cover mr-4 border-4 border-orange-500"
+                        onError={(e) => { e.target.src = "/hero1.png" }}
                       />
                       <div>
                         <h3 className="font-bold text-gray-800 text-xl">
@@ -309,8 +466,12 @@ export default function LiveTracking() {
                         <div className="flex items-center text-sm text-gray-600 mt-2">
                           {getVehicleIcon()}
                           <span className="ml-1">{driver.vehicle}</span>
-                          <span className="mx-1">•</span>
-                          <span>{driver.licensePlate}</span>
+                          {driver.licensePlate !== "N/A" && (
+                            <>
+                              <span className="mx-1">•</span>
+                              <span>{driver.licensePlate}</span>
+                            </>
+                          )}
                         </div>
                         <div className="flex items-center mt-2">
                           <div className="flex">
@@ -333,27 +494,41 @@ export default function LiveTracking() {
                             {driver.rating}
                           </span>
                         </div>
+                        
+                        {/* Show driver's service areas if available */}
+                        {driver.deliveryCities && driver.deliveryCities.length > 0 && (
+                          <div className="mt-2 text-xs text-gray-500">
+                            Service areas: {driver.deliveryCities.join(', ')}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="mt-6 flex justify-between">
-                      <a
-                        href={`tel:${driver.phone}`}
-                        className="bg-orange-500 text-white px-6 py-3 rounded-lg flex items-center justify-center hover:bg-orange-600 transition-colors"
-                      >
-                        <FaPhoneAlt className="mr-2" />
-                        Call Driver
-                      </a>
-                      <a
-                        href={`tel:${MOCK_ORDER.restaurant.phone}`}
-                        className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg flex items-center justify-center hover:bg-gray-300 transition-colors"
-                      >
-                        <FaPhoneAlt className="mr-2" />
-                        Contact Restaurant
-                      </a>
-                    </div>
+                    
+                    {/* Add experience information if available */}
+                    {driver.completedOrders > 0 && (
+                      <div className="mt-4 bg-gray-50 p-2 rounded-lg text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Experience:</span>
+                          <span className="font-medium">{driver.completedOrders} orders delivered</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {driver.phone !== "Not available" && (
+                      <div className="mt-6">
+                        <a
+                          href={`tel:${driver.phone}`}
+                          className="w-full bg-orange-500 text-white px-6 py-3 rounded-lg flex items-center justify-center hover:bg-orange-600 transition-colors"
+                        >
+                          <FaPhoneAlt className="mr-2" />
+                          Call Driver
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}
+              
               {/* Order details card */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -371,14 +546,15 @@ export default function LiveTracking() {
                       <FaUtensils className="text-gray-500 mt-1 mr-3" />
                       <div>
                         <h3 className="font-bold text-gray-800 text-lg">
-                          {order.restaurant.name}
+                          {order.restaurant?.name || "Restaurant"}
                         </h3>
                         <p className="text-sm text-gray-600">
-                          {order.restaurant.address}
+                          {order.restaurant?.address || "No address available"}
                         </p>
                       </div>
                     </div>
                   </div>
+                  
                   {/* Delivery address */}
                   <div className="mb-6 pb-4 border-b border-gray-200">
                     <div className="flex items-start">
@@ -388,17 +564,18 @@ export default function LiveTracking() {
                           Delivery Address
                         </h3>
                         <p className="text-sm text-gray-600">
-                          {order.customer.address}
+                          {order.customer?.address || "No address available"}
                         </p>
                       </div>
                     </div>
                   </div>
+                  
                   {/* Order items */}
                   <div className="mb-6">
                     <h3 className="font-bold text-gray-800 text-lg mb-2">
                       Your Order
                     </h3>
-                    {order.items.map((item, index) => (
+                    {order.items?.map((item, index) => (
                       <div
                         key={index}
                         className="flex justify-between mb-2 text-sm"
@@ -412,27 +589,31 @@ export default function LiveTracking() {
                       </div>
                     ))}
                   </div>
+                  
                   {/* Order total */}
                   <div className="pt-4 border-t border-gray-200">
                     <div className="flex justify-between font-bold text-lg">
                       <span>Total</span>
                       <span className="text-orange-600">
-                        ${order.total.toFixed(2)}
+                        ${order.total?.toFixed(2) || "0.00"}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      Placed {new Date(order.placedAt).toLocaleTimeString()}
+                      Placed {formatTime(order.createdAt)}
                     </p>
                   </div>
-                  {/* Cancel Order Button */}
-                  <div className="mt-6">
-                    <button
-                      onClick={() => setCancelModalOpen(true)}
-                      className="w-full bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors"
-                    >
-                      Cancel Order
-                    </button>
-                  </div>
+                  
+                  {/* Cancel Order Button - only show for orders that can be cancelled */}
+                  {["pending", "confirmed"].includes(orderStatus) && (
+                    <div className="mt-6">
+                      <button
+                        onClick={() => setCancelModalOpen(true)}
+                        className="w-full bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors"
+                      >
+                        Cancel Order
+                      </button>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </div>
@@ -443,29 +624,33 @@ export default function LiveTracking() {
 
       {/* Cancel Order Modal */}
       {cancelModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-3xl p-8 shadow-2xl max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-8 shadow-2xl max-w-md"
+          >
             <h2 className="text-xl font-bold text-gray-800 mb-4">
               Are you sure you want to cancel this order?
             </h2>
+            <p className="text-gray-600 mb-6">
+              This action cannot be undone. The restaurant may have already started preparing your food.
+            </p>
             <div className="flex justify-end gap-4">
               <button
                 onClick={() => setCancelModalOpen(false)}
                 className="px-6 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 transition-colors"
               >
-                No, Keep Order
+                Keep Order
               </button>
               <button
-                onClick={() => {
-                  alert("Order Cancelled!");
-                  setCancelModalOpen(false);
-                }}
+                onClick={handleCancelOrder}
                 className="px-6 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
               >
-                Yes, Cancel Order
+                Cancel Order
               </button>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
     </>
