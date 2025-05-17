@@ -2,6 +2,7 @@ const TwilioService = require('../services/twilioService');
 const Notification = require('../models/notification');
 const axios = require('axios');
 const whatsappService = require('../services/whatsappService');
+const emailService = require('../services/emailService');
 
 /**
  * Controller for notification-related endpoints
@@ -262,6 +263,111 @@ const NotificationController = {
       res.status(500).json({
         success: false,
         message: 'Failed to send WhatsApp notification',
+        error: error.message
+      });
+    }
+  },
+
+  /**
+   * Send Email notification for payment completed
+   */
+  sendPaymentEmailNotification: async (req, res) => {
+    try {
+      const { customerName, customerEmail, orderId, amount } = req.body;
+      
+      if (!customerName || !customerEmail || !orderId || !amount) {
+        return res.status(400).json({
+          success: false,
+          message: 'Missing required fields: customerName, customerEmail, orderId, amount'
+        });
+      }
+      
+      const { subject, html } = emailService.notifications.paymentComplete(
+        customerName, orderId, amount
+      );
+      
+      const result = await emailService.sendEmailMessage(customerEmail, subject, html);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Payment notification sent via Email',
+        messageId: result.messageId
+      });
+    } catch (error) {
+      console.error('Error sending payment email notification:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send email notification',
+        error: error.message
+      });
+    }
+  },
+
+  /**
+   * Send Email notification for order confirmed
+   */
+  sendOrderConfirmedEmailNotification: async (req, res) => {
+    try {
+      const { customerName, customerEmail, orderId, restaurantName, estimatedTime } = req.body;
+      
+      if (!customerName || !customerEmail || !orderId || !restaurantName) {
+        return res.status(400).json({
+          success: false,
+          message: 'Missing required fields'
+        });
+      }
+      
+      const { subject, html } = emailService.notifications.orderConfirmed(
+        customerName, orderId, restaurantName, estimatedTime
+      );
+      
+      const result = await emailService.sendEmailMessage(customerEmail, subject, html);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Order confirmation notification sent via Email',
+        messageId: result.messageId
+      });
+    } catch (error) {
+      console.error('Error sending order confirmation email:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send email notification',
+        error: error.message
+      });
+    }
+  },
+
+  /**
+   * Send Email notification for order delivered
+   */
+  sendOrderDeliveredEmailNotification: async (req, res) => {
+    try {
+      const { customerName, customerEmail, orderId, restaurantName } = req.body;
+      
+      if (!customerName || !customerEmail || !orderId || !restaurantName) {
+        return res.status(400).json({
+          success: false,
+          message: 'Missing required fields'
+        });
+      }
+      
+      const { subject, html } = emailService.notifications.orderDelivered(
+        customerName, orderId, restaurantName
+      );
+      
+      const result = await emailService.sendEmailMessage(customerEmail, subject, html);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Delivery notification sent via Email',
+        messageId: result.messageId
+      });
+    } catch (error) {
+      console.error('Error sending delivery email notification:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send email notification',
         error: error.message
       });
     }

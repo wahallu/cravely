@@ -16,4 +16,9 @@ router.post('/whatsapp/payment-completed', notificationController.sendPaymentNot
 router.post('/whatsapp/order-confirmed', notificationController.sendOrderConfirmedNotification);
 router.post('/whatsapp/order-delivered', notificationController.sendOrderDeliveredNotification);
 
+// New Email routes
+router.post('/email/payment-completed', notificationController.sendPaymentEmailNotification);
+router.post('/email/order-confirmed', notificationController.sendOrderConfirmedEmailNotification);
+router.post('/email/order-delivered', notificationController.sendOrderDeliveredEmailNotification);
+
 module.exports = router;

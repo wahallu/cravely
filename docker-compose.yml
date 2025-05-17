@@ -27,8 +27,8 @@ services:
       - PORT=5002
       - MONGO_URI=mongodb+srv://nisal:1234@cluster0.p860x.mongodb.net/cravely_order?retryWrites=true&w=majority&appName=Cluster0
       - JWT_SECRET=cravely
-      - STRIPE_SECRET_KEY=sk_test_…
-      - STRIPE_PUBLISHABLE_KEY=pk_test_…
+      - STRIPE_PUBLISHABLE_KEY=pk_test_51R7t0oG8piHs7v556meTuJcbOp532bALYa8SnZtwekL7XGVktZGSfxw3WbCLU7DPGqcz0nCNJoyDiAwqrF2YyWEO007q7lpsAa
+      - STRIPE_SECRET_KEY=sk_test_51R7t0oG8piHs7v557PlNCgZG92aolQGsoXgSOVrs0Ha7hek5Ap16ot9elbWSGf1y69XdaD6FeHPtIMhbSGPzDrVb00ars1OOHb
       - RESTAURANT_SERVICE_URL=http://restaurant:5003/api/restaurants
       - NOTIFICATION_SERVICE_URL=http://notification:5007/api/notifications
       - DELIVERY_SERVICE_URL=http://delivery:5001/api/drivers
@@ -62,11 +62,14 @@ services:
       - MONGODB_URI=mongodb+srv://nisal:1234@cluster0.p860x.mongodb.net/cravely_notify?retryWrites=true&w=majority&appName=Cluster0
       - JWT_SECRET=cravely
       - TWILIO_ACCOUNT_SID=AC6fe08165f2b31e424e7e393c50aef038
-      - TWILIO_AUTH_TOKEN=098cb38cac991b2f9d983cee06aa4bed
+      - TWILIO_AUTH_TOKEN=29045a2917d82abc4455dd7d3e0ac1c5
       - TWILIO_PHONE_NUMBER=+14155238886
       - ORDER_SERVICE_URL=http://order:5002/api/orders
       - USER_SERVICE_URL=http://user:5004/api/users
       - NOTIFICATION_SERVICE_URL=http://notification:5007/api/notifications
+      - EMAIL_SERVICE=gmail
+      - EMAIL_USER=navodchathushka@gmail.com
+      - EMAIL_PASSWORD=udonogwhbnkgansm
     restart: always
     networks:
       - cravely-network

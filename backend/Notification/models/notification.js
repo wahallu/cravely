@@ -13,7 +13,7 @@ const notificationSchema = new mongoose.Schema({
   },
   channel: {
     type: String,
-    enum: ['sms', 'email', 'push'],
+    enum: ['sms', 'whatsapp', 'email'], 
     required: true
   },
   recipient: {
