@@ -16,6 +16,57 @@ import { useGetUserOrdersQuery } from '../../Redux/slices/orderSlice'
 import { useGetAllRestaurantsQuery } from '../../Redux/slices/restaurantSlice'
 import { useGetUserAddressesQuery } from '../../Redux/slices/shippingAddressSlice'
 
+// Add dummy data
+const dummyRestaurants = [
+    {
+        _id: 'dummy-rest-1',
+        name: 'Burger Palace',
+        rating: 4.8,
+        cuisineType: 'American',
+        image: '/hero1.png'
+    },
+    {
+        _id: 'dummy-rest-2',
+        name: 'Pizza Corner', 
+        rating: 4.6,
+        cuisineType: 'Italian',
+        image: '/hero1.png'
+    },
+    {
+        _id: 'dummy-rest-3',
+        name: 'Sushi Master',
+        rating: 4.9,
+        cuisineType: 'Japanese',
+        image: '/hero1.png'
+    }
+];
+
+const dummyOrders = [
+    {
+        _id: 'dummy-order-1',
+        orderId: 'ORD-001',
+        restaurantName: 'Burger Palace',
+        total: 25.99,
+        status: 'Delivered',
+        createdAt: new Date().toISOString(),
+        items: [
+            { name: 'Cheeseburger' },
+            { name: 'Fries' }
+        ]
+    },
+    {
+        _id: 'dummy-order-2',
+        orderId: 'ORD-002', 
+        restaurantName: 'Pizza Corner',
+        total: 18.99,
+        status: 'Delivered',
+        createdAt: new Date(Date.now() - 86400000).toISOString(),
+        items: [
+            { name: 'Margherita Pizza' }
+        ]
+    }
+];
+
 export default function Dashboard() {
   // State for storing formatted data
   const [favoriteRestaurants, setFavoriteRestaurants] = useState([]);
@@ -24,18 +75,20 @@ export default function Dashboard() {
   const [specialOffers, setSpecialOffers] = useState([]);
   const [showAddressDropdown, setShowAddressDropdown] = useState(false);
   
-  // Fetch orders using RTK Query
-  const { 
-    data: ordersData, 
-    isLoading: isOrdersLoading 
-  } = useGetUserOrdersQuery();
-
   // Fetch restaurants using RTK Query
   const { 
     data: restaurantsData, 
-    isLoading: isRestaurantsLoading 
+    isLoading: isRestaurantsLoading,
+    error: restaurantsError
   } = useGetAllRestaurantsQuery();
   
+  // Fetch orders using RTK Query
+  const { 
+    data: ordersData, 
+    isLoading: isOrdersLoading,
+    error: ordersError
+  } = useGetUserOrdersQuery();
+
   // Fetch user addresses
   const {
     data: addressesData,
@@ -58,8 +111,14 @@ export default function Dashboard() {
 
   // Process restaurant data when it loads
   useEffect(() => {
-    if (restaurantsData?.data) {
-      const restaurants = restaurantsData.data || [];
+    const restaurants = (restaurantsData?.data && restaurantsData.data.length > 0) 
+      ? restaurantsData.data
+      : (!isRestaurantsLoading && (restaurantsError || !restaurantsData?.data || restaurantsData.data.length === 0))
+        ? dummyRestaurants 
+        : [];
+
+    if (restaurants.length > 0) {
+      console.log(restaurants === dummyRestaurants ? 'Using dummy restaurant data for dashboard' : 'Using real restaurant data');
       
       // Sort by rating to get highest rated for "favorites"
       const sortedByRating = [...restaurants]
@@ -104,12 +163,19 @@ export default function Dashboard() {
       setNearbyRestaurants(nearby);
       setSpecialOffers(offers);
     }
-  }, [restaurantsData]);
+  }, [restaurantsData, isRestaurantsLoading, restaurantsError]);
   
   // Process orders data when it loads
   useEffect(() => {
-    if (ordersData) {
-      const orders = ordersData || [];
+    const orders = (ordersData && ordersData.length > 0)
+      ? ordersData
+      : (!isOrdersLoading && (ordersError || !ordersData || ordersData.length === 0))
+        ? dummyOrders
+        : [];
+
+    if (orders.length > 0) {
+      console.log(orders === dummyOrders ? 'Using dummy orders data for dashboard' : 'Using real orders data');
+      
       const recent = orders
         .slice(0, 2) // Get most recent 2 orders
         .map(order => ({
@@ -126,7 +192,7 @@ export default function Dashboard() {
         
       setRecentOrders(recent);
     }
-  }, [ordersData]);
+  }, [ordersData, isOrdersLoading, ordersError]);
 
   // Quick actions (static data)
   const quickActions = [

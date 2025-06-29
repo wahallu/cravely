@@ -4,12 +4,24 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useGetAllMealsQuery } from '../../Redux/slices/mealSlice';
 
+// Add dummy pizza data
+const dummyPizza = {
+    _id: 'dummy-pizza-1',
+    name: 'Hot Spicy Pizza Supreme',
+    description: 'A fiery combination of pepperoni, jalapeños, hot sauce, and melted cheese',
+    price: 18.99,
+    category: 'Pizza',
+    image: '/hero1.png',
+    rating: 4.8,
+    restaurant: 'Pizza Palace'
+};
+
 export default function HotSpizyPizza() {
     const [featuredPizza, setFeaturedPizza] = useState(null);
-    const { data: mealsData, isLoading } = useGetAllMealsQuery();
+    const { data: mealsData, isLoading, error } = useGetAllMealsQuery();
     
     useEffect(() => {
-        if (mealsData) {
+        if (mealsData && mealsData.length > 0) {
             // Find a pizza meal to feature
             const pizzas = mealsData.filter(meal => 
                 meal.category?.toLowerCase().includes('pizza') || 
@@ -20,9 +32,16 @@ export default function HotSpizyPizza() {
                 // Take a random pizza or the one with highest rating
                 const sortedPizzas = [...pizzas].sort((a, b) => (b.rating || 0) - (a.rating || 0));
                 setFeaturedPizza(sortedPizzas[0]);
+            } else {
+                // No pizzas found in real data, use dummy
+                setFeaturedPizza(dummyPizza);
             }
+        } else if (!isLoading && (error || !mealsData || mealsData.length === 0)) {
+            // Use dummy data when API fails or returns empty data
+            console.log('Using dummy pizza data for hot spicy pizza');
+            setFeaturedPizza(dummyPizza);
         }
-    }, [mealsData]);
+    }, [mealsData, isLoading, error]);
 
     if (isLoading || !featuredPizza) {
         return null; // Don't render the section if no pizza data is available

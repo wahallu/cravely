@@ -5,46 +5,110 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGetAllMealsQuery } from '../../Redux/slices/mealSlice';
 import { useGetAllRestaurantsQuery } from '../../Redux/slices/restaurantSlice';
 
+// Add dummy meals data
+const dummyMeals = [
+    {
+        _id: 'dummy-meal-1',
+        name: 'Classic Cheeseburger',
+        price: 12.99,
+        image: '/hero1.png',
+        rating: 4.8,
+        restaurant: 'dummy-rest-1',
+        category: 'Burgers'
+    },
+    {
+        _id: 'dummy-meal-2', 
+        name: 'Margherita Pizza',
+        price: 14.99,
+        image: '/hero1.png',
+        rating: 4.7,
+        restaurant: 'dummy-rest-2',
+        category: 'Pizza'
+    },
+    {
+        _id: 'dummy-meal-3',
+        name: 'Salmon Sushi Roll',
+        price: 16.99,
+        image: '/hero1.png',
+        rating: 4.9,
+        restaurant: 'dummy-rest-3',
+        category: 'Sushi'
+    },
+    {
+        _id: 'dummy-meal-4',
+        name: 'Chicken Tacos',
+        price: 11.99,
+        image: '/hero1.png',
+        rating: 4.6,
+        restaurant: 'dummy-rest-4',
+        category: 'Mexican'
+    },
+    {
+        _id: 'dummy-meal-5',
+        name: 'Butter Chicken',
+        price: 15.99,
+        image: '/hero1.png',
+        rating: 4.8,
+        restaurant: 'dummy-rest-5',
+        category: 'Indian'
+    }
+];
+
+const dummyRestaurants = [
+    { _id: 'dummy-rest-1', name: 'Burger Palace' },
+    { _id: 'dummy-rest-2', name: 'Pizza Corner' },
+    { _id: 'dummy-rest-3', name: 'Sushi Master' },
+    { _id: 'dummy-rest-4', name: 'Taco Fiesta' },
+    { _id: 'dummy-rest-5', name: 'Curry House' }
+];
+
 export default function PopularItems() {
+    const [popularItems, setPopularItems] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [itemsPerPage, setItemsPerPage] = useState(3);
+    const [itemsPerPage, setItemsPerPage] = useState(4);
     const sliderRef = useRef(null);
     const containerRef = useRef(null);
-    const [popularItems, setPopularItems] = useState([]);
 
     // Fetch meals and restaurants data
-    const { data: mealsData, isLoading: isMealsLoading } = useGetAllMealsQuery();
-    const { data: restaurantsData, isLoading: isRestaurantsLoading } = useGetAllRestaurantsQuery();
+    const { data: mealsData, isLoading: mealsLoading, error: mealsError } = useGetAllMealsQuery();
+    const { data: restaurantsData, isLoading: restaurantsLoading, error: restaurantsError } = useGetAllRestaurantsQuery();
 
     // Process data when it's loaded
     useEffect(() => {
-        if (mealsData && restaurantsData?.data) {
-            // Get all meals and prepare them with restaurant info
-            const meals = mealsData || [];
+        if (mealsData && restaurantsData?.data && mealsData.length > 0 && restaurantsData.data.length > 0) {
+            // Use real data
             const restaurants = restaurantsData.data || [];
-            
-            // Map and prepare the popular items
-            const items = meals.map(meal => {
-                // Find the restaurant for this meal
-                const restaurant = restaurants.find(r => r._id === meal.restaurant || r.id === meal.restaurant);
-                
+            const items = mealsData.map(meal => {
+                const restaurant = restaurants.find(r => r._id === meal.restaurant);
                 return {
                     id: meal._id || meal.id,
                     image: meal.image || '/hero1.png',
                     name: meal.name,
                     restaurant: restaurant?.name || 'Restaurant',
                     price: meal.price ? meal.price.toFixed(2) : '0.00',
-                    rating: meal.rating || 4.5 // Default rating if not available
+                    rating: meal.rating || 4.5
                 };
             });
             
-            // Sort by some criteria like rating or add a "popular" flag in your backend
             const sortedItems = items.sort((a, b) => b.rating - a.rating);
-            
-            // Take top 5 or however many you want to display
             setPopularItems(sortedItems.slice(0, 5));
+        } else if (!mealsLoading && !restaurantsLoading && (mealsError || restaurantsError || !mealsData || mealsData.length === 0)) {
+            // Use dummy data when API fails or returns empty data
+            console.log('Using dummy meals data for popular items');
+            const items = dummyMeals.map(meal => {
+                const restaurant = dummyRestaurants.find(r => r._id === meal.restaurant);
+                return {
+                    id: meal._id,
+                    image: meal.image,
+                    name: meal.name,
+                    restaurant: restaurant?.name || 'Restaurant',
+                    price: meal.price.toFixed(2),
+                    rating: meal.rating
+                };
+            });
+            setPopularItems(items);
         }
-    }, [mealsData, restaurantsData]);
+    }, [mealsData, restaurantsData, mealsLoading, restaurantsLoading, mealsError, restaurantsError]);
 
     // Determine how many items to show based on container width
     useEffect(() => {
@@ -100,7 +164,7 @@ export default function PopularItems() {
     };
 
     // Loading state
-    if (isMealsLoading || isRestaurantsLoading) {
+    if (mealsLoading || restaurantsLoading) {
         return (
             <div className="flex justify-center items-center py-16">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div>

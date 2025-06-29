@@ -21,6 +21,91 @@ import { toast } from "react-hot-toast"; // This should already be set up based 
 import { useAddToCartMutation } from "../../Redux/slices/cartApiSlice";
 import { getUserInfo } from "../../utils/auth"; // Assuming you have a utility function to get user info
 
+// Add dummy data
+const dummyMeals = [
+    {
+        _id: 'dummy-meal-1',
+        name: 'Classic Cheeseburger',
+        description: 'Juicy beef patty with cheese, lettuce, tomato, and our special sauce',
+        price: 12.99,
+        category: 'Burgers',
+        image: '/hero1.png',
+        rating: 4.8,
+        restaurant: 'dummy-rest-1',
+        ingredients: ['Beef', 'Cheese', 'Lettuce', 'Tomato'],
+        allergens: ['Dairy', 'Gluten']
+    },
+    {
+        _id: 'dummy-meal-2',
+        name: 'Margherita Pizza',
+        description: 'Traditional pizza with fresh mozzarella, tomato sauce, and basil',
+        price: 14.99,
+        category: 'Pizza',
+        image: '/hero1.png',
+        rating: 4.7,
+        restaurant: 'dummy-rest-2',
+        ingredients: ['Mozzarella', 'Tomato Sauce', 'Basil'],
+        allergens: ['Dairy', 'Gluten']
+    },
+    {
+        _id: 'dummy-meal-3',
+        name: 'Salmon Sushi Roll',
+        description: 'Fresh salmon with avocado and cucumber wrapped in seasoned rice',
+        price: 16.99,
+        category: 'Sushi',
+        image: '/hero1.png',
+        rating: 4.9,
+        restaurant: 'dummy-rest-3',
+        ingredients: ['Salmon', 'Avocado', 'Cucumber', 'Rice'],
+        allergens: ['Fish']
+    },
+    {
+        _id: 'dummy-meal-4',
+        name: 'Chicken Tacos',
+        description: 'Grilled chicken with fresh salsa, lettuce, and cheese in soft tortillas',
+        price: 11.99,
+        category: 'Mexican',
+        image: '/hero1.png',
+        rating: 4.6,
+        restaurant: 'dummy-rest-4',
+        ingredients: ['Chicken', 'Salsa', 'Lettuce', 'Cheese'],
+        allergens: ['Dairy', 'Gluten']
+    },
+    {
+        _id: 'dummy-meal-5',
+        name: 'Pad Thai',
+        description: 'Traditional Thai noodles with shrimp, peanuts, and tamarind sauce',
+        price: 13.99,
+        category: 'Asian',
+        image: '/hero1.png',
+        rating: 4.5,
+        restaurant: 'dummy-rest-6',
+        ingredients: ['Rice Noodles', 'Shrimp', 'Peanuts', 'Bean Sprouts'],
+        allergens: ['Shellfish', 'Peanuts']
+    }
+];
+
+const dummyMenus = [
+    {
+        _id: 'dummy-menu-1',
+        name: 'Burger Combo',
+        description: 'Classic cheeseburger with fries and drink',
+        price: 16.99,
+        image: '/hero1.png',
+        restaurant: 'dummy-rest-1',
+        menuItems: ['dummy-meal-1']
+    },
+    {
+        _id: 'dummy-menu-2',
+        name: 'Pizza Family Pack',
+        description: 'Two large pizzas perfect for sharing',
+        price: 28.99,
+        image: '/hero1.png',
+        restaurant: 'dummy-rest-2',
+        menuItems: ['dummy-meal-2']
+    }
+];
+
 const MealsAndMenus = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -40,15 +125,37 @@ const MealsAndMenus = () => {
   const [addToCartMutation, { isLoading: isAddingToCart }] = useAddToCartMutation();
 
   // Fetch meals for this restaurant
-  const { data: mealsData, isLoading: isMealsLoading } = useGetAllMealsQuery();
+  const { data: mealsData, isLoading: isMealsLoading, error: mealsError } = useGetAllMealsQuery();
 
   // Fetch menus for this restaurant
-  const { data: menusData, isLoading: isMenusLoading } = useGetAllMenusQuery();
+  const { data: menusData, isLoading: isMenusLoading, error: menusError } = useGetAllMenusQuery();
+
+  // Process meals data with fallback to dummy data
+  const processedMeals = React.useMemo(() => {
+    if (mealsData && mealsData.length > 0) {
+      return mealsData;
+    } else if (!isMealsLoading && (mealsError || !mealsData || mealsData.length === 0)) {
+      console.log('Using dummy meals data');
+      return dummyMeals;
+    }
+    return [];
+  }, [mealsData, isMealsLoading, mealsError]);
+
+  // Process menus data with fallback to dummy data  
+  const processedMenus = React.useMemo(() => {
+    if (menusData && menusData.length > 0) {
+      return menusData;
+    } else if (!isMenusLoading && (menusError || !menusData || menusData.length === 0)) {
+      console.log('Using dummy menus data');
+      return dummyMenus;
+    }
+    return [];
+  }, [menusData, isMenusLoading, menusError]);
 
   // Get unique categories for filter dropdown
   const categories =
-    !isMealsLoading && mealsData?.length > 0
-      ? [...new Set(mealsData.map((meal) => meal.category).filter(Boolean))]
+    processedMeals.length > 0
+      ? [...new Set(processedMeals.map((meal) => meal.category).filter(Boolean))]
       : [];
 
   // Handle price range slider change
@@ -62,54 +169,46 @@ const MealsAndMenus = () => {
   };
 
   // Filter meals based on search and filters
-  const filteredMeals = !isMealsLoading
-    ? mealsData?.filter((meal) => {
-        // Search query filter
-        const matchesSearch =
-          meal.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          meal.description?.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredMeals = processedMeals.filter((meal) => {
+    // Search query filter
+    const matchesSearch =
+      meal.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      meal.description?.toLowerCase().includes(searchQuery.toLowerCase());
 
-        // Category filter
-        const matchesCategory =
-          !filters.category || meal.category === filters.category;
+    // Category filter
+    const matchesCategory =
+      !filters.category || meal.category === filters.category;
 
-        // Price filter
-        const price = parseFloat(meal.price || 0);
-        const matchesPrice =
-          price >= filters.priceMin && price <= filters.priceMax;
+    // Price filter
+    const matchesPrice =
+      meal.price >= filters.priceMin && meal.price <= filters.priceMax;
 
-        // Rating filter (if you have ratings for meals)
-        const matchesRating = meal.rating
-          ? meal.rating >= filters.rating
-          : true;
+    // Rating filter
+    const matchesRating = !filters.rating || meal.rating >= filters.rating;
 
-        return (
-          matchesSearch && matchesCategory && matchesPrice && matchesRating
-        );
-      })
-    : [];
+    return matchesSearch && matchesCategory && matchesPrice && matchesRating;
+  });
 
-  // Filter menus based on search
-  const filteredMenus = !isMenusLoading
-    ? menusData?.filter((menu) => {
-        return (
-          menu.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          menu.description?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      })
-    : [];
-
-  // Sort meals based on the selected sortBy option
-  const sortedMeals = [...(filteredMeals || [])].sort((a, b) => {
-    if (filters.sortBy === "price-low") {
-      return parseFloat(a.price || 0) - parseFloat(b.price || 0);
-    } else if (filters.sortBy === "price-high") {
-      return parseFloat(b.price || 0) - parseFloat(a.price || 0);
-    } else {
-      // Sort by name as default
-      return (a.name || "").localeCompare(b.name || "");
+  // Sort filtered meals
+  const sortedMeals = [...filteredMeals].sort((a, b) => {
+    switch (filters.sortBy) {
+      case "price-low":
+        return a.price - b.price;
+      case "price-high":
+        return b.price - a.price;
+      case "rating":
+        return (b.rating || 0) - (a.rating || 0);
+      case "name":
+      default:
+        return a.name.localeCompare(b.name);
     }
   });
+
+  // Filter menus based on search
+  const filteredMenus = processedMenus.filter((menu) =>
+    menu.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    menu.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // Reset filters function
   const resetFilters = () => {

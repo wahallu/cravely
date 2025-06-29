@@ -5,6 +5,58 @@ import { motion } from 'framer-motion';
 import { useGetAllRestaurantsQuery } from '../../Redux/slices/restaurantSlice';
 import { Link } from 'react-router-dom';
 
+// Dummy data fallback
+const dummyRestaurants = [
+    {
+        id: 'dummy-1',
+        name: 'Burger Palace',
+        rating: 4.8,
+        cuisine: 'American',
+        deliveryTime: '25-35 min',
+        featured: true,
+        logo: '/hero1.png',
+        image: '/hero1.png',
+        color: 'bg-red-500',
+        fastDelivery: true
+    },
+    {
+        id: 'dummy-2', 
+        name: 'Pizza Corner',
+        rating: 4.6,
+        cuisine: 'Italian',
+        deliveryTime: '30-40 min',
+        featured: true,
+        logo: '/hero1.png',
+        image: '/hero1.png',
+        color: 'bg-yellow-500',
+        fastDelivery: true
+    },
+    {
+        id: 'dummy-3',
+        name: 'Sushi Master',
+        rating: 4.9,
+        cuisine: 'Japanese',
+        deliveryTime: '35-45 min',
+        featured: true,
+        logo: '/hero1.png',
+        image: '/hero1.png',
+        color: 'bg-green-500',
+        fastDelivery: false
+    },
+    {
+        id: 'dummy-4',
+        name: 'Taco Fiesta',
+        rating: 4.5,
+        cuisine: 'Mexican',
+        deliveryTime: '20-30 min',
+        featured: true,
+        logo: '/hero1.png',
+        image: '/hero1.png',
+        color: 'bg-orange-500',
+        fastDelivery: true
+    }
+];
+
 export default function FeaturedRestaurants() {
     const [hoveredId, setHoveredId] = useState(null);
     const [featuredRestaurants, setFeaturedRestaurants] = useState([]);
@@ -14,7 +66,7 @@ export default function FeaturedRestaurants() {
     
     // Process data when it's loaded
     useEffect(() => {
-        if (restaurantsData?.data) {
+        if (restaurantsData?.data && restaurantsData.data.length > 0) {
             // Get all restaurants
             const restaurants = restaurantsData.data || [];
             
@@ -27,27 +79,29 @@ export default function FeaturedRestaurants() {
             // Map to our display format
             const mappedRestaurants = featured.map(restaurant => {
                 // Generate a random color for each restaurant
-                const colors = ['bg-blue-500', 'bg-yellow-500', 'bg-green-500', 'bg-orange-500', 'bg-red-500', 'bg-purple-500'];
+                const colors = ['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-orange-500'];
                 const randomColor = colors[Math.floor(Math.random() * colors.length)];
-                
-                // Get first letter of restaurant name for the logo placeholder
-                const logoText = restaurant.name ? restaurant.name.charAt(0) : 'R';
                 
                 return {
                     id: restaurant._id || restaurant.id,
+                    name: restaurant.name,
+                    rating: restaurant.rating || 4.5,
+                    cuisine: restaurant.cuisineType || 'Various',
+                    deliveryTime: '25-35 min', // This could come from the restaurant data
+                    logo: restaurant.logo || '/hero1.png',
                     image: restaurant.image || '/hero1.png',
-                    name: restaurant.name || 'Restaurant',
-                    logo: `https://via.placeholder.com/60x60?text=${logoText}`,
-                    discount: restaurant.discount || '10% off',
-                    fast: restaurant.fastDelivery || true,
-                    rating: restaurant.rating ? Math.floor(restaurant.rating * 20) : 45, // Convert 5-scale to 100-scale
-                    color: randomColor
+                    color: randomColor,
+                    fastDelivery: Math.random() > 0.5 // Random assignment for demo
                 };
             });
             
             setFeaturedRestaurants(mappedRestaurants);
+        } else if (!isLoading && (error || !restaurantsData?.data || restaurantsData.data.length === 0)) {
+            // Use dummy data when API fails or returns empty data
+            console.log('Using dummy restaurant data for featured restaurants');
+            setFeaturedRestaurants(dummyRestaurants);
         }
-    }, [restaurantsData]);
+    }, [restaurantsData, isLoading, error]);
     
     // Animation variants
     const containerVariants = {

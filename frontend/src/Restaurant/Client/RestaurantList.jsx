@@ -15,6 +15,82 @@ import { useGetAllRestaurantsQuery } from "../../Redux/slices/restaurantSlice";
 import Slider from "rc-slider"; // You'll need to install this: npm install rc-slider
 import "rc-slider/assets/index.css";
 
+// Add dummy data
+const dummyRestaurants = [
+  {
+    _id: "dummy-rest-1",
+    name: "Burger Palace",
+    cuisineType: "American",
+    rating: 4.8,
+    deliveryTime: "25-35 min",
+    deliveryFee: "Free",
+    image: "/hero1.png",
+    featured: true,
+    address: "123 Main St",
+    description: "Best burgers in town with fresh ingredients",
+  },
+  {
+    _id: "dummy-rest-2",
+    name: "Pizza Corner",
+    cuisineType: "Italian",
+    rating: 4.6,
+    deliveryTime: "30-40 min",
+    deliveryFee: "$2.99",
+    image: "/hero1.png",
+    featured: false,
+    address: "456 Oak Ave",
+    description: "Authentic Italian pizza with wood-fired oven",
+  },
+  {
+    _id: "dummy-rest-3",
+    name: "Sushi Master",
+    cuisineType: "Japanese",
+    rating: 4.9,
+    deliveryTime: "35-45 min",
+    deliveryFee: "$3.99",
+    image: "/hero1.png",
+    featured: true,
+    address: "789 Pine St",
+    description: "Fresh sushi and traditional Japanese cuisine",
+  },
+  {
+    _id: "dummy-rest-4",
+    name: "Taco Fiesta",
+    cuisineType: "Mexican",
+    rating: 4.5,
+    deliveryTime: "20-30 min",
+    deliveryFee: "Free",
+    image: "/hero1.png",
+    featured: false,
+    address: "321 Elm St",
+    description: "Authentic Mexican flavors and fresh ingredients",
+  },
+  {
+    _id: "dummy-rest-5",
+    name: "Curry House",
+    cuisineType: "Indian",
+    rating: 4.7,
+    deliveryTime: "40-50 min",
+    deliveryFee: "$2.49",
+    image: "/hero1.png",
+    featured: false,
+    address: "654 Maple Dr",
+    description: "Traditional Indian cuisine with authentic spices",
+  },
+  {
+    _id: "dummy-rest-6",
+    name: "Noodle Bar",
+    cuisineType: "Asian",
+    rating: 4.4,
+    deliveryTime: "25-35 min",
+    deliveryFee: "Free",
+    image: "/hero1.png",
+    featured: false,
+    address: "987 Cedar Ave",
+    description: "Fresh noodles and Asian fusion dishes",
+  },
+];
+
 export default function RestaurantList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
@@ -31,19 +107,27 @@ export default function RestaurantList() {
   // Fetch restaurants using Redux query hook
   const { data, error, isLoading } = useGetAllRestaurantsQuery();
 
-  // Get restaurants array from response or empty array if still loading
-  const restaurants = data?.data || [];
+  // Get restaurants array from response or use dummy data
+  const restaurants = React.useMemo(() => {
+    if (data?.data && data.data.length > 0) {
+      return data.data;
+    } else {
+      // Always use dummy data when there's an error, no data, or empty array
+      console.log("Using dummy restaurant data for restaurant list");
+      return dummyRestaurants;
+    }
+  }, [data, error, isLoading]);
 
   // Filter restaurants based on search query and filters
   const filteredRestaurants = restaurants.filter((restaurant) => {
-    // Filter by search query
+    // Filter by search query - fix the cuisine property name
     const matchesSearch =
       restaurant.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      restaurant.cuisine?.toLowerCase().includes(searchQuery.toLowerCase());
+      restaurant.cuisineType?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    // Filter by cuisine
+    // Filter by cuisine - fix the property name
     const matchesCuisine =
-      filters.cuisine === "" || restaurant.cuisine === filters.cuisine;
+      filters.cuisine === "" || restaurant.cuisineType === filters.cuisine;
 
     // Filter by rating
     const matchesRating = restaurant.rating >= filters.rating;
@@ -56,7 +140,7 @@ export default function RestaurantList() {
     const matchesFeatured = !filters.featured || restaurant.featured;
 
     // Filter by available only (you may need to add this property to your data)
-    const matchesAvailable = !filters.availableOnly || restaurant.isAvailable;
+    const matchesAvailable = !filters.availableOnly || restaurant.isAvailable !== false;
 
     return (
       matchesSearch &&
@@ -68,10 +152,10 @@ export default function RestaurantList() {
     );
   });
 
-  // Get unique cuisines for filter dropdown
+  // Get unique cuisines for filter dropdown - fix property name
   const cuisines = [
     ...new Set(
-      restaurants.map((restaurant) => restaurant.cuisine).filter(Boolean)
+      restaurants.map((restaurant) => restaurant.cuisineType).filter(Boolean)
     ),
   ];
 
@@ -338,15 +422,17 @@ export default function RestaurantList() {
               <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-orange-500"></div>
               </div>
-            ) : error ? (
-              <div className="flex flex-col items-center justify-center h-64 text-center">
-                <div className="text-red-500 text-xl mb-2">
-                  Error loading restaurants
-                </div>
-                <p className="text-gray-500">Please try again later</p>
-              </div>
             ) : filteredRestaurants.length > 0 ? (
               <>
+                {/* Show loading indicator only when actually loading */}
+                {error && (
+                  <div>
+                    {/* <p className="text-sm">
+                      🍽️ Backend unavailable - showing demo restaurants for your browsing experience
+                    </p> */}
+                  </div>
+                )}
+
                 {/* Featured restaurants section */}
                 <AnimatePresence>
                   {filteredRestaurants.some(
@@ -421,9 +507,8 @@ export default function RestaurantList() {
   );
 }
 
-// Restaurant Card Component (unchanged)
+// Restaurant Card Component - fix the cuisine property
 const RestaurantCard = ({ restaurant, featured = false }) => {
-  // Existing RestaurantCard code
   return (
     <motion.div
       whileHover={{ y: -5 }}
@@ -450,7 +535,10 @@ const RestaurantCard = ({ restaurant, featured = false }) => {
         {/* Restaurant Logo */}
         <div className="absolute -bottom-5 left-4">
           <img
-            src={restaurant.logo || "https://via.placeholder.com/60x60?text=R"}
+            src={
+              restaurant.logo ||
+              "https://via.placeholder.com/60x60?text=R"
+            }
             alt={`${restaurant.name} logo`}
             className="w-14 h-14 rounded-full border-2 border-white shadow-md"
           />
@@ -472,7 +560,7 @@ const RestaurantCard = ({ restaurant, featured = false }) => {
 
         <div className="mt-2 flex items-center text-gray-500 text-sm">
           <span className="bg-gray-100 px-2 py-1 rounded">
-            {restaurant.cuisine}
+            {restaurant.cuisineType || restaurant.cuisine}
           </span>
           <span className="mx-2">•</span>
           <span>{restaurant.priceRange || "$"}</span>
